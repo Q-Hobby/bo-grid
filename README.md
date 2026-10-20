@@ -17,6 +17,7 @@ MIT package.
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-ff3e00?logo=svelte&logoColor=white)](https://svelte.dev)
 [![TypeScript](https://img.shields.io/badge/types-TypeScript-3178c6?logo=typescript&logoColor=white)](./src/lib/index.ts)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/bonguynvan)
 
 **[Live demo](https://bonguynvan.github.io/bo-grid/)** ·
 **[Guide](./docs/guide.md)** ·
@@ -179,6 +180,11 @@ report security issues privately as described in [SECURITY.md](./SECURITY.md).
 - **[TradeCanvas](https://github.com/bonguynvan/tradecanvas)**: canvas trading
   charts with indicators, drawing tools and real-time streaming. It is the
   chart half of the same toolkit; pair it with bo-grid for a full trading desk.
+
+## Sponsor
+
+If bo-grid saves you time, you can support its development on
+[GitHub Sponsors](https://github.com/sponsors/bonguynvan).
 
 ## License
 

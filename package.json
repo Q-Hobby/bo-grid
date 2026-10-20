@@ -12,6 +12,10 @@
   "bugs": {
     "url": "https://github.com/bonguynvan/bo-grid/issues"
   },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/bonguynvan"
+  },
   "keywords": [
     "svelte",
     "svelte5",
