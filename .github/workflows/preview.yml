@@ -1,0 +1,35 @@
+name: preview
+
+# Publishes every pull request and every commit on main to pkg.pr.new as an
+# installable preview (`npm i https://pkg.pr.new/bo-grid@<pr|sha>`), and keeps
+# one bot comment on the pull request up to date with the install command.
+# Needs the pkg.pr.new GitHub App installed on the repo. Nothing goes to npm.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The CLI packs dist/ as it is; it does not build.
+      - run: pnpm package
+      - run: pnpm exec pkg-pr-new publish --comment=update

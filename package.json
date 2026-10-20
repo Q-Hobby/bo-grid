@@ -12,6 +12,10 @@
   "bugs": {
     "url": "https://github.com/bonguynvan/bo-grid/issues"
   },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/bonguynvan"
+  },
   "keywords": [
     "svelte",
     "svelte5",
@@ -107,6 +111,7 @@
     "@sveltejs/package": "^2.5.8",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "jsdom": "^29.1.1",
+    "pkg-pr-new": "^0.0.91",
     "svelte": "^5.19.0",
     "svelte-check": "^4.1.4",
     "typescript": "^5.7.3",

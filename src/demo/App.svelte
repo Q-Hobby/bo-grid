@@ -237,6 +237,7 @@
       <a href={NPM} target="_blank" rel="noreferrer">npm</a>
       <a href={REPO} target="_blank" rel="noreferrer">GitHub</a>
       <a href={TRADECANVAS} target="_blank" rel="noreferrer">TradeCanvas charts ↗</a>
+      <a href="https://github.com/sponsors/bonguynvan" target="_blank" rel="noreferrer">Sponsor ↗</a>
     </nav>
   </div>
   <p class="lp-foot-base"><span>MIT licence · © 2026</span><span>Set in IBM Plex</span></p>
