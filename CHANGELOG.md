@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [2.2.2] — 2026-10-20
+
+### Fixed
+
+- **The header keeps its height when the grid has a CSS height and the rows
+  overflow.** With `height="100%"` (or any CSS length) and more rows than fit,
+  the header row shrank to a few pixels and the rows drew over it; the spanning
+  group row and the filter row did the same. The viewport's flex basis is its
+  full content height, and the header rows clip their content, which let them
+  shrink with it. They no longer shrink. A pixel `height` was not affected. The
+  bug dates from 2.0.0.
+
 ## [2.2.1] — 2026-10-07
 
 ### Fixed
@@ -1237,6 +1249,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.2.2]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.2
 [2.2.1]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.1
 [2.2.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.0
 [0.20.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.20.0
