@@ -3343,9 +3343,13 @@
     width: 10px;
     height: 10px;
   }
+  /* flex-shrink: 0 because overflow: hidden drops a flex item's minimum height
+     to 0. With a CSS height, the viewport's basis is its full content height;
+     once the rows overflow, these rows would shrink with it to a few px. */
   .head,
   .head-groups,
   .filter-row {
+    flex-shrink: 0;
     overflow: hidden;
     scrollbar-gutter: stable;
     scrollbar-width: thin;
