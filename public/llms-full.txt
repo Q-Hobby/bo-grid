@@ -79,7 +79,7 @@ interface GridProps {
   resizable?: boolean;                 // drag-to-resize columns, default true
   virtualizeColumns?: boolean;         // 100+ column grids, default false
   columnHover?: boolean;               // wash the column under the pointer (body + header), default false
-  flashMotion?: 'fade' | 'hold';       // 'hold' = static tint, far cheaper on a busy board; default 'fade'
+  flashMotion?: 'fade' | 'hold' | 'auto'; // 'hold' = static tint, far cheaper on a busy board; 'auto' = fade when quiet, hold when busy; default 'fade'
 
   // Selection
   cellSelection?: boolean;             // range-select highlight, default true
@@ -390,7 +390,7 @@ Pure functions only — no `ColumnDef`/Grid changes. Wire results into a column
 via `render`/`cell` (§4.3/§4.4).
 
 ```ts
-import { resolveTone, toneColor, vnBands, vnTickSize, roundToTick, vnBandPercent,
+import { resolveTone, toneColor, vnBands, vnTickSize, roundToTick, vnBandPercent, vnFuturesBands, VN_FUTURES_TICK,
          fmtTradingPrice, decimalsForTick, sessionStateAt, sessionLabel, VN_HOSE_SCHEDULE } from 'bo-grid/trading';
 ```
 
@@ -404,6 +404,8 @@ const color = toneColor(tone);                 // darkToneColors by default; ton
 ```
 `vnTickSize(price, exchange?)` — HOSE steps 10 → 50 → 100 VND by price tier;
 HNX/UPCOM flat 100 VND. `roundToTick(price, tick, 'down'|'up'|'nearest')`.
+`vnFuturesBands(ref)` — VN30 index futures: ±7% on a 0.1-point step
+(`VN_FUTURES_TICK`), ceiling DOWN, floor UP.
 
 **Tick-aware formatting** (the built-in `price` column type is a fixed 2
 decimals — wrong for whole-VND or a 4-decimal FX pip):

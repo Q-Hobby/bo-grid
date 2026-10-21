@@ -264,6 +264,11 @@ all.
 <Grid {rows} {columns} flashMotion="hold" onReady={(a) => (api = a)} />
 ```
 
+If the same grid is sometimes quiet and sometimes busy, **`flashMotion="auto"`**
+decides per flash as it starts: it fades while few cells flash at once and
+holds once more than ~120 overlap. A taller board reaches that sooner, which is
+the point: the cost grows with the fading cells on screen.
+
 `showChange: true` shows how far a value moved, not just which way: `▲0.15`
 beside the price in the up colour (`▼` down), held, then faded over a second.
 The delta is written in the column's own format; `{ format, ms }` customises
@@ -357,7 +362,9 @@ sessionStateAt(new Date(), VN_HOSE_SCHEDULE); // 'pre-open' | 'ato' | 'continuou
 `vnBands`/`vnTickSize` encode HOSE's price-step schedule and HOSE/HNX/UPCOM's
 daily band widths (7%/10%/15%), rounding the ceiling **down** and the floor
 **up** to a tradable tick so neither ever sits outside the real regulatory
-limit. `sessionStateAt` evaluates the schedule in the exchange's own time zone
+limit. VN30 index futures trade on a 0.1-point step with a ±7% band:
+`vnFuturesBands(ref)` gives their ceiling and floor the same way, and
+`fmtTradingPrice(price, VN_FUTURES_TICK)` shows one decimal. `sessionStateAt` evaluates the schedule in the exchange's own time zone
 via `Intl`, so it's correct for a viewer anywhere, not just one in Vietnam. None
 of this is required to use `resolveTone`/`toneColor` — pass your own
 `{ ref, ceiling, floor }` for any other market's limit-price rule. See the **VN

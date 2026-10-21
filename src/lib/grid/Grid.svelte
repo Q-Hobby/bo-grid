@@ -17,7 +17,7 @@
   import { buildFlatRows, buildLazyGroupRows, activeGroupsAt, type VisualRow, type GroupNode, type LazyGroup } from './grouping';
   import { buildTreeRows } from './tree';
   import { moveIndex } from './reorder';
-  import { FlashTracker, FlashClock, type CellFlash } from './flash';
+  import { FlashTracker, FlashClock, FlashLoad, type CellFlash } from './flash';
   import { parseClipboard, isSingleCell } from './clipboard';
   import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, type WidthMap } from './sizing';
   import {
@@ -253,8 +253,9 @@
     onViewportChange?: (view: ViewportRange) => void;
     /** How a flash plays. `'fade'` (default): the tint fades out. `'hold'`: the
         tint holds for the flash window, then drops — no CSS animation, so a busy
-        board restyles and repaints a flashing cell twice instead of every frame. */
-    flashMotion?: 'fade' | 'hold';
+        board restyles and repaints a flashing cell twice instead of every frame.
+        `'auto'`: fade while few cells flash at once, hold when many do. */
+    flashMotion?: 'fade' | 'hold' | 'auto';
     /** Highlight the column under the pointer (body and header) — handy on a
         wide board. One overlay for the whole column, not a class per cell. */
     columnHover?: boolean;
@@ -644,9 +645,17 @@
   // a busy board's frame; a held tint changes only when it starts and when it
   // drops. Cells holding a tint read `flashNow` and drop it once their window
   // has passed; the clock ticks only while some cell holds one.
+  // `holds` is asked once per flash, as it starts (by the tracker, on a real
+  // change): always under `'hold'`; under `'auto'`, fade while few overlap and
+  // hold when many do (FlashLoad).
   let flashNow = $state(0);
   const holdClock = new FlashClock((now) => (flashNow = now));
-  const flashHold = { clock: () => flashNow, until: (t: number) => holdClock.until(t) };
+  const flashLoad = new FlashLoad();
+  const flashHold = {
+    clock: () => flashNow,
+    until: (t: number) => holdClock.until(t),
+    holds: (at: number) => flashMotion !== 'auto' || flashLoad.start(at),
+  };
   $effect(() => () => holdClock.stop());
 
   // Pin-arrangement: pinned columns move to the edges and get sticky offsets.
@@ -1959,6 +1968,7 @@
     const wanted = opts.rows ? new Set(opts.rows) : null;
     const columns = opts.columns ? new Set(opts.columns) : null;
     const at = Date.now();
+    const hold = flashMotion === 'fade' ? undefined : flashHold.holds(at);
     // A pinned row may share its id with a data row: one request per id.
     const done = new Set<string | number>();
     const flashRow = (row: GridRow) => {
@@ -1966,7 +1976,7 @@
       if ((wanted && !wanted.has(key)) || done.has(key)) return;
       done.add(key);
       const seq = (rowFlashes.get(key)?.seq ?? 0) + 1;
-      rowFlashes.set(key, { seq, dir: opts.dir ?? 'same', at, ms: opts.ms, columns });
+      rowFlashes.set(key, { seq, dir: opts.dir ?? 'same', at, ms: opts.ms, columns, hold });
       rowFlashSeq[key] = seq;
     };
     for (const row of topRows) flashRow(row);
@@ -2707,7 +2717,7 @@
                 version={rowVersions[getRowId(prow)]}
                 fieldVersion={fieldVersions[fieldKey(getRowId(prow), col.key)]}
                 {flashTracker}
-                flashHold={flashMotion === 'hold' ? flashHold : null}
+                flashHold={flashMotion === 'fade' ? null : flashHold}
                 cellFlash={cellFlashOf(getRowId(prow))}
                 pinned={pinned && layout.info[ci].pinned}
                 pinSide={layout.info[ci].side ?? 'left'}
@@ -2823,7 +2833,7 @@
                   version={rowVersions[getRowId(item.row)]}
                   fieldVersion={fieldVersions[fieldKey(getRowId(item.row), col.key)]}
                   {flashTracker}
-                  flashHold={flashMotion === 'hold' ? flashHold : null}
+                  flashHold={flashMotion === 'fade' ? null : flashHold}
                   cellFlash={cellFlashOf(getRowId(item.row))}
                   selected={cellSelection && (m ? rectSelected(m.r0, m.r1, ci, m.c1) : sel.contains(item.vr, ci))}
                   focused={cellSelection && (m ? rectFocused(m.r0, m.r1, ci, m.c1) : sel.isFocus(item.vr, ci))}

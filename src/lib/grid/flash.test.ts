@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { FlashTracker, FlashClock, resolveFlashMode, isFresh, mergeFlash, holdFlash, type CellFlash, type ShownFlash } from './flash';
+import { FlashTracker, FlashClock, FlashLoad, resolveFlashMode, isFresh, mergeFlash, holdFlash, type CellFlash, type ShownFlash } from './flash';
 
 describe('resolveFlashMode', () => {
   it('maps legacy `true` to row-driven mode', () => {
@@ -239,6 +239,66 @@ describe('holdFlash (flashMotion: hold)', () => {
     const off = shown({ on: false });
     expect(holdFlash(null, 1000)).toBeNull();
     expect(holdFlash(off, 5000)).toBe(off);
+  });
+});
+
+describe('FlashLoad (flashMotion: auto)', () => {
+  it('fades while few flashes overlap', () => {
+    const load = new FlashLoad(10, 5, 300);
+    for (let t = 0; t < 3000; t += 100) expect(load.start(t)).toBe(false);
+  });
+
+  it('holds once enough flashes overlap inside the window', () => {
+    const load = new FlashLoad(10, 5, 300);
+    const held = Array.from({ length: 12 }, () => load.start(1000));
+    expect(held.slice(0, 10).every((h) => !h)).toBe(true);
+    expect(held[10]).toBe(true);
+    expect(held[11]).toBe(true);
+  });
+
+  it('goes back to fading once the load decays below the exit level, not before', () => {
+    const load = new FlashLoad(10, 5, 300);
+    for (let i = 0; i < 20; i++) load.start(1000);
+    // ~20 overlapping: one window later about 20/e ≈ 7.4 remain, still above exit.
+    expect(load.start(1300)).toBe(true);
+    // Several windows later the load is near zero.
+    expect(load.start(3000)).toBe(false);
+  });
+
+  it('measures a steady rate as the flashes started within one window', () => {
+    // One start every 10 ms over a 300 ms window settles near 30 overlapping;
+    // one every 20 ms near 15.
+    const fast = new FlashLoad(25, 20, 300);
+    const slow = new FlashLoad(25, 20, 300);
+    let f = false;
+    let sl = false;
+    for (let t = 0; t < 5000; t += 10) f = fast.start(t);
+    for (let t = 0; t < 5000; t += 20) sl = slow.start(t);
+    expect(f).toBe(true);
+    expect(sl).toBe(false);
+  });
+});
+
+describe('FlashTracker hold decision', () => {
+  it('asks once per real change and keeps the answer on the state', () => {
+    const t = new FlashTracker();
+    const decide = vi.fn(() => true);
+    t.observe('r1', 'px', 10, 'up-down', 1000, decide);
+    expect(decide).not.toHaveBeenCalled(); // first sight never flashes
+    const s = t.observe('r1', 'px', 11, 'up-down', 1100, decide);
+    expect(s.hold).toBe(true);
+    // Re-renders (another cell instance showing the row after a scroll, say)
+    // see the same change: no new question, same answer.
+    expect(t.observe('r1', 'px', 11, 'up-down', 1150, decide).hold).toBe(true);
+    expect(t.observe('r1', 'px', 11, 'up-down', 1200, decide).hold).toBe(true);
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(decide).toHaveBeenCalledWith(1100);
+  });
+
+  it('leaves hold unset without a decider (flashMotion: fade)', () => {
+    const t = new FlashTracker();
+    t.observe('r1', 'px', 10, 'up-down', 1000);
+    expect(t.observe('r1', 'px', 11, 'up-down', 1100).hold).toBeUndefined();
   });
 });
 
