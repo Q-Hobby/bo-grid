@@ -1,4 +1,5 @@
-// Vietnam exchange price bands — tick sizes and daily ceiling/floor limits.
+// Vietnam exchange price bands — tick sizes and daily ceiling/floor limits,
+// for stocks and for VN30 index futures.
 //
 // These are the standard, non-special-session rules (no IPO/first-day widened
 // band, no ex-dividend reference adjustment). They're the common case a trading
@@ -31,6 +32,9 @@ export function vnTickSize(price: number, exchange: Exchange = 'HOSE'): number {
   return exchange === 'HOSE' ? hoseTickSize(price) : 100;
 }
 
+/** How close (in ticks) a price must be to a whole tick to count as one. */
+const TICK_EPSILON = 1e-9;
+
 /**
  * Round `price` to the nearest multiple of `tick`.
  *
@@ -45,7 +49,12 @@ export function vnTickSize(price: number, exchange: Exchange = 'HOSE'): number {
  * that shows up with fractional ticks like an FX pip (`0.0001`).
  */
 export function roundToTick(price: number, tick: number, mode: 'nearest' | 'down' | 'up' = 'nearest'): number {
-  const units = price / tick;
+  // A price that is a whole number of ticks can arrive with float noise
+  // (12,000 × 1.15 = 13,799.999999999998), and flooring that would drop a whole
+  // tick. Snap to the whole tick count first when it is that close.
+  const raw = price / tick;
+  const whole = Math.round(raw);
+  const units = Math.abs(raw - whole) <= TICK_EPSILON ? whole : raw;
   const rounded = mode === 'down' ? Math.floor(units) : mode === 'up' ? Math.ceil(units) : Math.round(units);
   // Round the final multiplication to the tick's own precision to clear any
   // residual float noise (e.g. 0.0001 * 12346 !== exactly 1.2346).
@@ -108,5 +117,26 @@ export function vnBands(ref: number, exchange: Exchange = 'HOSE'): ToneBands {
     ref,
     ceiling: roundBand(ref * (1 + pct), exchange, 'down'),
     floor: roundBand(ref * (1 - pct), exchange, 'up'),
+  };
+}
+
+/** VN30 index futures (HNX derivatives market): the price step, in index points. */
+export const VN_FUTURES_TICK = 0.1;
+
+/** VN30 index futures: the daily price-band width, as a fraction of the
+    reference (the previous session's settlement price). */
+export const VN_FUTURES_BAND = 0.07;
+
+/**
+ * Ceiling/floor for a VN30 index futures contract — ±7% of the reference,
+ * ceiling rounded down and floor rounded up to the 0.1-point step. Standard
+ * sessions only: a contract's first trading day uses a wider band; pass
+ * server-side bands to `resolveTone` for that.
+ */
+export function vnFuturesBands(ref: number): ToneBands {
+  return {
+    ref,
+    ceiling: roundToTick(ref * (1 + VN_FUTURES_BAND), VN_FUTURES_TICK, 'down'),
+    floor: roundToTick(ref * (1 - VN_FUTURES_BAND), VN_FUTURES_TICK, 'up'),
   };
 }

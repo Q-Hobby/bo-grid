@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { vnTickSize, roundToTick, vnBandPercent, vnBands } from './bands';
+import { vnTickSize, roundToTick, vnBandPercent, vnBands, vnFuturesBands, VN_FUTURES_TICK } from './bands';
 
 describe('vnTickSize', () => {
   it('is 10 VND below 10,000', () => {
@@ -141,6 +141,57 @@ describe('vnBands', () => {
         expect(b.ceiling!).toBeGreaterThanOrEqual(b.ref);
         expect(b.ref).toBeGreaterThanOrEqual(b.floor!);
       }
+    }
+  });
+});
+
+describe('float noise at a whole tick', () => {
+  it('keeps a raw band that lands exactly on a tick (12,000 × 1.15 = 13,799.999…)', () => {
+    expect(vnBands(12_000, 'UPCOM').ceiling).toBe(13_800);
+    expect(vnBands(6_000, 'UPCOM').ceiling).toBe(6_900);
+  });
+
+  it('rounds every band that is a whole number of ticks to exactly that price', () => {
+    const pct = { HOSE: 7, HNX: 10, UPCOM: 15 } as const;
+    for (const exchange of ['HOSE', 'HNX', 'UPCOM'] as const) {
+      for (let ref = 1_000; ref <= 300_000; ref += exchange === 'HOSE' ? 10 : 100) {
+        if (ref % vnTickSize(ref, exchange)) continue;
+        // Integer math: the exact raw band, when it is itself a tradable price.
+        const b = vnBands(ref, exchange);
+        const rawC = (ref * (100 + pct[exchange])) / 100;
+        const rawF = (ref * (100 - pct[exchange])) / 100;
+        if (Number.isInteger(rawC) && rawC % vnTickSize(rawC, exchange) === 0) expect(b.ceiling).toBe(rawC);
+        if (Number.isInteger(rawF) && rawF % vnTickSize(rawF, exchange) === 0) expect(b.floor).toBe(rawF);
+      }
+    }
+  });
+
+  it('still rounds a price just off a tick in the requested direction', () => {
+    expect(roundToTick(13_799.9, 100, 'down')).toBe(13_700);
+    expect(roundToTick(13_700.1, 100, 'up')).toBe(13_800);
+  });
+});
+
+describe('vnFuturesBands', () => {
+  it('is ±7% of the reference on a 0.1-point step', () => {
+    expect(VN_FUTURES_TICK).toBe(0.1);
+    expect(vnFuturesBands(1_250.3)).toEqual({ ref: 1_250.3, ceiling: 1_337.8, floor: 1_162.8 });
+  });
+
+  it('keeps an exact band (1,300 × 1.07 = 1,391; 1,000 × 0.93 = 930)', () => {
+    expect(vnFuturesBands(1_300).ceiling).toBe(1_391);
+    expect(vnFuturesBands(1_000).floor).toBe(930);
+  });
+
+  it('stays on the step and inside the limit across a sweep', () => {
+    for (let ref = 800; ref <= 2_000; ref += 0.7) {
+      const r = Math.round(ref * 10) / 10;
+      const b = vnFuturesBands(r);
+      expect(Math.abs(b.ceiling! * 10 - Math.round(b.ceiling! * 10))).toBeLessThan(1e-6);
+      expect(Math.abs(b.floor! * 10 - Math.round(b.floor! * 10))).toBeLessThan(1e-6);
+      expect(b.ceiling!).toBeLessThanOrEqual(r * 1.07 + 1e-9);
+      expect(b.floor!).toBeGreaterThanOrEqual(r * 0.93 - 1e-9);
+      expect(b.ceiling! - r * 1.07).toBeGreaterThan(-0.1);
     }
   });
 });
