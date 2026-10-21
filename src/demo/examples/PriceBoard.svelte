@@ -163,8 +163,8 @@
   // (api.refresh — values move in place, so the order only catches up on demand).
   let movers = $state(false);
   // A busy board holds its flashes: a static tint, a fraction of a fade's cost.
-  let flashMotion = $state<'fade' | 'hold'>('hold');
-  function setFlashMotion(m: 'fade' | 'hold') {
+  let flashMotion = $state<'fade' | 'hold' | 'auto'>('hold');
+  function setFlashMotion(m: 'fade' | 'hold' | 'auto') {
     flashMotion = m;
     flushSync();
   }
@@ -397,8 +397,9 @@
     </select>
   </label>
   <label>Flash
-    <select value={flashMotion} onchange={(e) => setFlashMotion(e.currentTarget.value as 'fade' | 'hold')}>
+    <select value={flashMotion} onchange={(e) => setFlashMotion(e.currentTarget.value as 'fade' | 'hold' | 'auto')}>
       <option value="hold">hold (busy boards)</option>
+      <option value="auto">auto</option>
       <option value="fade">fade</option>
     </select>
   </label>

@@ -3,6 +3,35 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [Unreleased]
+
+### Added
+
+- **`flashMotion: 'auto'`.** Each flash decides as it starts: it fades while
+  few cells flash at once and holds (as with `'hold'`) once more than ~120
+  overlap, going back to fading below ~80. A quiet board keeps the fade; a busy
+  one costs about what `'hold'` does. `'fade'` stays the default.
+- **VN30 index futures in `bo-grid/trading`:** `vnFuturesBands(ref)` (±7% on a
+  0.1-point step, ceiling rounded down and floor up), `VN_FUTURES_TICK` and
+  `VN_FUTURES_BAND`.
+
+### Fixed
+
+- **`vnBands` no longer drops a tick on some exact bands.** A band that lands
+  exactly on a tick could come out of the multiplication a hair below it
+  (12,000 × 1.15 = 13,799.999…), and the ceiling then rounded down a whole tick:
+  UPCOM reference 12,000 gave a ceiling of 13,700 instead of 13,800. 63
+  reference prices between 1,000 and 300,000 VND were affected across the three
+  exchanges. `roundToTick` now snaps a price within float noise of a whole tick
+  before rounding.
+
+### Performance
+
+- **Data bars repaint instead of re-laying out.** A `dataBar` is drawn full
+  width and scaled to its value (`transform: scaleX`), so a changing value only
+  repaints the bar. ~15% less main-thread work in a bar-heavy benchmark. The
+  bars look the same.
+
 ## [2.2.2] — 2026-10-20
 
 ### Fixed

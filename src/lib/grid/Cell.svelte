@@ -106,8 +106,8 @@
     flashTracker?: FlashTracker | null;
     /** The latest `api.flashCells` request covering this row, if any. */
     cellFlash?: CellFlash | null;
-    /** The grid's flash clock when flashes hold (`flashMotion: 'hold'`). */
-    flashHold?: { clock: () => number; until: (t: number) => void } | null;
+    /** The grid's flash clock when flashes may hold (`flashMotion: 'hold' | 'auto'`). */
+    flashHold?: { clock: () => number; until: (t: number) => void; holds: (at: number) => boolean } | null;
     colIndex?: number;
     cellId?: string;
     cellSnippet?: Snippet<[{ row: GridRow; column: ColumnDef; value: unknown }]>;
@@ -272,7 +272,10 @@
     const mode = flashMode && flashMode !== 'row' ? flashMode : col.showChange ? 'up-down' : null;
     if (!mode || !flashTracker || rowKey == null) return null;
     const now = Date.now();
-    return { state: flashTracker.observe(rowKey, col.key, value, mode, now), now };
+    // Only a flashing column asks whether its flash holds (a `showChange`-only
+    // column has no flash to count).
+    const decide = flashMode && flashMode !== 'row' ? flashHold?.holds : undefined;
+    return { state: flashTracker.observe(rowKey, col.key, value, mode, now, decide), now };
   });
   const flashMs = $derived(col.flashMs ?? FLASH_MS);
   const tick = $derived.by((): ShownFlash | null => {
@@ -283,19 +286,20 @@
     }
     if (!tracked) return null;
     const { state, now } = tracked;
-    return { seq: state.seq, dir: state.dir, on: isFresh(state, now, flashMs), ms: flashMs, at: state.at };
+    return { seq: state.seq, dir: state.dir, on: isFresh(state, now, flashMs), ms: flashMs, at: state.at, hold: state.hold };
   });
   // An `api.flashCells` request plays the same animation, on any value cell.
   const flash = $derived.by(() => {
     const f = cellFlash ? mergeFlash(tick, cellFlash, col.key, flashMs, Date.now()) : tick;
-    if (!flashHold || !f?.on || f.at === 0) return f;
+    // Whether it holds was decided once, as the flash started (`f.hold`).
+    if (!flashHold || !f?.on || f.at === 0 || !f.hold) return f;
     // Held: no animation ends the tint, so a cell holding one reads the grid's
     // clock (subscribing only while it holds) and drops it once its window has passed.
     const held = holdFlash(f, Math.max(Date.now(), flashHold.clock()));
     if (held?.on) flashHold.until(held.at + held.ms);
     return held;
   });
-  const isHeld = $derived(!!flashHold && !!flash?.on && flash.at > 0);
+  const isHeld = $derived(!!flashHold && !!flash?.on && flash.at > 0 && !!flash.hold);
   // showChange: the last change's size beside the value, held then faded by
   // CSS. Rendered only while fresh, so a row scrolling into view shows none.
   const changeOpts = $derived(col.showChange ? (col.showChange === true ? {} : col.showChange) : null);
@@ -368,7 +372,9 @@
     const g = dataBarGeometry(value, cfRange, col.dataBar);
     if (!g) return null;
     const color = g.negative ? (col.dataBar.negative ?? 'var(--bo-down)') : (col.dataBar.color ?? 'var(--bo-up)');
-    return { left: `${g.left * 100}%`, width: `${g.width * 100}%`, color };
+    // Drawn full width and scaled: a changing scale only repaints the bar,
+    // where a changing width also lays it out (~15% of a bar-heavy frame).
+    return { transform: `translate(${g.left * 100}%,-50%) scaleX(${g.width})`, color };
   });
   const icon = $derived.by(() => {
     const pick = col.icons ? pickIcon(value, col.icons) : null;
@@ -563,7 +569,7 @@
   {:else if col.type === 'text'}
     <strong class={flashClass || undefined} style={flashStyle}>{text}</strong>{#if subField}<em>{subText}</em>{/if}
   {:else if hasCf}
-    {#if bar}<span class="bo-databar" style="left:{bar.left};width:{bar.width};background:{bar.color}"></span>{/if}
+    {#if bar}<span class="bo-databar" style="transform:{bar.transform};background:{bar.color}"></span>{/if}
     <span class="bo-cf-val {flashClass}" style={flashStyle}>
       {#if icon}<span class="bo-cf-icon" style="color:{icon.color}">{icon.icon}</span>{/if}{text}
     </span>
@@ -775,8 +781,10 @@
   .bo-databar {
     position: absolute;
     top: 50%;
+    left: 0;
+    width: 100%;
     height: 62%;
-    transform: translateY(-50%);
+    transform-origin: 0 50%;
     border-radius: 2px;
     opacity: 0.22;
     z-index: 0;

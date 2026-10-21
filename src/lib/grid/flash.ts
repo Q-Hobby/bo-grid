@@ -30,6 +30,9 @@ export interface FlashState {
   changed: boolean;
   /** Size of the last change (new − old) when both values are numbers. */
   delta?: number;
+  /** Whether this flash holds instead of fading, decided once as it starts
+      (`flashMotion: 'hold' | 'auto'`). */
+  hold?: boolean;
 }
 
 /** Default flash duration (ms). Matches the CSS animation. */
@@ -71,6 +74,8 @@ export interface ShownFlash {
   on: boolean;
   ms: number;
   at: number;
+  /** Holds instead of fading (decided as the flash started). */
+  hold?: boolean;
 }
 
 /** One `api.flashCells` request, as the grid hands it to a row's cells. */
@@ -83,6 +88,8 @@ export interface CellFlash {
   ms?: number;
   /** The column keys it covers; every column when null. */
   columns: ReadonlySet<string> | null;
+  /** Holds instead of fading (decided as the request was made). */
+  hold?: boolean;
 }
 
 /**
@@ -102,7 +109,7 @@ export function mergeFlash(
   const seq = (own?.seq ?? 0) + req.seq;
   const ms = req.ms ?? colMs;
   if (now - req.at >= ms || (own?.on && own.at > req.at)) return own ? { ...own, seq } : null;
-  return { seq, dir: req.dir, on: true, ms, at: req.at };
+  return { seq, dir: req.dir, on: true, ms, at: req.at, hold: req.hold };
 }
 
 /** How often a held flash is checked for its end (ms): a hold ends up to this
@@ -152,6 +159,42 @@ export class FlashClock {
   }
 }
 
+/** `flashMotion: 'auto'`: flashes overlapping within one flash window at which
+    new flashes switch to holding, and below which they go back to fading.
+    Measured on the Price board, each fading cell costs ~0.02 ms of every frame
+    it fades through, so 120 at once is ~2–3 ms a frame. */
+export const AUTO_HOLD_ENTER = 120;
+export const AUTO_HOLD_EXIT = 80;
+
+/**
+ * `flashMotion: 'auto'`: decides, as each flash starts, whether it fades or
+ * holds. The load is the number of flashes started within about one flash
+ * window (an exponentially decaying count), so a quiet board fades and a busy
+ * one holds. The two levels keep it from flipping on every tick near the edge.
+ */
+export class FlashLoad {
+  private level = 0;
+  private last = 0;
+  private holding = false;
+
+  constructor(
+    private readonly enter: number = AUTO_HOLD_ENTER,
+    private readonly exit: number = AUTO_HOLD_EXIT,
+    private readonly windowMs: number = FLASH_MS,
+  ) {}
+
+  /** Count a flash starting at `at` (ms) and say whether it should hold. */
+  start(at: number): boolean {
+    if (at > this.last) {
+      this.level *= Math.exp((this.last - at) / this.windowMs);
+      this.last = at;
+    }
+    this.level += 1;
+    this.holding = this.level > (this.holding ? this.exit : this.enter);
+    return this.holding;
+  }
+}
+
 /** A value as a number for `delta`: numbers, and non-blank numeric strings. */
 function asNumber(v: unknown): number {
   if (typeof v === 'number') return v;
@@ -197,6 +240,8 @@ export class FlashTracker {
     value: unknown,
     mode: FlashMode,
     now: number,
+    /** Asked once per real change: should this flash hold? */
+    decide?: (at: number) => boolean,
   ): FlashState {
     const id = `${rowKey}${SEP}${colKey}`;
     const prev = this.cells.get(id);
@@ -228,6 +273,7 @@ export class FlashTracker {
       at: now,
       changed: true,
       delta: Number.isFinite(a) && Number.isFinite(b) ? b - a : undefined,
+      hold: decide?.(now),
     };
     prev.value = value;
     prev.state = state;

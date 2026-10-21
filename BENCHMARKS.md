@@ -146,6 +146,39 @@ What changed it, and what did not:
     (`animation-fill-mode: backwards`): ~27–36% cheaper. Paint halves, but
     restarting an animation on every tick still restyles.
 
+- **`flashMotion: 'auto'`: a fade when quiet, about hold's cost when busy.**
+  Each flash decides as it starts, from how many flashes started within the
+  last flash window. In one session (medians of 3 interleaved rounds, all
+  main-thread work per frame):
+
+  | events/s | fade | auto | hold |
+  | --- | --- | --- | --- |
+  | 1,000 | ~4.3 ms | ~5.0 ms (fades) | ~3.9 ms |
+  | 4,000 | ~15 ms | ~8.5 ms | ~6.5 ms |
+  | 10,000 | ~68 ms | ~8.5 ms | ~10 ms |
+  | 30,000 | ~59 ms | ~9.4 ms | ~10.5 ms |
+
+  That session ran slower than the table above (fade at 10,000 events/s was
+  ~15 ms in another), so compare within a row. A fading cell costs about
+  0.02 ms of every frame it fades through; `'auto'` holds once ~120 overlap.
+- **Data bars scaled instead of sized: ~15% cheaper.** A bar drawn full width
+  and scaled (`transform: scaleX`) only repaints when its value changes; a
+  changing `width` also lays it out. On a 240-cell test page updating 40 or
+  240 bars a frame: ~2.9 → ~2.5 ms and ~4.6 → ~3.9 ms. Adopted.
+- **Flashes through `element.animate()`: no gain.** A `background-color`
+  animation runs on the main thread whether CSS or the Web Animations API
+  starts it; only `transform`, `opacity` and `filter` can run off it. Against
+  the CSS fade: ~15.7 vs ~15.5 ms at 10,000 events/s and ~20 vs ~26 ms at
+  30,000, with more frames dropped — still 2–3× what `'hold'` costs (~5.5 and
+  ~9.2 ms). Not adopted.
+- **CSS containment on rows or cells: slower.** `contain: layout style` on rows
+  or `contain: layout paint style` on cells, with held flashes: ~5.5 → ~7.6 /
+  ~8.1 ms at 10,000 events/s and ~9.2 → ~12.9 / ~11.6 ms at 30,000. Not
+  adopted.
+- **Rows moved by `transform` instead of `top`: no difference.** Scrolling 3
+  rows a frame: ~5.9 vs ~5.5 ms; 10 rows a frame: ~8.9 vs ~9.0 ms (traced,
+  paint included). Not adopted.
+
 The entries below were measured before the harness emulated motion, so the
 fade was off in them. Their comparisons hold for the work around the flash:
 
