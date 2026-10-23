@@ -5,6 +5,14 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dragging a header moves the column you see when other columns are hidden
+  or pinned.** The drop used positions among the columns on screen against an
+  order that covers every column, so the wrong column moved: with one column
+  hidden, dragging B onto C did nothing, and `onColumnReorder` reported an
+  order the user never made.
+
 ## [2.3.0] — 2026-10-23
 
 **A cheaper busy board.** `flashMotion: 'auto'` fades while the board is quiet
