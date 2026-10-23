@@ -20,7 +20,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm check:examples
-      - run: pnpm test
+      - run: pnpm test:coverage # coverage summary is informational
       - run: pnpm ssr
       - run: pnpm package
       - run: pnpm smoke

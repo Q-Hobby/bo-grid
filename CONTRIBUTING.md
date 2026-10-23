@@ -22,11 +22,13 @@ Run the checks CI runs:
 ```sh
 pnpm check            # svelte-check: 0 errors, 0 warnings
 pnpm test             # unit and component tests (Vitest)
+pnpm test:coverage    # the same, with a coverage summary
 pnpm smoke            # builds the demo and drives it headlessly
 pnpm smoke:wc         # the <bo-grid> custom element
 pnpm ssr              # server-renders <Grid> (SvelteKit safety)
 pnpm size && pnpm size:lib   # bundle-size reports
 pnpm check:examples   # the framework starters in examples/
+pnpm bench:browser    # frame cost in headless Chrome (needs Chrome installed)
 ```
 
 - **Tests come first.** Write a failing test, then make it pass.
@@ -47,9 +49,19 @@ pnpm check:examples   # the framework starters in examples/
 A change on the hot path (cell rendering, flashes, scrolling, `patchRows`)
 needs numbers, not intuition:
 
-- Compare against `main` with an interleaved A/B on the live Price board.
-  `window.__priceBoard.benchLive({ seconds, eventsPerSec })` runs the real feed,
-  and a traced headless Chrome run gives the main-thread breakdown.
+- **CI compares every pull request with its base.** The `perf` workflow builds
+  the demo twice and runs `scripts/bench-browser.mjs --base <build> --head
+  <build>` in headless Chrome. It fails when a deterministic (`sync`) workload
+  is more than 10% and 0.2 ms per frame slower, and warns when a live one is
+  more than 25% slower. The table is in the job summary. A pull request that
+  changes the board's bench hooks (`PriceBoard.svelte`) is reported but not
+  gated, since base and head would run different workloads: compare those by
+  hand. Run the same comparison locally before
+  pushing a hot-path change: build `main` and your branch with
+  `vite build --base=./ --outDir <dir>` and pass both directories.
+- For a deeper look, `window.__priceBoard.benchLive({ seconds, eventsPerSec })`
+  runs the real feed in the demo, and `bench-browser.mjs --trace` records a
+  trace beside each run.
 - **Emulate `prefers-reduced-motion: no-preference`.** Headless Chrome inherits
   the operating system's setting, and under reduced motion the grid plays no
   flash animation, which hides most of a live board's cost.
