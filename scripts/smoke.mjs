@@ -963,36 +963,41 @@ await wait(500);
 vnLiveBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 const vnRows = document.querySelectorAll('.bo-grid .row').length;
 
-// Price ladder: bo-grid/realtime's centeredWindow — 16 of 120 levels visible,
-// centred on the spread; paging away disables the lock, recenter re-enables it.
-await solo('ladder', '.bo-grid .row', 'Price ladder example rendered no rows');
-const ladderRowsInitial = document.querySelectorAll('.bo-grid .row').length;
-if (ladderRowsInitial !== 16) fail(`Price ladder did not render exactly 16 visible rows (got ${ladderRowsInitial})`);
-const recenterBtn = document.querySelector('button.recenter');
-if (!recenterBtn) fail('Price ladder recenter control not found');
-if (!recenterBtn.disabled) fail('Price ladder should start locked to the spread (recenter disabled)');
-const pageBtn = document.querySelector('.nav button[aria-label="Page down"]');
-if (!pageBtn) fail('Price ladder page-down control not found');
-// Read the first row's price cell before/after — proves the WINDOW CONTENT
-// actually moved, not just that the lock-state UI toggled.
-const firstCellText = () => document.querySelector('.bo-grid .row .c')?.textContent?.trim();
-const priceBeforePage = firstCellText();
-pageBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+// Price ladder: bo-grid/ladder's DepthLadder — 21 prices around the mid. The
+// feed is paused first so the market cannot move the window mid-check. The
+// wheel pages away and stops following; the follow button brings it back; a
+// click on a bid asks to buy at that row's price.
+await solo('ladder', '.bo-ladder .row', 'Price ladder example rendered no rows');
+const ladderLive = document.querySelector('button.live');
+if (!ladderLive) fail('Price ladder live toggle not found');
+ladderLive.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 await wait(30);
-if (recenterBtn.disabled) fail('Price ladder did not unlock after manual paging');
-const priceAfterPage = firstCellText();
-if (priceAfterPage === priceBeforePage) {
-  fail(`Price ladder paging toggled the lock UI but the visible window did not change (still "${priceAfterPage}")`);
-}
-recenterBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+const ladderRowsInitial = document.querySelectorAll('.bo-ladder .spacer > .row').length;
+if (ladderRowsInitial !== 21) fail(`Price ladder did not render exactly 21 rows (got ${ladderRowsInitial})`);
+const followBtn = document.querySelector('button.follow');
+if (!followBtn) fail('Price ladder follow control not found');
+if (!followBtn.disabled) fail('Price ladder should start following the market (follow button disabled)');
+const ladderTop = () => {
+  const rows = [...document.querySelectorAll('.bo-ladder .spacer > .row')].sort((x, y) => Number(x.getAttribute('aria-rowindex')) - Number(y.getAttribute('aria-rowindex')));
+  return rows[0]?.querySelector('[aria-colindex="4"]')?.textContent?.trim();
+};
+const topBefore = ladderTop();
+document.querySelector('.bo-ladder').dispatchEvent(new window.WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true }));
 await wait(30);
-if (!recenterBtn.disabled) fail('Price ladder did not re-lock after Recenter');
-const priceAfterRecenter = firstCellText();
-if (priceAfterRecenter !== priceBeforePage) {
-  fail(`Price ladder did not return to the original spread-centred window after Recenter (expected "${priceBeforePage}", got "${priceAfterRecenter}")`);
-}
-const ladderRowsAfter = document.querySelectorAll('.bo-grid .row').length;
-if (ladderRowsAfter !== 16) fail(`Price ladder lost its 16-row window after paging/recenter (got ${ladderRowsAfter})`);
+if (followBtn.disabled) fail('Price ladder kept following after the wheel paged it');
+if (ladderTop() === topBefore) fail(`Price ladder wheel did not move the window (still "${topBefore}")`);
+followBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await wait(30);
+if (!followBtn.disabled) fail('Price ladder did not follow again after the follow button');
+if (ladderTop() !== topBefore) fail(`Price ladder did not return to the mid (expected "${topBefore}", got "${ladderTop()}")`);
+const bidCell = [...document.querySelectorAll('.bo-ladder .spacer > .row')].find((r) => r.querySelector('[aria-colindex="3"]')?.textContent?.trim())?.querySelector('[aria-colindex="3"]');
+if (!bidCell) fail('Price ladder shows no bid size');
+bidCell.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await wait(30);
+const ladderNote = document.querySelector('.note')?.textContent ?? '';
+if (!/^Buy 100 at /.test(ladderNote)) fail(`Price ladder click on a bid did not ask to buy (note: "${ladderNote}")`);
+const ladderRowsAfter = document.querySelectorAll('.bo-ladder .spacer > .row').length;
+if (ladderRowsAfter !== 21) fail(`Price ladder lost rows after paging and following (got ${ladderRowsAfter})`);
 
 // Time & sales: bo-grid/realtime's TradeTape — capped, newest trade first.
 // Starts with zero trades (an empty grid, no `.row` yet), so solo() waits on
@@ -1399,7 +1404,7 @@ console.log(
     `paste + resize committed (+onColumnResize); collapse ${heightBefore}→${heightAfter}px; server loaded ${dataRows} rows; ` +
     `${stickyHeaders} pinned columns (+right); pivot ${pivotHeaders.length} cols; ` +
     `gallery: portfolio ${portfolioRows} rows/${portfolioGroups} groups + header-groups + ctx-menu + ${cfBars} data-bars/${cfIcons} icons/${cfScale} scale + computed-col, sheet ${sheetRows} rows (light) + select-edit + row-select + col-hide + col-filter + empty-msg + master-detail + cell-class + pagination, ` +
-    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes, vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial}/120 visible + lock/page/recenter ok, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
+    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes, vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
     `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok`,
 );
 process.exit(0);

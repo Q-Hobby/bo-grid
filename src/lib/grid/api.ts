@@ -1,4 +1,4 @@
-import type { GridRow } from './column';
+import type { ColumnDef, GridRow } from './column';
 import type { GridState } from './state';
 
 export type ScrollAlign = 'start' | 'center' | 'end' | 'nearest';
@@ -34,6 +34,10 @@ export interface GridApi {
   /** Focus (and select) one cell by row id and column key. Returns false when
       the row or column is not currently visible. */
   focusCell(rowKey: string | number, columnKey: string): boolean;
+  /** The focused cell's row and column, or null when no data cell has focus
+      (nothing focused yet, or the focus is on a group row). For hotkeys that
+      act on the row the user is on. */
+  getFocusedCell(): { row: GridRow; column: ColumnDef } | null;
   /** Ticked rows (needs `rowSelection`), in view order. */
   getSelectedRows(): GridRow[];
   /** Fit columns to their content, as the column menu's Autosize does. All

@@ -7,6 +7,17 @@ All notable changes to this project are documented here. Format follows
 
 ### Added
 
+- **`bo-grid/ladder`: `DepthLadder`, a price ladder (depth of market).** One
+  row per price on the tick grid (a fixed tick, or a tick table such as
+  HOSE's), with bid and ask sizes, their depth from the best price outward as
+  bars, and your working orders beside each side. It follows the middle of
+  the spread or the last trade, recentring only when the market leaves the
+  middle half, and never moves under the pointer or the focus. The wheel
+  pages through prices; Space follows again. A click or B / S / Delete asks to
+  buy, sell or cancel at the row's price through `onAction`: order entry stays
+  the app's. A separate entry, ~4 KB gzip on top of the grid.
+- **`api.getFocusedCell()`**: the focused cell's row and column, for hotkeys
+  that act on the row the user is on.
 - **`liveSort`: the sort and filters follow a live feed.** When `api.patchRows`
   changes a field the grid sorts or filters by, the rows it changed are merged
   back into place at most every `liveSort` ms (`true`: 500). Only those rows
