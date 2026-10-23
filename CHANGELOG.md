@@ -5,6 +5,17 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-10-24
+
+**Built for the live desk.** A sorted, filtered view stays in order under a
+live feed (`liveSort`), adds and removes follow a diff instead of a rebuild,
+footer totals run by delta, and a 100,000-row blotter stays cheap. New for
+trading screens: rows that go stale, a flash for new rows, a pause while the
+pointer is over the rows, per-column update rates (`updateMs`), a depth
+ladder (`bo-grid/ladder`), and blotter helpers for rows that linger and
+positions from fills. A long session no longer keeps memory for every row it
+drew. A minor release: nothing was removed or renamed.
+
 ### Added
 
 - **`bo-grid/ladder`: `DepthLadder`, a price ladder (depth of market).** One
@@ -1398,6 +1409,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.4.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.4.0
 [2.3.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.3.0
 [2.2.2]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.2
 [2.2.1]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.1
