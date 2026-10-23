@@ -106,3 +106,21 @@ describe('scanTotals', () => {
     expect(scanTotals([{ id: 1 }], [], false).remove({ id: 1 })).toBe(false);
   });
 });
+
+describe('ViewTotals.shift', () => {
+  it('carries the totals to a new view as a fresh scan would see it', () => {
+    const rows: GridRow[] = Array.from({ length: 20 }, (_, i) => ({ id: i, px: i + 1, qty: (i * 7) % 11 }));
+    const view = rows.slice(0, 15);
+    const t = scanTotals(view, targets, true);
+    patch(t, rows[3], { qty: 50 }); // a patch while in the view
+    const next = [...rows.slice(2, 15), rows[17], rows[18]];
+    const shifted = t.shift(next, [rows[0], rows[1]], [rows[17], rows[18]]);
+    const fresh = scanTotals(next, targets, true);
+    for (const [kind, key] of [['footer', 'qty'], ['footer', 'notional'], ['range', 'qty']] as const) {
+      expect(shifted.get(kind, key)).toEqual(fresh.get(kind, key));
+    }
+    // Membership moved too: a row that left no longer counts.
+    patch(shifted, rows[0], { qty: 999 });
+    expect(shifted.get('footer', 'qty')).toEqual(fresh.get('footer', 'qty'));
+  });
+});

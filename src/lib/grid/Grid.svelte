@@ -47,7 +47,8 @@
   import { createRowState } from './rowstate.svelte';
   import { keyAction, type KeyState } from './keyboard';
   import { TextMeter } from './textmeter';
-  import { mergeChanged, rowOrder } from './livesort';
+  import { mergeChanged, rowOrder, type ViewDelta } from './livesort';
+  import { diffRows, type RowsDiff } from './rowdiff';
   import { DRIFT_LIMIT, scanTotals, type TotalTarget, type ViewTotals } from './totals';
 
   let {
@@ -582,6 +583,7 @@
   // Everything shown above the scroll: `pinnedRows`, then runtime pins whose
   // row is in the data now.
   const topRows = $derived.by((): GridRow[] => {
+    rows; // rowIndex is updated in place when rows are added or removed
     const pinnedIds = rowState.pinned;
     if (pinnedIds.length === 0) return pinnedRows;
     const out = [...pinnedRows];
@@ -722,35 +724,108 @@
   // Bumped by api.refresh(): makes filter and sort catch up with values that
   // changed in place (a live feed) with a full re-sort.
   let viewTick = $state(0);
-  const fullView = $derived.by(() => {
-    if (source) return [] as GridRow[];
-    viewTick;
-    // Turning liveSort on or changing it starts merges from a fresh full view:
-    // changes made while it was off were never queued.
-    liveSort;
-    const base = rows;
-    const allCols = columns;
-    const pass = rowFilter;
-    const s = sorts;
-    return untrack(() => {
-      const r = pass ? base.filter(pass) : base;
-      return s.length > 0 ? sortRows(r, s, allCols) : r;
+
+  // The row index and the last change of `rows`, kept together. When the app
+  // adds or removes rows by assigning a new array, a one-pass diff (rowdiff.ts)
+  // updates the index in place (the same Map) and lets the view merge the
+  // change, instead of both being rebuilt. A reorder, or more than an eighth
+  // of the rows changing, rebuilds. Which rows were there before is a set of
+  // the row objects themselves, so the diff never depends on ids: rows
+  // without ids, or with duplicate ids, diff correctly. The index rebuilds
+  // whenever its ids do not line up (a removed row's id changed, an added row
+  // reuses an id), as it would have on a full rebuild; a row repeated in the
+  // array turns the diff off.
+  type RowsState = {
+    rows: GridRow[];
+    idOf: (row: GridRow) => string | number;
+    index: Map<string | number, GridRow>;
+    /** The row objects in `rows`; diffing needs every row to appear once. */
+    members: Set<GridRow>;
+    unique: boolean;
+    /** The rows before this change, and how they changed; null after a rebuild. */
+    prev: GridRow[] | null;
+    diff: RowsDiff<GridRow> | null;
+  };
+  let rowsState: RowsState | null = null;
+  function buildIndex(next: GridRow[], idOf: (row: GridRow) => string | number): Map<string | number, GridRow> {
+    // A plain loop: no pair per row.
+    const index = new Map<string | number, GridRow>();
+    for (const r of next) index.set(idOf(r), r);
+    return index;
+  }
+  /** `inPlace`: `next` is the array already seen, changed in place. */
+  function syncRows(next: GridRow[], idOf: (row: GridRow) => string | number, inPlace = false): RowsState {
+    const cur = rowsState;
+    if (cur && !inPlace && cur.rows === next && cur.idOf === idOf) return cur;
+    if (cur && !inPlace && cur.idOf === idOf && cur.unique) {
+      const { members } = cur;
+      const diff = diffRows(cur.rows, next, (r) => members.has(r), Math.max(64, next.length >> 3));
+      if (diff) {
+        for (const r of diff.removed) members.delete(r);
+        for (const r of diff.added) members.add(r);
+        if (members.size === next.length) {
+          const index = cur.index;
+          let lined = true;
+          for (const r of diff.removed) {
+            const id = idOf(r);
+            if (index.get(id) === r) index.delete(id);
+            else lined = false;
+          }
+          for (const r of diff.added) {
+            const id = idOf(r);
+            if (index.has(id)) lined = false;
+            index.set(id, r);
+          }
+          return (rowsState = {
+            rows: next,
+            idOf,
+            index: lined ? index : buildIndex(next, idOf),
+            members,
+            unique: true,
+            prev: cur.rows,
+            diff,
+          });
+        }
+      }
+    }
+    const members = new Set(next);
+    return (rowsState = {
+      rows: next,
+      idOf,
+      index: buildIndex(next, idOf),
+      members,
+      unique: members.size === next.length,
+      prev: null,
+      diff: null,
     });
-  });
+  }
 
   // ---- Live sort (`liveSort`; livesort.ts) -----------------------------------
   // A patch that changes a field the view sorts or filters by queues its row;
   // at most every `liveSort` ms the queued rows are merged back into place
   // (mergeChanged: n + k log k comparisons) instead of re-sorting everything.
-  // `view` is the full view with those merges applied; a new full view (new
-  // rows, sort, filter, or api.refresh) replaces it.
+  // With liveSort on, rows the app adds or removes (a new `rows` array) are
+  // merged the same way. A new sort, filter, column set, api.refresh() or
+  // liveSort setting rebuilds the view.
   const liveMs = $derived(
     liveSort === true ? 500 : typeof liveSort === 'number' && liveSort > 0 ? Math.min(liveSort, 2 ** 31 - 1) : 0,
   );
   const liveQueue = new Set<GridRow>();
   let liveTick = $state(0);
   let liveTimer: ReturnType<typeof setTimeout> | undefined;
-  let liveView: { base: GridRow[]; rows: GridRow[] } | null = null;
+  // The last change of the view made by a merge: which rows left it and which
+  // joined, so the totals can carry over instead of rescanning.
+  let viewChange: { from: GridRow[]; to: GridRow[]; delta: ViewDelta<GridRow> } | null = null;
+  // The view as last built, and what it was built from.
+  let viewMemo: {
+    rows: GridRow[];
+    view: GridRow[];
+    sorts: SortState[];
+    pass: ((row: GridRow) => boolean) | null;
+    cols: ColumnDef[];
+    tick: number;
+    live: boolean | number;
+  } | null = null;
   // Rows' positions in `rows`, for ties (as sortRows breaks them).
   let rowPos: { rows: GridRow[]; at: Map<GridRow, number> } | null = null;
   const positionOf = (row: GridRow): number => {
@@ -761,18 +836,57 @@
     }
     return rowPos.at.get(row) ?? -1;
   };
+  // A source taking over (or handing back) drops the remembered view, even if
+  // nothing read the view meanwhile: rows may have changed in place.
+  $effect.pre(() => {
+    source;
+    untrack(() => (viewMemo = null));
+  });
   const view = $derived.by(() => {
-    const base = fullView;
+    if (source) return [] as GridRow[];
+    const base = rows;
+    const allCols = columns;
+    const pass = rowFilter;
+    const s = sorts;
+    const idOf = getRowId;
+    const tick = viewTick;
+    const live = liveSort;
     liveTick;
     return untrack(() => {
-      if (liveView?.base !== base) {
-        liveView = { base, rows: base };
-        liveQueue.clear(); // a full view already reflects every value
-      } else if (liveQueue.size > 0) {
-        liveView.rows = mergeChanged(liveView.rows, liveQueue, rowFilter, rowOrder(sorts, columns, positionOf));
-        liveQueue.clear();
+      const m = viewMemo;
+      const same = !!m && m.sorts === s && m.pass === pass && m.cols === allCols && m.tick === tick && m.live === live;
+      if (m && same && m.rows === base) {
+        if (liveQueue.size > 0) {
+          const from = m.view;
+          const delta: ViewDelta<GridRow> = { left: [], joined: [] };
+          m.view = mergeChanged(from, liveQueue, pass, rowOrder(s, allCols, positionOf), delta);
+          viewChange = { from, to: m.view, delta };
+          liveQueue.clear();
+        }
+        return m.view;
       }
-      return liveView.rows;
+      if (m && same && liveMs && s.length > 0) {
+        const st = syncRows(base, idOf);
+        if (st.prev === m.rows && st.diff) {
+          // Rows added and removed join the queued rows: one merge for all.
+          const gone = new Set(st.diff.removed);
+          for (const r of st.diff.removed) liveQueue.add(r);
+          for (const r of st.diff.added) liveQueue.add(r);
+          const from = m.view;
+          const delta: ViewDelta<GridRow> = { left: [], joined: [] };
+          m.view = mergeChanged(from, liveQueue, (r) => !gone.has(r) && (!pass || pass(r)), rowOrder(s, allCols, positionOf), delta);
+          viewChange = { from, to: m.view, delta };
+          m.rows = base;
+          liveQueue.clear();
+          return m.view;
+        }
+      }
+      const r = pass ? base.filter(pass) : base;
+      const full = s.length > 0 ? sortRows(r, s, allCols) : r;
+      viewMemo = { rows: base, view: full, sorts: s, pass, cols: allCols, tick, live };
+      viewChange = null;
+      liveQueue.clear(); // a full view already reflects every value
+      return full;
     });
   });
   // The fields a re-sort follows: sort keys, filtered columns and group fields. null: any
@@ -845,8 +959,11 @@
   // reads tracked, so $state rows edited in place, or a computed column that
   // reads reactive state, rescan as they always did. api.patchRows on plain
   // rows (whose reads were never tracked) moves the totals by the rows it
-  // changed instead of rescanning on every tick. A new view, filter or column
-  // set rescans; so does a run of DRIFT_LIMIT patched rows.
+  // changed instead of rescanning on every tick. With liveSort, a view that
+  // changed by a merge (a live re-sort, rows added or removed) carries the
+  // totals over by the rows that left and joined; as with the sort, values
+  // written outside patchRows then need api.refresh(). A new view, filter or
+  // column set rescans; so does a run of DRIFT_LIMIT patched rows.
   let totalsRescan = $state(0);
   const totalTargets = $derived.by<TotalTarget[]>(() => {
     const out: TotalTarget[] = [];
@@ -861,9 +978,20 @@
     for (const col of columns) if (col.dataBar || col.colorScale) out.push({ col, kind: 'range', extremes: true });
     return out;
   });
+  let totalsMemo: { store: ViewTotals; view: GridRow[]; targets: TotalTarget[]; filtered: boolean } | null = null;
   const totals = $derived.by<ViewTotals>(() => {
     totalsRescan;
-    return scanTotals(view, totalTargets, !!rowFilter);
+    const v = view;
+    const targets = totalTargets;
+    const filtered = !!rowFilter;
+    const m = totalsMemo;
+    const ch = viewChange;
+    const store =
+      liveMs && m && m.targets === targets && m.filtered === filtered && ch && ch.from === m.view && ch.to === v && m.store.updates < DRIFT_LIMIT
+        ? m.store.shift(v, ch.delta.left, ch.delta.joined)
+        : scanTotals(v, targets, filtered);
+    totalsMemo = { store, view: v, targets, filtered };
+    return store;
   });
 
   const cfRanges = $derived.by<Record<string, { min: number; max: number }>>(() => {
@@ -1488,12 +1616,21 @@
 
   // ---- Realtime path (`api.patchRows`, `api.flashCells`; live.svelte.ts) -----
   const live = createLiveRows();
-  // Built in a plain loop: the getRowId prop read once, no pair per row.
+  // The same Map across adds and removes (syncRows updates it in place), so
+  // readers that must follow `rows` read `rows` too. Reading the length here
+  // makes a $state array grown or shrunk in place (push, splice) re-run this:
+  // the same array with a new length rebuilds the index. (This derived can
+  // also re-run with nothing changed, so a re-run alone proves nothing.)
+  let indexSeen: { rows: GridRow[]; idOf: (row: GridRow) => string | number; length: number } | null = null;
   const rowIndex = $derived.by(() => {
+    const next = rows;
     const idOf = getRowId;
-    const index = new Map<string | number, GridRow>();
-    for (const r of rows) index.set(idOf(r), r);
-    return index;
+    const length = next.length;
+    return untrack(() => {
+      const inPlace = indexSeen?.rows === next && indexSeen.idOf === idOf && indexSeen.length !== length;
+      indexSeen = { rows: next, idOf, length };
+      return syncRows(next, idOf, inPlace).index;
+    });
   });
 
   function refresh(): void {

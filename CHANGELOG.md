@@ -40,6 +40,18 @@ All notable changes to this project are documented here. Format follows
   depend only on its own row: one that reads other rows or the clock gets a
   fresh total on the next new view or `api.refresh()`.
 
+- **Adding and removing rows no longer rebuilds everything.** When the app
+  assigns a new `rows` array (`rows = [...rows, order]`,
+  `rows = rows.filter(...)`), a one-pass diff finds the rows added and removed;
+  the row index is updated in place instead of rebuilt and, with `liveSort`,
+  the sorted view merges them in (with any queued live changes) and the
+  totals carry over by the rows that left and joined, instead of a full
+  re-sort and rescan. A reordered array, or more than an eighth of the rows
+  changing, still rebuilds; so does a row repeated in the array. The diff
+  compares row objects, not ids. On the 100,000-row Live blotter, a frame of
+  200 fills with 5 orders in and 5 out went from ~32 ms to ~17 ms (from
+  ~84 ms before this release).
+
 ### Fixed
 
 - **Dragging a header moves the column you see when other columns are hidden
