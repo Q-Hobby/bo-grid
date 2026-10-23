@@ -159,8 +159,8 @@
   let rate = $state(3000);
   // Board height: a laptop pane, a desktop board, a wall-mounted trading screen.
   let gridHeight = $state(620);
-  // "Top movers": sorted by change, re-sorted once a second while the feed runs
-  // (api.refresh — values move in place, so the order only catches up on demand).
+  // "Top movers": sorted by change and kept in order as the feed runs: liveSort
+  // merges the rows a tick moved back into place, twice a second.
   let movers = $state(false);
   // A busy board holds its flashes: a static tint, a fraction of a fade's cost.
   let flashMotion = $state<'fade' | 'hold' | 'auto'>('hold');
@@ -174,11 +174,6 @@
     sort = on ? [{ key: 'chg', dir: 'desc' }] : [];
     flushSync();
   }
-  $effect(() => {
-    if (!live || !movers) return;
-    const h = setInterval(() => api?.refresh(), 1000);
-    return () => clearInterval(h);
-  });
   function setHeight(h: number) {
     gridHeight = h;
     flushSync();
@@ -411,7 +406,7 @@
   {#if result}<span class="pb-stat">{result}</span>{/if}
 </div>
 <div class="gridwrap" bind:this={host}>
-  <Grid rows={rows as unknown as GridRow[]} {columns} height={gridHeight} theme={ui.grid} ariaLabel="Price board" {sort} {flashMotion} columnHover rowPinning findBar onSortChange={(s) => (sort = s)} onReady={(a) => (api = a)} onViewportChange={subs.update} />
+  <Grid rows={rows as unknown as GridRow[]} {columns} height={gridHeight} theme={ui.grid} ariaLabel="Price board" {sort} {flashMotion} liveSort={movers ? 500 : false} columnHover rowPinning findBar onSortChange={(s) => (sort = s)} onReady={(a) => (api = a)} onViewportChange={subs.update} />
 </div>
 
 <style>

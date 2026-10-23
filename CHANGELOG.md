@@ -5,6 +5,17 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`liveSort`: the sort and filters follow a live feed.** When `api.patchRows`
+  changes a field the grid sorts or filters by, the rows it changed are merged
+  back into place at most every `liveSort` ms (`true`: 500). Only those rows
+  are sorted: on 100,000 rows with 500 changed that takes ~5 ms, against ~21 ms
+  for the full re-sort `api.refresh()` does, so a "top movers" board no longer
+  needs a refresh timer. Rows that stop matching a filter leave, rows that
+  start matching join, the focused cell stays on its row, and nothing moves
+  while a cell is being edited.
+
 ### Fixed
 
 - **Dragging a header moves the column you see when other columns are hidden

@@ -152,6 +152,15 @@ export interface GridPropsDef {
       board restyles and repaints a flashing cell twice instead of every frame.
       `'auto'`: fade while few cells flash at once, hold when many do. */
   flashMotion?: 'fade' | 'hold' | 'auto';
+  /** Keep the sort and filters current while `api.patchRows` changes values in
+      place. When a patch changes a field the grid sorts or filters by, the
+      rows it changed are merged back into place at most every `liveSort` ms
+      (`true`: 500), instead of the whole view being re-sorted. The selection
+      stays on the same rows; nothing moves while a cell is being edited. Off
+      by default: rows hold their place until `api.refresh()`. It follows
+      `patchRows`; values written into rows any other way still need
+      `api.refresh()`. */
+  liveSort?: boolean | number;
   /** Highlight the column under the pointer (body and header) — handy on a
       wide board. One overlay for the whole column, not a class per cell. */
   columnHover?: boolean;

@@ -243,6 +243,8 @@ don't):
 | `indexAt()` lookups (uniform, O(1)) | 1,000,000 lookups | ~3 ms |
 | `aggregate()` (sum/avg/count/min/max) | 1,000,000 numbers | ~9 ms |
 | Multi-key sort (`compareBySorts`) | 100,000 rows × 2 keys | ~52 ms |
+| Live sort: full re-sort (`sortRows`, what `api.refresh()` does) | 100,000 rows, 500 changed | ~21 ms |
+| Live sort: merge the changed rows (`mergeChanged`, what `liveSort` does) | 100,000 rows, 500 changed | ~5 ms |
 | `buildTreeRows()` (pre-order DFS) | 61,000 nodes | ~5 ms |
 | `TickBuffer.push()` (coalesce) | 1,000,000 ticks → 5,000 symbols | ~54 ms |
 | `applyPatches()` (keyed row writes) | 200 frames × 5,000 rows | ~42 ms |
