@@ -297,7 +297,9 @@ all.
 If the same grid is sometimes quiet and sometimes busy, **`flashMotion="auto"`**
 decides per flash as it starts: it fades while few cells flash at once and
 holds once more than ~120 overlap. A taller board reaches that sooner, which is
-the point: the cost grows with the fading cells on screen.
+the point: the cost grows with the fading cells on screen. A flash that lights
+whole rows (`flashNewRows`, `api.flashCells`) counts each cell it lights, so a
+burst of new orders on a blotter holds too.
 
 `showChange: true` shows how far a value moved, not just which way: `▲0.15`
 beside the price in the up colour (`▼` down), held, then faded over a second.

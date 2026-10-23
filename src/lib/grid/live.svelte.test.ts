@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import type { GridRow } from './column';
 import { createLiveRows } from './live.svelte';
@@ -88,6 +88,21 @@ describe('createLiveRows: flash', () => {
     expect(again.dir).toBe('same');
     expect([...(again.columns ?? [])]).toEqual(['px']);
     expect(again.hold).toBe(true);
+  });
+
+  it('decides whether it holds once, from how many rows flash', () => {
+    const live = createLiveRows();
+    const decide = vi.fn((n: number, _columns: number | null) => n > 1);
+    expect(live.flash({ rows: [1, 2] }, rows(), idOf, 0, decide)).toBe(2);
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(decide).toHaveBeenCalledWith(2, null);
+    expect(live.cellFlash(1)?.hold).toBe(true);
+    expect(live.cellFlash(2)?.hold).toBe(true);
+    live.flash({ rows: [1], columns: ['px', 'qty'] }, rows(), idOf, 0, decide);
+    expect(decide).toHaveBeenLastCalledWith(1, 2);
+    // Nothing on screen to flash: nothing is counted.
+    expect(live.flash({ rows: [9] }, rows(), idOf, 0, decide)).toBe(0);
+    expect(decide).toHaveBeenCalledTimes(2);
   });
 
   it('flashes every rendered row when no rows are named', () => {

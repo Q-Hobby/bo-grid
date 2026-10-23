@@ -330,6 +330,28 @@ describe('flashNewRows', () => {
     expect(document.querySelector('.flash')).toBeNull();
   });
 
+  it("under flashMotion 'auto' a few arrivals fade and a burst holds", () => {
+    const g = setup({ flashNewRows: true, flashMotion: 'auto', sort: [{ key: 'px', dir: 'desc' }] });
+    g.props.rows = [...g.props.rows, { id: 4, sym: 'DDD', px: 50 }];
+    flushSync();
+    flushSync();
+    expect(g.rowEl('DDD').querySelector('.flash')).not.toBeNull();
+    expect(g.rowEl('DDD').querySelector('.flash.held')).toBeNull();
+    // Bursts of new rows at the top: each cell they light counts toward
+    // holding, as each cell's own tick does.
+    let id = 100;
+    for (let b = 0; b < 4; b++) {
+      const burst = Array.from({ length: 60 }, () => {
+        id++;
+        return { id, sym: `N${id}`, px: 1000 + id };
+      });
+      g.props.rows = [...g.props.rows, ...burst];
+      flushSync();
+      flushSync();
+    }
+    expect(g.rowEl(g.order()[0]!).querySelector('.flash.held')).not.toBeNull();
+  });
+
   it('turned on later, it does not replay an old change', () => {
     const g = setup({});
     g.props.rows = [...g.props.rows, { id: 4, sym: 'DDD', px: 5 }];

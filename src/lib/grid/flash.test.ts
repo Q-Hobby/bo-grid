@@ -256,6 +256,12 @@ describe('FlashLoad (flashMotion: auto)', () => {
     expect(held[11]).toBe(true);
   });
 
+  it('counts a request that lights many cells as that many flashes', () => {
+    const load = new FlashLoad(10, 5, 300);
+    expect(load.start(1000, 8)).toBe(false);
+    expect(load.start(1000, 3)).toBe(true);
+  });
+
   it('goes back to fading once the load decays below the exit level, not before', () => {
     const load = new FlashLoad(10, 5, 300);
     for (let i = 0; i < 20; i++) load.start(1000);

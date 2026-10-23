@@ -43,13 +43,15 @@ export interface LiveRows {
   ): number;
   /** Starts an on-demand flash on the `rendered` rows that `opts.rows` names
       (all when omitted), each id once. Rows off screen are skipped, as a tick
-      off screen never shows either. Returns how many rows flash. */
+      off screen never shows either. `hold` may be decided from how many rows
+      flash and how many of their columns (null: all). Returns how many rows
+      flash. */
   flash(
     opts: FlashCellsOptions,
     rendered: Iterable<GridRow>,
     idOf: (row: GridRow) => RowKey,
     at: number,
-    hold: boolean | undefined,
+    hold: boolean | ((rows: number, columns: number | null) => boolean) | undefined,
   ): number;
 }
 
@@ -96,10 +98,13 @@ export function createLiveRows(): LiveRows {
       const done = new Set<RowKey>();
       for (const row of rendered) {
         const key = idOf(row);
-        if ((wanted && !wanted.has(key)) || done.has(key)) continue;
-        done.add(key);
+        if (!wanted || wanted.has(key)) done.add(key);
+      }
+      if (done.size === 0) return 0;
+      const held = typeof hold === 'function' ? hold(done.size, columns ? columns.size : null) : hold;
+      for (const key of done) {
         const seq = (flashes.get(key)?.seq ?? 0) + 1;
-        flashes.set(key, { seq, dir: opts.dir ?? 'same', at, ms: opts.ms, columns, hold });
+        flashes.set(key, { seq, dir: opts.dir ?? 'same', at, ms: opts.ms, columns, hold: held });
         flashSeq[key] = seq;
       }
       return done.size;
