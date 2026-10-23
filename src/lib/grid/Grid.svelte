@@ -39,12 +39,12 @@
   import { scrollTopFor, type FlashCellsOptions, type ScrollAlign, type ViewportRange } from './api';
   import { buildMergePlan, combinedFlex, type MergePlan, type SpanRun } from './merge';
   import { GRID_STATE_VERSION, reconcileState, type GridState } from './state';
-  import { loadSaved, saveValue, storageKey } from './persist';
   import type { GridPropsDef } from './props';
   import { EditHistory } from './history';
   import { LiveRows } from './live.svelte';
   import { ColumnState } from './columns.svelte';
   import { dismissOnOutside } from './dismiss';
+  import { RowState } from './rowstate.svelte';
 
   let {
     rows = [],
@@ -214,8 +214,9 @@
     writeValue(r, c, value);
   }
 
-  const collapsed = new Set<string>();
-  let collapsedVersion = $state(0);
+  // Per-row state (rowstate.svelte.ts): selection, collapsed groups, expanded
+  // rows and their loaded children, rows pinned above the scroll.
+  const rowState = new RowState(() => persistKey);
 
   // Runtime column state (columns.svelte.ts): order, widths, autoWidth
   // measurements, and columns hidden or pinned from the column menu.
@@ -239,16 +240,9 @@
   // Built-in quick-filter text (global, matches across all columns).
   let quickText = $state('');
 
-  // Whole-row selection (opt-in), keyed by row id so it survives sort/filter.
-  // Plain Set + a version counter for reactivity (same pattern as `collapsed`).
   const SEL_W = 40; // checkbox column width (px)
   const EXP_W = 30; // master-detail expand column width (px)
-  const selectedRows = new Set<string | number>();
-  let selRowsVersion = $state(0);
-
   // Master-detail expansion (opt-in via `detail`), keyed by row id.
-  const expandedRows = new Set<string | number>();
-  let expVersion = $state(0);
   const expandable = $derived(!!detail && !source);
 
   // Leading fixed columns: row number (if any), expand toggle (if any), then
@@ -261,89 +255,21 @@
   const leadCols = $derived(numOffset + selOffset + expOffset); // count, for aria indices
   const leadPx = $derived(numW + selOffset * SEL_W + expOffset * EXP_W); // px, for sticky offsets
 
-  function isExpanded(id: string | number): boolean {
-    expVersion; // track
-    return expandedRows.has(id);
-  }
-  function toggleExpand(id: string | number): void {
-    if (expandedRows.has(id)) expandedRows.delete(id);
-    else expandedRows.add(id);
-    expVersion++;
-  }
-
-  // Async tree children: cache loaded children by row id; track in-flight loads.
-  const childrenCache = new Map<string | number, GridRow[]>();
-  const loadingIds = new Set<string | number>();
-  let treeVersion = $state(0);
-
-  // Expand/collapse a tree node, lazy-loading children on first expand (async).
+  const isExpanded = (id: string | number): boolean => rowState.isExpanded(id);
+  const toggleExpand = (id: string | number): void => rowState.toggleExpanded(id);
+  // Expand/collapse a tree node or a server-side group, loading its rows on
+  // the first expand.
   function toggleTreeNode(row: GridRow): void {
-    const id = getRowId(row);
-    if (expandedRows.has(id)) {
-      expandedRows.delete(id);
-      expVersion++;
-      return;
-    }
-    expandedRows.add(id);
-    expVersion++;
-    if (loadChildren && !childrenCache.has(id) && !loadingIds.has(id)) {
-      loadingIds.add(id);
-      treeVersion++;
-      Promise.resolve(loadChildren(row)).then(
-        (kids) => {
-          childrenCache.set(id, kids);
-          loadingIds.delete(id);
-          treeVersion++;
-        },
-        () => {
-          // On failure, collapse so the user can retry by expanding again.
-          loadingIds.delete(id);
-          expandedRows.delete(id);
-          expVersion++;
-          treeVersion++;
-        },
-      );
-    }
+    rowState.toggleLoaded(getRowId(row), loadChildren ? () => loadChildren(row) : undefined);
   }
-
-  // Expand/collapse a server-side group, lazy-loading its rows on first expand.
-  // Reuses the tree's children cache + loading machinery, keyed by group key.
   function toggleLazyGroup(key: string): void {
-    if (expandedRows.has(key)) {
-      expandedRows.delete(key);
-      expVersion++;
-      return;
-    }
-    expandedRows.add(key);
-    expVersion++;
-    if (loadGroup && !childrenCache.has(key) && !loadingIds.has(key)) {
-      loadingIds.add(key);
-      treeVersion++;
-      Promise.resolve(loadGroup(key)).then(
-        (rows) => {
-          childrenCache.set(key, rows);
-          loadingIds.delete(key);
-          treeVersion++;
-        },
-        () => {
-          loadingIds.delete(key);
-          expandedRows.delete(key);
-          expVersion++;
-          treeVersion++;
-        },
-      );
-    }
+    rowState.toggleLoaded(key, loadGroup ? () => loadGroup(key) : undefined);
   }
 
-  function isRowSelected(id: string | number): boolean {
-    selRowsVersion; // track
-    return selectedRows.has(id);
-  }
+  const isRowSelected = (id: string | number): boolean => rowState.isSelected(id);
   function toggleRow(id: string | number): void {
-    if (selectedRows.has(id)) selectedRows.delete(id);
-    else selectedRows.add(id);
-    selRowsVersion++;
-    onRowSelectionChange?.([...selectedRows]);
+    rowState.toggleSelected(id);
+    onRowSelectionChange?.(rowState.selectedIds());
   }
 
   const ordered = $derived(
@@ -626,38 +552,31 @@
   });
 
   // ---- Runtime row pinning (`rowPinning`) ------------------------------------
-  // Ids pinned from the row menu or the API, in pin order. The rows stay in
-  // the body; the area above the scroll shows them as well, after any
-  // `pinnedRows`. Remembered with persistKey and carried by getState().
-  let pinnedIds = $state<(string | number)[]>([]);
-  $effect(() => {
-    const key = storageKey('rowpin', persistKey);
-    untrack(() => {
-      const saved = loadSaved(key);
-      if (Array.isArray(saved)) pinnedIds = saved.filter((id) => typeof id === 'string' || typeof id === 'number');
-    });
-  });
+  // Ids pinned from the row menu or the API, in pin order (rowState.pinned).
+  // The rows stay in the body; the area above the scroll shows them as well,
+  // after any `pinnedRows`. Remembered with persistKey and carried by getState().
   function setPinnedIds(next: (string | number)[]): void {
-    pinnedIds = next;
-    saveValue(storageKey('rowpin', persistKey), next);
+    rowState.setPinned(next);
     onRowPinChange?.([...next]);
   }
   function pinRow(key: string | number, pin = true): boolean {
     if (!rowIndex.has(key)) return false;
-    if (pinnedIds.includes(key) !== pin) setPinnedIds(pin ? [...pinnedIds, key] : pinnedIds.filter((k) => k !== key));
+    const ids = rowState.pinned;
+    if (ids.includes(key) !== pin) setPinnedIds(pin ? [...ids, key] : ids.filter((k) => k !== key));
     return true;
   }
-  const getPinnedRowIds = (): (string | number)[] => [...pinnedIds];
+  const getPinnedRowIds = (): (string | number)[] => [...rowState.pinned];
   // The row menu's pin item, for rows of `rows` (not for `pinnedRows` extras).
   function rowPinItem(row: GridRow): { label: string; onSelect: () => void } | null {
     const key = getRowId(row);
     if (!rowIndex.has(key)) return null;
-    const on = pinnedIds.includes(key);
+    const on = rowState.pinned.includes(key);
     return { label: on ? L.unpin : L.pinRow, onSelect: () => pinRow(key, !on) };
   }
   // Everything shown above the scroll: `pinnedRows`, then runtime pins whose
   // row is in the data now.
   const topRows = $derived.by((): GridRow[] => {
+    const pinnedIds = rowState.pinned;
     if (pinnedIds.length === 0) return pinnedRows;
     const out = [...pinnedRows];
     const seen = new Set(pinnedRows.map((r) => getRowId(r)));
@@ -898,33 +817,33 @@
   const flat = $derived.by<VisualRow[]>(() => {
     if (treeData) {
       const roots = rows;
-      expVersion; // track expand/collapse
-      treeVersion; // track async child loads
+      rowState.expandVersion; // track expand/collapse
+      rowState.loadVersion; // track async child loads
       return untrack(() =>
         buildTreeRows(roots, {
-          childrenOf: (r) => (loadChildren ? childrenCache.get(getRowId(r)) : getChildren?.(r)),
+          childrenOf: (r) => (loadChildren ? rowState.loadedRows(getRowId(r)) : getChildren?.(r)),
           hasChildren: hasChildren ?? ((r) => !!getChildren?.(r)?.length),
-          isExpanded: (r) => expandedRows.has(getRowId(r)),
-          isLoading: (r) => loadingIds.has(getRowId(r)),
+          isExpanded: (r) => rowState.isExpanded(getRowId(r)),
+          isLoading: (r) => rowState.isLoading(getRowId(r)),
         }),
       );
     }
     if (lazyGrouped && lazyGroups) {
       const groups = lazyGroups;
-      expVersion; // track expand/collapse
-      treeVersion; // track async row loads
+      rowState.expandVersion; // track expand/collapse
+      rowState.loadVersion; // track async row loads
       return untrack(() =>
         buildLazyGroupRows(groups, {
-          isExpanded: (key) => expandedRows.has(key),
-          rowsOf: (key) => childrenCache.get(key),
-          isLoading: (key) => loadingIds.has(key),
+          isExpanded: (key) => rowState.isExpanded(key),
+          rowsOf: (key) => rowState.loadedRows(key),
+          isLoading: (key) => rowState.isLoading(key),
         }),
       );
     }
     const v = pageRows;
     const gb = groupBy;
-    collapsedVersion;
-    return untrack(() => buildFlatRows(v, gb, collapsed));
+    rowState.collapseVersion;
+    return untrack(() => buildFlatRows(v, gb, rowState.collapsed));
   });
 
   function goToPage(p: number): void {
@@ -939,23 +858,20 @@
   // Header select-all state over the in-memory rows (source mode can't enumerate
   // unloaded ids, so the header checkbox is disabled there).
   const selectAll = $derived.by(() => {
-    selRowsVersion;
     if (source) return { checked: false, indeterminate: false };
     const v = view;
     let n = 0;
-    for (const r of v) if (selectedRows.has(getRowId(r))) n++;
+    for (const r of v) if (rowState.isSelected(getRowId(r))) n++;
     return { checked: n > 0 && n === v.length, indeterminate: n > 0 && n < v.length };
   });
 
   function toggleAll(): void {
     if (source) return;
-    const clearing = selectAll.checked;
-    for (const r of view) {
-      if (clearing) selectedRows.delete(getRowId(r));
-      else selectedRows.add(getRowId(r));
-    }
-    selRowsVersion++;
-    onRowSelectionChange?.([...selectedRows]);
+    rowState.setSelected(
+      view.map((r) => getRowId(r)),
+      !selectAll.checked,
+    );
+    onRowSelectionChange?.(rowState.selectedIds());
   }
 
   // Pinned totals row: per-column `groupAgg` over all (filtered) rows. Reads row
@@ -1000,7 +916,7 @@
   const heights = $derived.by<number[] | null>(() => {
     if (!useHeights) return null;
     const fn = variable ? (rowHeight as (row: GridRow, index: number) => number) : null;
-    expVersion; // track expansion changes
+    rowState.expandVersion; // track expansion changes
     const arr = new Array<number>(flat.length);
     let di = 0;
     for (let i = 0; i < flat.length; i++) {
@@ -1010,7 +926,7 @@
         continue;
       }
       let h = fn ? Math.max(1, fn(it.row, di++)) : baseH;
-      if (expandable && expandedRows.has(getRowId(it.row))) h += detailHeight;
+      if (expandable && rowState.isExpanded(getRowId(it.row))) h += detailHeight;
       arr[i] = h;
     }
     return arr;
@@ -1140,7 +1056,7 @@
     const items = flat;
     const info = layout.info;
     const colSpanOn = !virtualizeColumns;
-    if (expandable) expVersion;
+    if (expandable) rowState.expandVersion;
     return untrack(() =>
       buildMergePlan({
         columns: visCols,
@@ -1341,9 +1257,7 @@
   }
 
   function toggleGroup(path: string) {
-    if (collapsed.has(path)) collapsed.delete(path);
-    else collapsed.add(path);
-    collapsedVersion++;
+    rowState.toggleCollapsed(path);
     sel.clear();
   }
 
@@ -1508,8 +1422,7 @@
   }
 
   function getSelectedRows(): GridRow[] {
-    selRowsVersion;
-    return view.filter((r) => selectedRows.has(getRowId(r)));
+    return view.filter((r) => rowState.isSelected(getRowId(r)));
   }
 
   // ---- Auto width (`autoWidth` columns) ---------------------------------------
@@ -1597,7 +1510,7 @@
       pinned: { ...colState.pins },
       sorts: sorts.map((s) => ({ ...s })),
       filters: { ...activeColumnFilters },
-      ...(rowPinning || pinnedIds.length > 0 ? { pinnedRows: [...pinnedIds] } : {}),
+      ...(rowPinning || rowState.pinned.length > 0 ? { pinnedRows: [...rowState.pinned] } : {}),
     };
   }
 
@@ -1859,7 +1772,7 @@
       const item = flat[sel.focus.r];
       if (item?.kind === 'data' && item.hasChildren) {
         const id = getRowId(item.row);
-        const open = expandedRows.has(id);
+        const open = rowState.isExpanded(id);
         if (e.key === 'ArrowRight' && !open) {
           e.preventDefault();
           toggleTreeNode(item.row);
@@ -1910,7 +1823,7 @@
   $effect(() => {
     filter;
     sorts;
-    collapsedVersion;
+    rowState.collapseVersion;
     source;
     untrack(() => {
       sel.clear();
