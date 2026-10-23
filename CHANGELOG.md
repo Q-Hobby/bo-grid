@@ -18,6 +18,18 @@ All notable changes to this project are documented here. Format follows
   the app's. A separate entry, ~4 KB gzip on top of the grid.
 - **`api.getFocusedCell()`**: the focused cell's row and column, for hotkeys
   that act on the row the user is on.
+- **`createLinger` (`bo-grid/realtime`): rows that leave a list stay a
+  moment.** It returns your rows plus the ones that left within `ms`, each
+  right after the row it followed, and says which are on their way out, so a
+  filled or cancelled order is seen going instead of vanishing.
+- **`createPositions` and `unrealizedPnl` (`bo-grid/trading`): positions
+  from fills, on average cost.** Each fill moves its symbol's quantity,
+  average price and realized P&L (a fill through flat opens the rest on the
+  other side; fees come off realized); `unrealizedPnl` marks the open
+  position at a price, for a `value` column whose footer total follows the
+  feed.
+- **Orders & positions demo**: working orders with status chips, done orders
+  lingering before they go, and positions with live P&L from the fills.
 - **`liveSort`: the sort and filters follow a live feed.** When `api.patchRows`
   changes a field the grid sorts or filters by, the rows it changed are merged
   back into place at most every `liveSort` ms (`true`: 500). Only those rows

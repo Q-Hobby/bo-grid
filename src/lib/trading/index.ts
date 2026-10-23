@@ -1,6 +1,6 @@
 // Public API for `bo-grid/trading` — market-convention helpers for APAC
 // trading screens: price-limit tone (ceiling/floor/reference colouring),
-// tick-aware price formatting, and session state.
+// tick-aware price formatting, session state, and positions from fills.
 //
 // A separate entry, like `bo-grid/realtime`: pure
 // functions only, no Grid/Cell changes, so it adds nothing to the grid core
@@ -16,3 +16,6 @@ export { decimalsForTick, fmtTradingPrice } from './format';
 
 export { sessionStateAt, sessionLabel, VN_HOSE_SCHEDULE } from './session';
 export type { SessionState, SessionWindow, SessionOptions } from './session';
+
+export { createPositions, unrealizedPnl } from './positions';
+export type { Position, PositionBook, PositionFill } from './positions';

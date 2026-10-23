@@ -333,7 +333,7 @@ column a `render(ctx)` function instead:
 ## 5. `bo-grid/realtime` — feed pipeline (own budget, ~2 KB gzip)
 
 ```ts
-import { createTickStream, createRowIndex, applyPatches, TickBuffer, TradeTape, centeredWindow, createViewportSubscriptions } from 'bo-grid/realtime';
+import { createTickStream, createRowIndex, applyPatches, TickBuffer, TradeTape, centeredWindow, createViewportSubscriptions, createLinger } from 'bo-grid/realtime';
 ```
 
 **Price feed** (coalesces per key, drains a bounded slice per animation
@@ -392,14 +392,24 @@ const visible = levels.slice(start, end);   // feed THIS to <Grid rows>, not the
 Keep "scroll-lock" state (`lockedCenter: number | null`) in your own
 component — `null` follows the live center, a number freezes the window.
 
-## 6. `bo-grid/trading` — APAC market conventions (own budget, ~1.5 KB gzip)
+**Rows that leave stay a moment** (a filled or cancelled order seen going):
+```ts
+let expired = $state(0);
+const linger = createLinger({ ms: 1500, key: (o) => o.id, onExpire: () => expired++ });
+const shown = $derived.by(() => { void expired; return linger.update(orders); }); // + rows that left, in place
+const rowClass = $derived.by(() => { void shown; return (o) => (linger.leaving(o) ? 'leaving' : undefined); });
+// <Grid rows={shown} {rowClass} />; onDestroy(linger.stop). Mark an order Filled, drop it on the next update.
+```
+
+## 6. `bo-grid/trading` — APAC market conventions and positions (own budget, ~2 KB gzip)
 
 Pure functions only — no `ColumnDef`/Grid changes. Wire results into a column
 via `render`/`cell` (§4.3/§4.4).
 
 ```ts
 import { resolveTone, toneColor, vnBands, vnTickSize, roundToTick, vnBandPercent, vnFuturesBands, VN_FUTURES_TICK,
-         fmtTradingPrice, decimalsForTick, sessionStateAt, sessionLabel, VN_HOSE_SCHEDULE } from 'bo-grid/trading';
+         fmtTradingPrice, decimalsForTick, sessionStateAt, sessionLabel, VN_HOSE_SCHEDULE,
+         createPositions, unrealizedPnl } from 'bo-grid/trading';
 ```
 
 **Price-limit tone** (the ceiling/floor/reference/up/down colour convention
@@ -426,6 +436,14 @@ correct for a viewer anywhere, not just Vietnam):
 ```ts
 sessionStateAt(new Date(), VN_HOSE_SCHEDULE);
 // → 'pre-open' | 'ato' | 'continuous' | 'break' | 'atc' | 'closed'
+```
+
+**Positions from fills** (average cost; a fill through flat opens the rest at its price; fee off realized):
+```ts
+const book = createPositions();
+book.fill({ symbol: 'FPT', side: 'buy', qty: 400, price: 11.5 }); // returns { symbol, qty, avgPrice, realized, bought, sold }
+book.get('FPT'); book.all(); book.clear();                          // qty > 0 long, < 0 short; bad symbol/side/qty/price/fee throws
+unrealizedPnl(position, last);  // use in a `value` column with groupAgg: 'sum' for a live P&L footer
 ```
 
 ## 6b. `bo-grid/ladder` — depth ladder (own entry, ~4 KB gzip on top of the grid)

@@ -999,6 +999,15 @@ if (!/^Buy 100 at /.test(ladderNote)) fail(`Price ladder click on a bid did not 
 const ladderRowsAfter = document.querySelectorAll('.bo-ladder .spacer > .row').length;
 if (ladderRowsAfter !== 21) fail(`Price ladder lost rows after paging and following (got ${ladderRowsAfter})`);
 
+// Orders & positions: status chips on the working orders, and a positions
+// grid with a footer (live P&L totals) fed by the fills.
+await solo('orders', '.bo-grid .row', 'Orders & positions example rendered no rows');
+const ordersBadges = document.querySelectorAll('.bo-grid .row .badge, .bo-grid .row [class*="badge"]').length;
+if (ordersBadges === 0) fail('Orders & positions shows no status chips');
+await wait(1200);
+const ordersFooter = document.querySelectorAll('.bo-grid .footer').length;
+if (ordersFooter === 0) fail('Orders & positions has no positions footer');
+
 // Time & sales: bo-grid/realtime's TradeTape — capped, newest trade first.
 // Starts with zero trades (an empty grid, no `.row` yet), so solo() waits on
 // the grid container rather than a row.
@@ -1404,7 +1413,7 @@ console.log(
     `paste + resize committed (+onColumnResize); collapse ${heightBefore}→${heightAfter}px; server loaded ${dataRows} rows; ` +
     `${stickyHeaders} pinned columns (+right); pivot ${pivotHeaders.length} cols; ` +
     `gallery: portfolio ${portfolioRows} rows/${portfolioGroups} groups + header-groups + ctx-menu + ${cfBars} data-bars/${cfIcons} icons/${cfScale} scale + computed-col, sheet ${sheetRows} rows (light) + select-edit + row-select + col-hide + col-filter + empty-msg + master-detail + cell-class + pagination, ` +
-    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes, vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
+    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes, vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
     `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok`,
 );
 process.exit(0);
