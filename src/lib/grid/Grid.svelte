@@ -192,16 +192,10 @@
     return true;
   }
   function undo(): void {
-    const group = history.undo();
-    if (!group) return;
-    for (const e of group) onCellEdit?.({ row: e.row, column: e.col, value: e.old });
-    editing = null;
+    if (history.undo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.old }))) editing = null;
   }
   function redo(): void {
-    const group = history.redo();
-    if (!group) return;
-    for (const e of group) onCellEdit?.({ row: e.row, column: e.col, value: e.value });
-    editing = null;
+    if (history.redo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.value }))) editing = null;
   }
 
   function commitEdit(r: number, c: number, raw: string) {

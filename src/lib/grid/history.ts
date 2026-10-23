@@ -19,10 +19,11 @@ export interface EditHistory<R, C> {
   record(entry: EditEntry<R, C>): void;
   /** Groups every edit recorded inside `fn` into a single undo step. */
   batch(fn: () => void): void;
-  /** The step to undo (its entries carry the values to restore), or undefined. */
-  undo(): EditEntry<R, C>[] | undefined;
-  /** The step to redo, or undefined. */
-  redo(): EditEntry<R, C>[] | undefined;
+  /** Undoes the last step: `apply` restores each entry (the grid re-emits
+      `old`), then the step moves to the redo stack. False when there is none. */
+  undo(apply: (entry: EditEntry<R, C>) => void): boolean;
+  /** Redoes the last undone step (`apply` re-emits `value`). False when there is none. */
+  redo(apply: (entry: EditEntry<R, C>) => void): boolean;
 }
 
 export const UNDO_LIMIT = 100;
@@ -57,15 +58,21 @@ export function createEditHistory<R, C>(limit = UNDO_LIMIT): EditHistory<R, C> {
         if (group.length) push(group);
       }
     },
-    undo() {
+    // A step moves to the other stack only once `apply` has run for all of
+    // it: if the app's onCellEdit throws, the step is dropped, not half-kept.
+    undo(apply) {
       const group = undoStack.pop();
-      if (group) redoStack.push(group);
-      return group;
+      if (!group) return false;
+      for (const e of group) apply(e);
+      redoStack.push(group);
+      return true;
     },
-    redo() {
+    redo(apply) {
       const group = redoStack.pop();
-      if (group) undoStack.push(group);
-      return group;
+      if (!group) return false;
+      for (const e of group) apply(e);
+      undoStack.push(group);
+      return true;
     },
   };
 }

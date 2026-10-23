@@ -47,6 +47,13 @@ describe('ColumnState', () => {
     expect(state.order).toEqual([0, 1]);
   });
 
+  it('a new column set of the same length resets the order too', () => {
+    const { state, setColumns } = create(undefined, 3);
+    state.move(0, 2);
+    setColumns(3); // a different array with as many columns
+    expect(state.order).toEqual([0, 1, 2]);
+  });
+
   it('sets and resets widths, saving each change', () => {
     const { state } = create('t', 2);
     state.setWidth('px', 120);
