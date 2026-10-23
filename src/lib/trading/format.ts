@@ -4,6 +4,7 @@
 // right for USD-style quotes, wrong for a whole-VND stock (0 decimals) or an
 // FX pair (4). The right decimal count is a property of the instrument's tick
 // size, not a per-column constant — these read it off the tick instead.
+import { numberFormat } from '../format/intl';
 
 // Precision ceiling for the fixed-notation normalization below. Realistic
 // instrument ticks (down to an 8-decimal crypto pip) fit comfortably inside
@@ -29,5 +30,5 @@ export function decimalsForTick(tick: number): number {
 export function fmtTradingPrice(value: number, tick: number, locale = 'en-US'): string {
   if (!Number.isFinite(value)) return '';
   const decimals = decimalsForTick(tick);
-  return value.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return numberFormat(locale, `tick${decimals}`, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
 }

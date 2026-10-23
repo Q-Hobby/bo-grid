@@ -7,6 +7,7 @@
 // with `Intl.DateTimeFormat` so it's correct regardless of the viewer's local
 // time zone — a trader in New York must see Ho Chi Minh City's session, not
 // their own.
+import { dateFormat } from '../format/intl';
 
 export type SessionState = 'pre-open' | 'ato' | 'continuous' | 'break' | 'atc' | 'closed';
 
@@ -60,7 +61,7 @@ export interface SessionOptions {
 }
 
 function wallClock(date: Date, timeZone: string): { hhmm: string; weekday: string } {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = dateFormat('en-US', `clock${timeZone}`, {
     timeZone,
     hour12: false,
     hour: '2-digit',
