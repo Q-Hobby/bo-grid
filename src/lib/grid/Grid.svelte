@@ -45,6 +45,7 @@
   import { ColumnState } from './columns.svelte';
   import { dismissOnOutside } from './dismiss';
   import { RowState } from './rowstate.svelte';
+  import { keyAction, type KeyState } from './keyboard';
 
   let {
     rows = [],
@@ -1669,144 +1670,113 @@
     }
   }
 
+  // The keyboard model lives in keyboard.ts: keyAction reads this snapshot.
+  const keyState: KeyState = {
+    get focus() {
+      return sel.focus;
+    },
+    get editing() {
+      return !!editing;
+    },
+    get maxR() {
+      return maxR;
+    },
+    get maxC() {
+      return maxC;
+    },
+    get pageRows() {
+      return Math.max(1, Math.floor(viewPx / baseH) - 1);
+    },
+    get rowClick() {
+      return !!onRowClick;
+    },
+    get rowSelection() {
+      return rowSelection;
+    },
+    get findBar() {
+      return findBar && !source;
+    },
+    get canUndo() {
+      return history.canUndo;
+    },
+    get canRedo() {
+      return history.canRedo;
+    },
+    get columnMenu() {
+      return columnMenu;
+    },
+    canEdit: (c) => isEditable(cols[c]),
+    canTypeToEdit: (c) => {
+      const col = cols[c];
+      return isEditable(col) && col.type !== 'date' && !(col.options && col.options.length);
+    },
+    hasRow: (r) => !!dataAt(r),
+    rowMenuItems: (r) => {
+      const row = rowMenu ? dataAt(r) : null;
+      return row && rowMenu ? rowMenu(row) : [];
+    },
+    treeNode: (r) => {
+      const item = treeData ? flat[r] : undefined;
+      if (item?.kind !== 'data' || !item.hasChildren) return null;
+      return rowState.isExpanded(getRowId(item.row)) ? 'open' : 'closed';
+    },
+  };
+  /** Where the focused cell is on screen, for a menu opened from the keyboard. */
+  function focusAnchor(): { left: number; bottom: number } {
+    const rect = document.getElementById(activeId ?? '')?.getBoundingClientRect();
+    return { left: rect?.left ?? 0, bottom: rect?.bottom ?? 0 };
+  }
   function onKeydown(e: KeyboardEvent) {
-    const mod = e.ctrlKey || e.metaKey;
-    if (e.key === 'Enter' && sel.focus && !editing) {
-      const f = sel.focus;
-      if (isEditable(cols[f.c])) {
-        e.preventDefault();
-        startEdit(f.r, f.c);
+    const a = keyAction(e, keyState);
+    if (!a) return;
+    if (a.kind !== 'clear') e.preventDefault();
+    switch (a.kind) {
+      case 'edit':
+        return startEdit(a.r, a.c, a.seed);
+      case 'rowClick': {
+        const row = dataAt(a.r);
+        if (row) onRowClick?.(row, e);
         return;
       }
-      if (onRowClick) {
-        const row = dataAt(f.r);
-        if (row) {
-          e.preventDefault();
-          onRowClick(row, e);
-          return;
-        }
-      }
-    }
-    // Space toggles selection of the focused row (when the checkbox column is on),
-    // so keyboard users can tick rows without reaching for the mouse.
-    if (e.key === ' ' && rowSelection && sel.focus && !editing) {
-      const row = dataAt(sel.focus.r);
-      if (row) {
-        e.preventDefault();
-        toggleRow(getRowId(row));
+      case 'toggleRow': {
+        const row = dataAt(a.r);
+        if (row) toggleRow(getRowId(row));
         return;
       }
-    }
-    // Type-to-edit (Excel-style): a printable key on a focused editable text/number
-    // cell opens the editor seeded with that character. Select-column editors keep
-    // their Enter-to-open behavior.
-    if (!mod && !e.altKey && e.key.length === 1 && e.key !== ' ' && sel.focus && !editing) {
-      const f = sel.focus;
-      const col = cols[f.c];
-      if (isEditable(col) && col.type !== 'date' && !(col.options && col.options.length) && dataAt(f.r)) {
-        e.preventDefault();
-        startEdit(f.r, f.c, e.key);
+      case 'find':
+        return void openFind();
+      case 'undo':
+        return undo();
+      case 'redo':
+        return redo();
+      case 'selectAll':
+        return sel.selectAll(rowCount, cols.length);
+      case 'copy':
+        return void copySelection();
+      case 'paste':
+        return void pasteSelection();
+      case 'clear':
+        return sel.clear();
+      case 'rowMenu': {
+        const at = focusAnchor();
+        menu = { x: at.left, y: at.bottom, items: a.items };
         return;
       }
-    }
-    if (mod && e.key.toLowerCase() === 'f' && findBar && !source) {
-      e.preventDefault();
-      void openFind();
-      return;
-    }
-    if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-      if (history.canUndo) {
-        e.preventDefault();
-        undo();
+      case 'columnMenu': {
+        const at = focusAnchor();
+        menu = { x: at.left, y: at.bottom, items: columnMenuItems(cols[a.c], at) };
         return;
       }
-    }
-    if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
-      if (history.canRedo) {
-        e.preventDefault();
-        redo();
+      case 'toggleTree': {
+        const item = flat[a.r];
+        if (item?.kind === 'data') toggleTreeNode(item.row);
         return;
       }
-    }
-    if (mod && e.key.toLowerCase() === 'a') {
-      e.preventDefault();
-      sel.selectAll(rowCount, cols.length);
-      return;
-    }
-    if (mod && e.key.toLowerCase() === 'c') {
-      e.preventDefault();
-      void copySelection();
-      return;
-    }
-    if (mod && e.key.toLowerCase() === 'v') {
-      e.preventDefault();
-      void pasteSelection();
-      return;
-    }
-    if (e.key === 'Escape') {
-      sel.clear();
-      return;
-    }
-    // Open the row menu from the keyboard (ContextMenu key / Shift+F10).
-    if (rowMenu && sel.focus && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
-      const row = dataAt(sel.focus.r);
-      const items = row ? rowMenu(row) : [];
-      if (items.length > 0) {
-        e.preventDefault();
-        const rect = document.getElementById(activeId ?? '')?.getBoundingClientRect();
-        menu = { x: rect?.left ?? 0, y: rect?.bottom ?? 0, items };
-        return;
-      }
-    }
-    // Open the column menu from the keyboard (Alt+ArrowDown) at the focused column.
-    if (columnMenu && sel.focus && e.altKey && e.key === 'ArrowDown') {
-      e.preventDefault();
-      const rect = document.getElementById(activeId ?? '')?.getBoundingClientRect();
-      const anchor = { left: rect?.left ?? 0, bottom: rect?.bottom ?? 0 };
-      menu = { x: anchor.left, y: anchor.bottom, items: columnMenuItems(cols[sel.focus.c], anchor) };
-      return;
-    }
-    // Tree nav: ArrowRight expands a collapsed node, ArrowLeft collapses an
-    // expanded one (treegrid pattern); otherwise arrows move normally.
-    if (treeData && sel.focus && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
-      const item = flat[sel.focus.r];
-      if (item?.kind === 'data' && item.hasChildren) {
-        const id = getRowId(item.row);
-        const open = rowState.isExpanded(id);
-        if (e.key === 'ArrowRight' && !open) {
-          e.preventDefault();
-          toggleTreeNode(item.row);
-          return;
-        }
-        if (e.key === 'ArrowLeft' && open) {
-          e.preventDefault();
-          toggleTreeNode(item.row);
-          return;
-        }
-      }
-    }
-    // Home/End (row, or whole grid with Ctrl/⌘); PageUp/PageDown by a viewport page.
-    const f = sel.focus;
-    if (f && (e.key === 'Home' || e.key === 'End' || e.key === 'PageUp' || e.key === 'PageDown')) {
-      e.preventDefault();
-      const page = Math.max(1, Math.floor(viewPx / baseH) - 1);
-      if (e.key === 'Home') focusTo(mod ? 0 : f.r, 0, e.shiftKey);
-      else if (e.key === 'End') focusTo(mod ? maxR : f.r, maxC, e.shiftKey);
-      else if (e.key === 'PageDown') focusTo(f.r + page, f.c, e.shiftKey);
-      else focusTo(f.r - page, f.c, e.shiftKey);
-      return;
-    }
-    const delta: Record<string, [number, number]> = {
-      ArrowUp: [-1, 0],
-      ArrowDown: [1, 0],
-      ArrowLeft: [0, -1],
-      ArrowRight: [0, 1],
-    };
-    const d = delta[e.key];
-    if (d) {
-      e.preventDefault();
-      sel.move(d[0], d[1], e.shiftKey, maxR, maxC);
-      scrollFocusIntoView();
+      case 'focus':
+        return focusTo(a.r, a.c, a.extend);
+      case 'move':
+        sel.move(a.dr, a.dc, a.extend, maxR, maxC);
+        scrollFocusIntoView();
     }
   }
 
