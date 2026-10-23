@@ -216,6 +216,8 @@ runner cancels out.
 | sync: board 10k and 30k ev/s | 240 seeded frames, each rendered synchronously, then style and layout forced | fails above +10% and +0.2 ms |
 | sync: scroll 3 rows/frame | 120 scroll steps, each rendered synchronously | fails above +10% and +0.2 ms |
 | live: board 10k hold, 30k auto, 10k fade | the real feed for 3 s, flashes and paint included | warns above +25% |
+| sync: blotter 100k, 200 fills | the Live blotter: 100,000 orders, 200 fills a frame through `patchRows` | fails above +10% and +0.2 ms |
+| sync: blotter 100k, fills + 5 in, 5 out | the same, plus 5 orders arriving and 5 leaving a frame as a new `rows` array | fails above +10% and +0.2 ms |
 
 Each run reports its median frame, so a GC pause does not move it. Pages are
 cross-origin isolated, which gives fine-grained timers (0.01 ms instead of

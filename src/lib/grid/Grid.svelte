@@ -753,7 +753,11 @@
   // Rows' positions in `rows`, for ties (as sortRows breaks them).
   let rowPos: { rows: GridRow[]; at: Map<GridRow, number> } | null = null;
   const positionOf = (row: GridRow): number => {
-    if (rowPos?.rows !== rows) rowPos = { rows, at: new Map(rows.map((r, i) => [r, i] as const)) };
+    if (rowPos?.rows !== rows) {
+      const at = new Map<GridRow, number>();
+      for (let i = 0; i < rows.length; i++) at.set(rows[i], i);
+      rowPos = { rows, at };
+    }
     return rowPos.at.get(row) ?? -1;
   };
   const view = $derived.by(() => {
@@ -1470,7 +1474,13 @@
 
   // ---- Realtime path (`api.patchRows`, `api.flashCells`; live.svelte.ts) -----
   const live = createLiveRows();
-  const rowIndex = $derived(new Map(rows.map((r) => [getRowId(r), r] as const)));
+  // Built in a plain loop: the getRowId prop read once, no pair per row.
+  const rowIndex = $derived.by(() => {
+    const idOf = getRowId;
+    const index = new Map<string | number, GridRow>();
+    for (const r of rows) index.set(idOf(r), r);
+    return index;
+  });
 
   function refresh(): void {
     viewTick++;

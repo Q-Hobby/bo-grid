@@ -120,3 +120,39 @@ describe('locale-aware formatting', () => {
     expect(relativeTime(now - 3 * 3600_000, now, 'vi-VN')).not.toBe('3 hours ago');
   });
 });
+
+describe('cached Intl formatting', () => {
+  const LOCALES = ['en-US', 'vi-VN', 'de-DE', 'ja-JP'];
+  const values = [0, -0, 1, -1.005, 12.345, 1234567.891, -98765.4321, NaN, Infinity, 1e21];
+
+  it('fmtPrice matches toLocaleString in every locale, repeated calls included', () => {
+    for (const locale of LOCALES) {
+      for (let pass = 0; pass < 2; pass++) {
+        for (const v of values) {
+          expect(fmtPrice(v, locale)).toBe(v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        }
+      }
+    }
+  });
+
+  it('fmtDate matches toLocaleDateString for both styles', () => {
+    const times = [0, Date.UTC(2026, 9, 23, 7, 30), Date.UTC(1999, 11, 31, 23, 59)];
+    for (const locale of LOCALES) {
+      for (const ms of times) {
+        expect(fmtDate(ms, 'medium', locale)).toBe(new Date(ms).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' }));
+        expect(fmtDate(ms, 'short', locale)).toBe(new Date(ms).toLocaleDateString(locale, { month: 'numeric', day: 'numeric', year: '2-digit' }));
+      }
+    }
+  });
+
+  it('fmtCurrency keeps one formatter per currency and decimals', () => {
+    expect(fmtCurrency(1234.5, 'USD', 'en-US')).toBe('$1,234.50');
+    expect(fmtCurrency(1234.5, 'VND', 'vi-VN', 0)).toBe((1234.5).toLocaleString('vi-VN', { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }));
+    expect(fmtCurrency(1234.5, 'USD', 'en-US', 0)).toBe('$1,235');
+    expect(fmtCurrency(1.5, 'NOT-A-CODE')).toBe('1.50'); // invalid code: the fallback, and nothing cached
+  });
+
+  it('a string passed from untyped code keeps its old fmtPrice output', () => {
+    expect(fmtPrice('12.5' as unknown as number)).toBe('12.5');
+  });
+});

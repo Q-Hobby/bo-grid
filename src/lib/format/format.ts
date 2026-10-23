@@ -1,7 +1,12 @@
 // Built-in formatters (proposal Phase 1 §Ticker column + formatting).
+import { dateFormat, numberFormat, relativeFormat } from './intl';
+
+const PRICE: Intl.NumberFormatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
 export function fmtPrice(v: number, locale = 'en-US'): string {
-  return v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // A non-number (from untyped JS) keeps its own toLocaleString, as before.
+  if (typeof v === 'number') return numberFormat(locale, 'price', PRICE).format(v);
+  return (v as { toLocaleString(...args: unknown[]): string }).toLocaleString(locale, PRICE);
 }
 
 export function fmtPercent(v: number): string {
@@ -18,13 +23,15 @@ export function fmtVolume(v: number): string {
 
 export type DateStyle = 'short' | 'medium';
 
+const DATE_STYLES: Record<DateStyle, Intl.DateTimeFormatOptions> = {
+  short: { month: 'numeric', day: 'numeric', year: '2-digit' },
+  medium: { month: 'short', day: 'numeric', year: 'numeric' },
+};
+
 export function fmtDate(ms: number, style: DateStyle = 'medium', locale = 'en-US'): string {
   if (!Number.isFinite(ms)) return '';
-  const opts: Intl.DateTimeFormatOptions =
-    style === 'short'
-      ? { month: 'numeric', day: 'numeric', year: '2-digit' }
-      : { month: 'short', day: 'numeric', year: 'numeric' };
-  return new Date(ms).toLocaleDateString(locale, opts);
+  const s = style === 'short' ? 'short' : 'medium';
+  return dateFormat(locale, s, DATE_STYLES[s]).format(new Date(ms));
 }
 
 /** Localized currency (e.g. `$1,234.50`). Falls back to a fixed-decimal number
@@ -33,7 +40,7 @@ export function fmtCurrency(v: number, currency = 'USD', locale = 'en-US', decim
   if (!Number.isFinite(v)) return '';
   const fd = decimals != null ? { minimumFractionDigits: decimals, maximumFractionDigits: decimals } : {};
   try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency, ...fd }).format(v);
+    return numberFormat(locale, `cur${currency}|${decimals ?? ''}`, { style: 'currency', currency, ...fd }).format(v);
   } catch {
     return v.toFixed(decimals ?? 2);
   }
@@ -62,7 +69,7 @@ const RT_UNITS: [number, number, Intl.RelativeTimeFormatUnit][] = [
 function intlRelative(secsAgo: number, locale: string): string {
   const a = Math.abs(secsAgo);
   const sign = secsAgo >= 0 ? -1 : 1;
-  const fmt = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const fmt = relativeFormat(locale);
   for (const [ceil, div, unit] of RT_UNITS) {
     if (a < ceil) return fmt.format(sign * Math.floor(a / div), unit);
   }

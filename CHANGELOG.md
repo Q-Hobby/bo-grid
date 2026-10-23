@@ -16,6 +16,18 @@ All notable changes to this project are documented here. Format follows
   start matching join, the focused cell stays on its row, and nothing moves
   while a cell is being edited.
 
+### Performance
+
+- **Prices and dates format ~40× faster per cell.** `fmtPrice`, `fmtDate`,
+  `fmtCurrency`, relative times and `fmtTradingPrice` (bo-grid/trading)
+  created a new `Intl` formatter on every call, through `toLocaleString`
+  (~50 µs a price, ~110 µs a date); they now keep one per locale and option
+  set (~1–2 µs). The output is the same. On a 100,000-row blotter where
+  arriving orders shift every visible row, date formatting alone had cost
+  ~5 ms a frame.
+- **The row-id index rebuilds about 3× faster** when `rows` changes (a plain
+  loop, `getRowId` read once).
+
 ### Fixed
 
 - **Dragging a header moves the column you see when other columns are hidden

@@ -60,9 +60,17 @@ for (const [name, dir] of Object.entries(builds)) {
 }
 const compare = 'base' in builds;
 
+// The demo examples a workload can open: the section id and the bench hooks
+// the example exposes on `window`.
+const EXAMPLES = {
+  priceboard: { hook: '__priceBoard', needs: ['api', 'bench', 'benchScroll', 'benchLive', 'setFlashMotion'] },
+  liveblotter: { hook: '__liveBlotter', needs: ['api', 'bench'] },
+};
+
 // Each workload opens a fresh page, so one run's flashes and caches never leak
-// into the next. `motion` is the board's flashMotion for the run; every `run`
-// resolves to the frames it rendered and the median frame's work in ms.
+// into the next. `example` is the demo section (default: the price board),
+// `motion` the board's flashMotion; every `run` resolves to the frames it
+// rendered and the median frame's work in ms.
 const WORKLOADS = [
   { name: 'sync: board 10k ev/s', gate: true, motion: 'hold', run: (page) => syncBoard(page, 10_000) },
   { name: 'sync: board 30k ev/s', gate: true, motion: 'hold', run: (page) => syncBoard(page, 30_000) },
@@ -70,13 +78,17 @@ const WORKLOADS = [
   { name: 'live: board 10k ev/s (hold)', motion: 'hold', run: (page) => live(page, 10_000) },
   { name: 'live: board 30k ev/s (auto)', motion: 'auto', run: (page) => live(page, 30_000) },
   { name: 'live: board 10k ev/s (fade)', motion: 'fade', run: (page) => live(page, 10_000) },
+  { name: 'sync: blotter 100k, 200 fills', gate: true, example: 'liveblotter', run: (page) => syncBlotter(page, { frames: 120, fills: 200, adds: 0, removes: 0 }) },
+  { name: 'sync: blotter 100k, fills + 5 in, 5 out', gate: true, example: 'liveblotter', run: (page) => syncBlotter(page, { frames: 60, fills: 200, adds: 5, removes: 5 }) },
 ]
   .filter((w) => !args.only || String(args.only).split(',').some((s) => w.name.includes(s)))
   .map((w) => ({ ...w, rounds: w.gate ? ROUNDS : LIVE_ROUNDS }))
   .filter((w) => w.rounds > 0);
 
 const results = {}; // workload -> build -> [sample per round]
+const missing = new Set(); // "workload\u0001build" pairs whose example the build lacks
 let failed = false;
+class MissingExample extends Error {}
 let server;
 let browser;
 try {
@@ -94,7 +106,17 @@ try {
     for (const w of WORKLOADS) {
       if (r >= w.rounds) continue;
       for (const name of order) {
-        const sample = await measure(name, w);
+        if (missing.has(`${w.name}\u0001${name}`)) continue;
+        let sample;
+        try {
+          sample = await measure(name, w);
+        } catch (e) {
+          if (!(e instanceof MissingExample)) throw e;
+          // A build from before the example existed (a PR that adds one).
+          missing.add(`${w.name}\u0001${name}`);
+          process.stderr.write(`${w.name} · ${name}: ${e.message}, skipped\n`);
+          continue;
+        }
         ((results[w.name] ??= {})[name] ??= [])[r] = sample;
         const extra = `task ${fmt(sample.task)}${sample.traceMs ? `, trace ${fmt(sample.traceMs)}` : ''}`;
         process.stderr.write(`round ${r + 1}/${w.rounds} · ${w.name} · ${name}: ${fmt(sample.ms)} ms/frame (${extra})\n`);
@@ -133,6 +155,13 @@ async function syncBoard(page, eventsPerSec) {
   return { frames: res.frames, ms: res.total.p50 };
 }
 
+/** The Live blotter's seeded frames: fills through patchRows, and orders
+    arriving and leaving as a new rows array, rendered synchronously. */
+async function syncBlotter(page, opts) {
+  const res = await page.evaluate((o) => window.__liveBlotter.bench(o), opts);
+  return { frames: res.frames, ms: res.total.p50 };
+}
+
 /** A fast wheel through the board, each step rendered synchronously. */
 async function syncScroll(page, rows) {
   const res = await page.evaluate((n) => window.__priceBoard.benchScroll({ frames: 120, rowsPerFrame: n }), rows);
@@ -142,7 +171,7 @@ async function syncScroll(page, rows) {
 // ---- Measuring -------------------------------------------------------------
 
 async function measure(build, workload) {
-  const page = await openBoard(build, workload.motion);
+  const page = await openExample(build, workload);
   try {
     const cdp = await page.createCDPSession();
     await cdp.send('Performance.enable');
@@ -163,59 +192,78 @@ async function measure(build, workload) {
   }
 }
 
-/** Opens the demo with only the price board on the page, motion allowed. */
-async function openBoard(build, motion) {
+/** Opens the demo with only the workload's example on the page, motion
+    allowed. Throws MissingExample when the build has no such example. */
+async function openExample(build, workload) {
+  const id = workload.example ?? 'priceboard';
+  const ex = EXAMPLES[id];
   const page = await browser.newPage();
-  await page.setViewport({ width: 1400, height: 1000 });
-  await page.setRequestInterception(true);
-  page.on('request', (req) => (req.url().startsWith(server.url) ? req.continue() : req.abort()));
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  // Flash animations are skipped under reduced motion, and some machines
-  // report it: the board would measure a lighter workload than users see.
-  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
-  await page.goto(`${server.url}/${build}/index.html#ex-priceboard`, { waitUntil: 'load' });
   try {
-    // The demo mounts each example when it scrolls near the viewport, and on a
-    // slow machine the section may not exist yet at `load`: keep scrolling it
-    // into view until the board reports its grid handle.
-    await page.waitForFunction(
-      () => {
-        if (window.__priceBoard?.api?.()) return true;
-        document.getElementById('ex-priceboard')?.scrollIntoView();
-        return false;
-      },
-      { timeout: 30_000, polling: 250 },
-    );
-  } catch (e) {
-    const state = await page.evaluate(() => {
-      const el = document.getElementById('ex-priceboard');
-      if (!el) return 'no #ex-priceboard element';
-      const hooks = window.__priceBoard;
-      const missing = ['api', 'bench', 'benchScroll', 'benchLive', 'setFlashMotion'].filter((k) => typeof hooks?.[k] !== 'function');
-      return `${el.querySelectorAll('.row').length} rows rendered; ${hooks ? `hooks missing: ${missing.join(', ') || 'none'}` : 'no window.__priceBoard'}`;
-    });
-    throw new Error(`the price board did not mount (${state}). Page errors: ${errors.join(' | ') || 'none'}`, { cause: e });
-  }
-  await page.evaluate(() => {
-    // Hide every sibling along the board's ancestor chain.
-    let el = document.getElementById('ex-priceboard');
-    while (el && el !== document.body) {
-      for (const s of el.parentElement.children) if (s !== el && s.tagName !== 'SCRIPT') s.style.display = 'none';
-      el = el.parentElement;
+    await page.setViewport({ width: 1400, height: 1000 });
+    await page.setRequestInterception(true);
+    page.on('request', (req) => (req.url().startsWith(server.url) ? req.continue() : req.abort()));
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+    // Flash animations are skipped under reduced motion, and some machines
+    // report it: the board would measure a lighter workload than users see.
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+    await page.goto(`${server.url}/${build}/index.html#ex-${id}`, { waitUntil: 'load' });
+    // Once the gallery has rendered, a build without this section never will.
+    await page.waitForFunction(() => document.querySelector('[id^="ex-"]'), { timeout: 30_000 });
+    if (!(await page.evaluate((sid) => !!document.getElementById(sid), `ex-${id}`))) {
+      throw new MissingExample(`no #ex-${id} in this build`);
     }
-    window.scrollTo(0, 0);
-  });
-  await page.evaluate((m) => window.__priceBoard.setFlashMotion(m), motion);
-  await new Promise((r) => setTimeout(r, 400));
-  if (!(await page.evaluate(() => globalThis.crossOriginIsolated))) {
-    throw new Error('the page is not cross-origin isolated; frame timings would be rounded to 0.1 ms');
+    try {
+      // The demo mounts each example when it scrolls near the viewport, and on
+      // a slow machine the section may not exist yet at `load`: keep scrolling
+      // it into view until the example reports its grid handle.
+      await page.waitForFunction(
+        (sid, hook) => {
+          if (window[hook]?.api?.()) return true;
+          document.getElementById(sid)?.scrollIntoView();
+          return false;
+        },
+        { timeout: 30_000, polling: 250 },
+        `ex-${id}`,
+        ex.hook,
+      );
+    } catch (e) {
+      const state = await page.evaluate(
+        (sid, hook, needs) => {
+          const el = document.getElementById(sid);
+          const hooks = window[hook];
+          const absent = needs.filter((k) => typeof hooks?.[k] !== 'function');
+          return `${el.querySelectorAll('.row').length} rows rendered; ${hooks ? `hooks missing: ${absent.join(', ') || 'none'}` : `no window.${hook}`}`;
+        },
+        `ex-${id}`,
+        ex.hook,
+        ex.needs,
+      );
+      throw new Error(`#ex-${id} did not mount (${state}). Page errors: ${errors.join(' | ') || 'none'}`, { cause: e });
+    }
+    await page.evaluate((sid) => {
+      // Hide every sibling along the example's ancestor chain.
+      let el = document.getElementById(sid);
+      while (el && el !== document.body) {
+        for (const s of el.parentElement.children) if (s !== el && s.tagName !== 'SCRIPT') s.style.display = 'none';
+        el = el.parentElement;
+      }
+      window.scrollTo(0, 0);
+    }, `ex-${id}`);
+    if (workload.motion) await page.evaluate((m) => window.__priceBoard.setFlashMotion(m), workload.motion);
+    await new Promise((r) => setTimeout(r, 400));
+    if (!(await page.evaluate(() => globalThis.crossOriginIsolated))) {
+      throw new Error('the page is not cross-origin isolated; frame timings would be rounded to 0.1 ms');
+    }
+    if (await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      throw new Error('reduced motion is still active; flash animations would not run');
+    }
+    return page;
+  } catch (e) {
+    await page.close();
+    throw e;
   }
-  if (await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-    throw new Error('reduced motion is still active; flash animations would not run');
-  }
-  return page;
 }
 
 async function metrics(cdp) {
@@ -247,6 +295,7 @@ function singleReport() {
   ];
   for (const [workload, byBuild] of Object.entries(results)) {
     const s = byBuild.current;
+    if (!s) continue;
     const ms = s.map((x) => x.ms);
     lines.push(`| ${workload} | ${fmt(median(ms))} | ${fmt(Math.min(...ms))}–${fmt(Math.max(...ms))} | ${fmt(median(s.map((x) => x.task)))} |`);
   }
@@ -264,7 +313,12 @@ function compareReport() {
   ];
   const warnings = [];
   for (const w of WORKLOADS) {
-    const { base, head } = results[w.name];
+    const { base, head } = results[w.name] ?? {};
+    if (!head) continue;
+    if (!base) {
+      lines.push(`| ${w.name} | — | ${fmt(median(head.map((x) => x.ms)))} | new | not in base |`);
+      continue;
+    }
     const b = median(base.map((x) => x.ms));
     const h = median(head.map((x) => x.ms));
     const ratios = base.flatMap((x, i) => (x.ms > 0 ? [head[i].ms / x.ms] : []));
