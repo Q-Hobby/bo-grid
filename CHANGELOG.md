@@ -79,6 +79,13 @@ All notable changes to this project are documented here. Format follows
   On the Live blotter (5 orders in per frame) the flashing cells switch to
   held tints within a few frames; a fading cell costs about 0.02 ms of every
   frame it fades through, a held one almost nothing.
+- **A long session no longer keeps memory for every row it drew.** The
+  records behind `patchRows` and `flashCells` kept a signal for each row and
+  cell ever drawn, even after the row scrolled away or left `rows`: a blotter
+  taking orders grew by about 0.5 KB per order, and scrolling once through
+  100,000 rows kept about 37 MB. Once a few thousand different rows have been
+  drawn, the records now start afresh (flashes still playing carry over), so
+  that memory is returned.
 
 ## [2.3.0] — 2026-10-23
 

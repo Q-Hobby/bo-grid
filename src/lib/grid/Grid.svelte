@@ -1212,6 +1212,12 @@
   // re-evaluate its props just to mount the one row that scrolled in.
   type ItemEntry = { src: unknown; depth?: number; kids?: boolean; item: RenderItem };
   let itemCache = new Map<number, ItemEntry>();
+  // Ids of the rows drawn since the live records were last renewed: every row
+  // drawn leaves signals in them (live.svelte.ts), so once a few thousand
+  // different rows have been drawn (a blotter's churn, a long scroll) the
+  // records start afresh. Every cell on screen re-reads once.
+  const RENEW_AFTER_ROWS = 5000;
+  let drawn = new Set<string | number>();
   const renderItems = $derived.by<RenderItem[]>(() => {
     const out: RenderItem[] = [];
     const prev = itemCache;
@@ -1223,6 +1229,7 @@
       const hit = prev.get(vr);
       const entry =
         hit && hit.src === src && hit.depth === depth && hit.kids === kids ? hit : { src, depth, kids, item: make() };
+      if (entry !== hit && entry.item.kind === 'data') drawn.add(getRowId(entry.item.row));
       next.set(vr, entry);
       return entry.item;
     };
@@ -1257,6 +1264,12 @@
     }
     itemCache = next;
     return out;
+  });
+  $effect(() => {
+    renderItems;
+    if (drawn.size < RENEW_AFTER_ROWS) return;
+    drawn = new Set();
+    untrack(() => live.renew(Date.now()));
   });
 
   // onViewportChange: report the data rows on screen whenever that set

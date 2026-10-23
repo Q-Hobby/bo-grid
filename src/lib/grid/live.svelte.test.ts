@@ -110,3 +110,43 @@ describe('createLiveRows: flash', () => {
     expect(live.flash({}, rows(), idOf, 0, undefined)).toBe(3);
   });
 });
+
+describe('createLiveRows: renew', () => {
+  it('starts the versions afresh, and every reader reads once more', () => {
+    const live = createLiveRows();
+    const rs = rows();
+    live.patch(indexOf(rs), [[1, { px: 11 }]], rs, idOf);
+    const px1 = watch(() => live.fieldVersion(1, 'px'));
+    const row1 = watch(() => live.rowVersion(1));
+    live.renew(0);
+    flushSync();
+    expect(live.rowVersion(1)).toBeUndefined();
+    expect(live.fieldVersion(1, 'px')).toBeUndefined();
+    expect(px1.runs()).toBe(2);
+    expect(row1.runs()).toBe(2);
+    // The readers now follow the fresh records.
+    live.patch(indexOf(rs), [[1, { px: 12 }]], rs, idOf);
+    flushSync();
+    expect(live.fieldVersion(1, 'px')).toBe(1);
+    expect(px1.runs()).toBe(3);
+    expect(row1.runs()).toBe(3);
+    px1.stop();
+    row1.stop();
+  });
+
+  it('keeps a flash that is still playing and drops the old ones', () => {
+    const live = createLiveRows();
+    const rs = rows();
+    live.flash({ rows: [1] }, rs, idOf, 1_000, undefined);
+    live.flash({ rows: [2], ms: 30_000 }, rs, idOf, 1_000, undefined);
+    live.flash({ rows: [3] }, rs, idOf, 20_000, undefined);
+    live.renew(20_500);
+    expect(live.cellFlash(1)).toBeNull();
+    expect(live.cellFlash(2)?.seq).toBe(1);
+    expect(live.cellFlash(3)?.seq).toBe(1);
+    // A dropped request starts over; a kept one counts on.
+    live.flash({}, rs, idOf, 21_000, undefined);
+    expect(live.cellFlash(1)?.seq).toBe(1);
+    expect(live.cellFlash(3)?.seq).toBe(2);
+  });
+});
