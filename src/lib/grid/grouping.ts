@@ -45,7 +45,7 @@ export type VisualRow =
 export function buildFlatRows(
   rows: GridRow[],
   groupBy: string[],
-  collapsed: Set<string>,
+  collapsed: ReadonlySet<string>,
 ): VisualRow[] {
   if (groupBy.length === 0) return rows.map((row) => ({ kind: 'data', row }) as VisualRow);
 

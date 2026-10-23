@@ -72,3 +72,35 @@ export function contentWidth(texts: Iterable<string>, measure: (text: string) =>
   for (const t of texts) max = Math.max(max, measure(t));
   return Math.ceil(max) + pad;
 }
+
+/** A fitColumns drag: every column's rendered width and floor at the start,
+    in display order, and which one is being dragged. */
+export interface FitDrag {
+  keys: string[];
+  widths: number[];
+  floors: number[];
+  at: number;
+}
+
+// Under fitColumns the widths always add up to the viewport, so dragging one
+// edge is a trade: the columns before it keep their widths, the dragged one
+// takes the pointer, and the ones after it share the difference in
+// proportion (never below their floors). The last column trades with the
+// ones before it instead. Every width is written back, so the layout renders
+// exactly these and the edge stays under the pointer.
+export function fitResize(f: FitDrag, want: number): WidthMap {
+  const n = f.keys.length;
+  const side = f.at < n - 1 ? 'after' : 'before';
+  const absorb = f.widths.flatMap((_, j) => ((side === 'after' ? j > f.at : j < f.at) ? [j] : []));
+  const room = f.widths.reduce((a, w, j) => a + (absorb.includes(j) || j === f.at ? w : 0), 0);
+  const minAbsorb = absorb.reduce((a, j) => a + f.floors[j], 0);
+  const R = Math.max(f.floors[f.at], Math.min(want, room - minAbsorb));
+  const share = absorb.reduce((a, j) => a + f.widths[j], 0);
+  const out: WidthMap = {};
+  f.keys.forEach((k, j) => {
+    if (j === f.at) out[k] = R;
+    else if (absorb.includes(j)) out[k] = Math.max(f.floors[j], Math.round((f.widths[j] * (room - R)) / share));
+    else out[k] = f.widths[j];
+  });
+  return out;
+}
