@@ -435,6 +435,7 @@ socket.onmessage = (e) =&gt; stream.push(JSON.parse(e.data).symbol, JSON.parse(e
         <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
         <tbody>
           <tr><td>centeredWindow</td><td><span class="type">(totalCount, centerIndex, visibleCount) =&gt; { start, end }</span></td><td>The <code>[start, end)</code> slice of <code>visibleCount</code> contiguous indices centred on <code>centerIndex</code>, clamped to bounds. Feed <code>levels.slice(start, end)</code> to <code>&lt;Grid rows&gt;</code> instead of scrolling — centring is array slicing, not scroll control. Even <code>visibleCount</code> puts the extra row on the lower-index side.</td></tr>
+          <tr><td>createLinger</td><td><span class="type">({ ms, key, onExpire? }) =&gt; Linger</span></td><td>Rows that leave a live list stay a moment: <code>update(rows)</code> returns the rows plus those that left within <code>ms</code>, each right after the row it followed; <code>leaving(row)</code> says which to style; <code>onExpire</code> asks for another <code>update</code> when one is due to go; <code>size</code>; <code>stop()</code>. For a filled or cancelled order seen going instead of vanishing.</td></tr>
           <tr><td>TradeTape</td><td><span class="type">new TradeTape(capacity?)</span></td><td>Capped ring buffer for a trade log — <code>push(trade)</code> O(1) regardless of session length, <code>toArray()</code> a fresh snapshot newest-first (call once per render), <code>size</code>/<code>capacity</code>, <code>clear()</code>. Default capacity 500. Unlike a price update, a trade is never coalesced — every one shows.</td></tr>
         </tbody>
       </table>
@@ -457,7 +458,7 @@ rows = tape.toArray();</code></pre>
 
       <!-- ============ TRADING ============ -->
       <h2 id="trading">Trading <span class="tag">bo-grid/trading</span></h2>
-      <p>Market-convention helpers for APAC trading screens. Pure functions only — no <code>ColumnDef</code> changes, no Grid/Cell wiring. Wire tone/formatting into a column via the <code>cell</code> snippet or a JS <code>render(ctx)</code> hook you already have. A <strong>separate import</strong> on its own budget (~1.5&nbsp;KB gzip) — adds nothing to the grid core.</p>
+      <p>Market-convention helpers for APAC trading screens. Pure functions only — no <code>ColumnDef</code> changes, no Grid/Cell wiring. Wire tone/formatting into a column via the <code>cell</code> snippet or a JS <code>render(ctx)</code> hook you already have. A <strong>separate import</strong> on its own budget (~2&nbsp;KB gzip) — adds nothing to the grid core.</p>
       <h3>Price-limit tone</h3>
       <p>The APAC convention: colour by position relative to the daily ceiling/floor/reference, not just up/down — a price pinned at the limit is a different signal from an ordinary move.</p>
       <table>
@@ -505,6 +506,16 @@ rows = tape.toArray();</code></pre>
       <div class="note">
         None of this needs Grid/Cell support — wire it into a <code>type: 'custom'</code> column's <code>cell</code> snippet (or a JS <code>render(ctx)</code> hook) exactly like any other custom cell. See the <strong>VN board</strong> demo, which composes it with <code>bo-grid/realtime</code>.
       </div>
+
+      <h3>Positions</h3>
+      <p>Positions from fills, on average cost: what a blotter's positions view shows.</p>
+      <table>
+        <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>createPositions</td><td><span class="type">() =&gt; PositionBook</span></td><td><code>fill({ symbol, side: 'buy' | 'sell', qty, price, fee? })</code> moves the symbol's position and returns it: <code>{ symbol, qty, avgPrice, realized, bought, sold }</code> (qty above 0 long, below 0 short). A fill against the position realizes P&amp;L on the closed part at the average price; one through flat opens the rest at the fill price; fees come off realized (a negative fee, a rebate, adds); fractional sizes that add up to flat are flat. <code>get(symbol)</code>, <code>all()</code>, <code>clear()</code>. An empty symbol, an unknown side, a quantity not above 0, or a price or fee that is not a number throws.</td></tr>
+          <tr><td>unrealizedPnl</td><td><span class="type">(position, price) =&gt; number</span></td><td>The open position marked at <code>price</code>. Keep the last price as a field of each position row and compute this in a <code>value</code> column: a <code>groupAgg: 'sum'</code> footer then follows every tick.</td></tr>
+        </tbody>
+      </table>
 
       <!-- ============ LADDER ============ -->
       <h2 id="ladder">Depth ladder <span class="tag">bo-grid/ladder</span></h2>
@@ -628,10 +639,11 @@ rows = tape.toArray();</code></pre>
           <span class="pill">CellRenderContext</span><span class="pill">AggKind</span><span class="pill">Candle</span><span class="pill">RowSource</span>
           <h3 style="font-size:14px">Realtime <span style="font-weight:400;color:var(--dim)">(bo-grid/realtime)</span></h3>
           <span class="pill">createTickStream</span><span class="pill">TickBuffer</span><span class="pill">createRowIndex</span><span class="pill">applyPatches</span>
-          <span class="pill">centeredWindow</span><span class="pill">TradeTape</span>
+          <span class="pill">centeredWindow</span><span class="pill">TradeTape</span><span class="pill">createLinger</span>
           <h3 style="font-size:14px">Trading <span style="font-weight:400;color:var(--dim)">(bo-grid/trading)</span></h3>
           <span class="pill">resolveTone</span><span class="pill">toneColor</span><span class="pill">vnBands</span><span class="pill">vnFuturesBands</span><span class="pill">vnTickSize</span>
           <span class="pill">roundToTick</span><span class="pill">fmtTradingPrice</span><span class="pill">sessionStateAt</span><span class="pill">sessionLabel</span>
+          <span class="pill">createPositions</span><span class="pill">unrealizedPnl</span>
           <h3 style="font-size:14px">Ladder <span style="font-weight:400;color:var(--dim)">(bo-grid/ladder)</span></h3>
           <span class="pill">DepthLadder</span><span class="pill">ladderPrices</span><span class="pill">ladderRows</span><span class="pill">midPrice</span><span class="pill">stepPrice</span><span class="pill">LadderAction</span>
           <h3 style="font-size:14px">Web component <span style="font-weight:400;color:var(--dim)">(bo-grid/element)</span></h3>

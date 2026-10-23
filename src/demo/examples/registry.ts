@@ -61,6 +61,13 @@ export const EXAMPLES: Example[] = [
     file: 'LiveBlotter',
   },
   {
+    id: 'orders',
+    title: 'Orders & positions',
+    blurb: 'Working orders with status chips; done orders linger before they go; positions and live P&L from the fills (bo-grid/realtime createLinger, bo-grid/trading createPositions).',
+    load: () => import('./Orders.svelte'),
+    file: 'Orders',
+  },
+  {
     id: 'blotter',
     title: 'Blotter',
     blurb: 'Execution blotter with merged cells — spanRows down repeated fills, colSpan for note rows.',
