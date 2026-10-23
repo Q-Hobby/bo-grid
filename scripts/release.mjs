@@ -1,4 +1,6 @@
 // Release helper: runs every quality gate, shows the tarball, then publishes.
+// CI does this on its own when a version bump merges to main
+// (.github/workflows/release.yml); this is the way by hand.
 // Usage:
 //   pnpm release          # run gates + publish to npm + tag
 //   pnpm release:dry      # run gates + `npm publish --dry-run` (no publish)

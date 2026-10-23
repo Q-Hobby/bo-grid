@@ -1,0 +1,110 @@
+name: release
+
+# Publishes to npm when the version in package.json on main is not on npm
+# yet, so merging a pull request that bumps the version (and dates its
+# CHANGELOG section) releases it. It runs once ci has passed on that commit:
+# every gate `pnpm release` runs by hand has run there. It builds dist/,
+# publishes with provenance, tags the commit vX.Y.Z and opens a GitHub
+# release with that version's CHANGELOG section. A version with a
+# pre-release suffix (2.4.0-beta.1) goes to the `next` dist-tag, not `latest`.
+#
+# Needs the NPM_TOKEN repository secret: an npm token allowed to publish
+# bo-grid (a granular access token, or an automation token). Without it the
+# run warns and publishes nothing; once it is set, run this workflow by hand
+# (Actions > release > Run workflow) to release a version already on main.
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    # By hand: only from main. Otherwise: after ci passed on a push to main.
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+      version: ${{ steps.check.outputs.version }}
+      dist-tag: ${{ steps.check.outputs.dist-tag }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - id: check
+        env:
+          HAS_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "dist-tag=next" ;; *) echo "dist-tag=latest" ;; esac >> "$GITHUB_OUTPUT"
+          if [ -n "$(npm view "$name@$version" version 2>/dev/null)" ]; then
+            echo "$name@$version is already on npm: nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_TOKEN" != "true" ]; then
+            echo "::warning::$name@$version is not on npm, but the NPM_TOKEN secret is not set. Add it under Settings > Secrets and variables > Actions, then run this workflow by hand."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Releasing $name@$version."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the tag and the GitHub release
+      id-token: write # npm provenance
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      # Before publishing: a version with no CHANGELOG section stops here.
+      - run: node scripts/release-notes.mjs "$VERSION" > "$RUNNER_TEMP/notes.md"
+      # prepublishOnly builds dist/ (pnpm package).
+      - run: npm publish --access public --provenance --tag "${{ needs.version.outputs.dist-tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIST_TAG: ${{ needs.version.outputs.dist-tag }}
+        run: |
+          tag="v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag is already tagged."
+          else
+            git tag "$tag"
+            git push origin "$tag"
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "The $tag release exists."
+          else
+            pre=""
+            if [ "$DIST_TAG" = next ]; then pre="--prerelease"; fi
+            gh release create "$tag" --title "$tag" --notes-file "$RUNNER_TEMP/notes.md" $pre
+          fi
