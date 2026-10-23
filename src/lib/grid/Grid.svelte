@@ -46,6 +46,7 @@
   import { dismissOnOutside } from './dismiss';
   import { RowState } from './rowstate.svelte';
   import { keyAction, type KeyState } from './keyboard';
+  import { TextMeter } from './textmeter';
 
   let {
     rows = [],
@@ -1410,37 +1411,11 @@
   // values no longer fit grows to them. Fonts and padding are read once per
   // column and theme.
   const AUTO_WIDTH_MS = 500;
-  let measureCtx: CanvasRenderingContext2D | null | undefined;
-  const cellMetrics = new Map<string, { font: string; pad: number }>();
+  const meter = new TextMeter();
   $effect(() => {
     void themeStyle;
-    cellMetrics.clear();
+    meter.reset();
   });
-  function metricsFor(col: ColumnDef, ci: number): { font: string; pad: number } | null {
-    const hit = cellMetrics.get(col.key);
-    if (hit) return hit;
-    const cell = viewportEl?.querySelector<HTMLElement>(`.spacer > .row > [aria-colindex="${ci + 1 + leadCols}"]`);
-    if (!cell) return null;
-    const text = cell.querySelector<HTMLElement>('.bo-cell-text, strong, .bo-cf-val') ?? cell;
-    const cs = getComputedStyle(cell);
-    const ts = getComputedStyle(text);
-    // From the longhands: Chrome returns an empty `font` shorthand for text with
-    // tabular figures (font-variant-numeric), which every numeric cell has.
-    const font = `${ts.fontStyle} ${ts.fontWeight} ${ts.fontSize} ${ts.fontFamily}`;
-    // +2 px: sub-pixel text and the ellipsis threshold.
-    const m = { font, pad: (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) + 2 };
-    cellMetrics.set(col.key, m);
-    return m;
-  }
-  function measureText(text: string, font: string): number {
-    if (measureCtx === undefined) measureCtx = document.createElement('canvas').getContext('2d');
-    if (measureCtx && typeof measureCtx.measureText === 'function') {
-      measureCtx.font = font;
-      const w = measureCtx.measureText(text)?.width;
-      if (typeof w === 'number') return w;
-    }
-    return text.length * 7.5; // no canvas (e.g. a DOM without one): a coarse estimate
-  }
   function measureAutoWidths(): void {
     if (!viewportEl || document.visibilityState === 'hidden') return;
     const data = renderItems.flatMap((it) => (it.kind === 'data' ? [it.row] : []));
@@ -1448,11 +1423,13 @@
     let next: Record<string, number> | null = null;
     cols.forEach((col, ci) => {
       if (!col.autoWidth || colState.widths[col.key] != null) return;
-      const m = metricsFor(col, ci);
+      const m = meter.metricsFor(col.key, () =>
+        viewportEl?.querySelector<HTMLElement>(`.spacer > .row > [aria-colindex="${ci + 1 + leadCols}"]`),
+      );
       if (!m) return;
       const need = contentWidth(
         data.map((row) => formatCell(col, cellValue(col, row), row)),
-        (t) => measureText(t, m.font),
+        (t) => meter.width(t, m.font),
         m.pad,
       );
       // The width it has now: the layout's when it computes widths, else its own.
