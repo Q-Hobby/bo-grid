@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, MIN_COL_WIDTH } from './sizing';
+import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, MIN_COL_WIDTH, fitResize } from './sizing';
 import type { ColumnDef } from './column';
 
 const col = (over: Partial<ColumnDef> & { key: string }): ColumnDef =>
@@ -111,5 +111,26 @@ describe('contentWidth', () => {
 
   it('is just the padding with nothing to measure', () => {
     expect(contentWidth([], () => 10, 18)).toBe(18);
+  });
+});
+
+describe('fitResize', () => {
+  const drag = (at: number) => ({ keys: ['a', 'b', 'c'], widths: [100, 100, 100], floors: [40, 40, 40], at });
+
+  it('the dragged column takes the pointer and the ones after it share the rest', () => {
+    expect(fitResize(drag(0), 160)).toEqual({ a: 160, b: 70, c: 70 });
+  });
+
+  it('keeps the columns before the dragged one as they are', () => {
+    expect(fitResize(drag(1), 140)).toEqual({ a: 100, b: 140, c: 60 });
+  });
+
+  it('the last column trades with the ones before it', () => {
+    expect(fitResize(drag(2), 160)).toEqual({ a: 70, b: 70, c: 160 });
+  });
+
+  it('never pushes a column below its floor, nor the dragged one below its own', () => {
+    expect(fitResize(drag(0), 1000)).toEqual({ a: 220, b: 40, c: 40 });
+    expect(fitResize(drag(0), 10)).toEqual({ a: 40, b: 130, c: 130 });
   });
 });

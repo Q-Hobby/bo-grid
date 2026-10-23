@@ -17,7 +17,7 @@
   import { buildTreeRows } from './tree';
   import { FlashTracker, FlashClock, FlashLoad } from './flash';
   import { parseClipboard, copyText, pastePlan, fillExtent, fillPlan } from './clipboard';
-  import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, type WidthMap } from './sizing';
+  import { applyWidths, applyAutoWidths, clampWidth, contentWidth, fitResize, isResizable, type FitDrag } from './sizing';
   import {
     passesFilters,
     isFilterActive,
@@ -600,7 +600,7 @@
     max?: number;
     /** fitColumns: every column's rendered width and floor at drag start, in
         display order, and which one is being dragged. */
-    fit?: { keys: string[]; widths: number[]; floors: number[]; at: number };
+    fit?: FitDrag;
   } | null = null;
   let justResized = false;
 
@@ -626,28 +626,6 @@
     if (!resize) return;
     const w = clampWidth(resize.startW + (e.clientX - resize.startX), resize.min, resize.max);
     colState.widths = resize.fit ? { ...colState.widths, ...fitResize(resize.fit, w) } : { ...colState.widths, [resize.key]: w };
-  }
-  // Under fitColumns the widths always add up to the viewport, so dragging one
-  // edge is a trade: the columns before it keep their widths, the dragged one
-  // takes the pointer, and the ones after it share the difference in
-  // proportion (never below their floors). The last column trades with the
-  // ones before it instead. Every width is written back, so the layout renders
-  // exactly these and the edge stays under the pointer.
-  function fitResize(f: { keys: string[]; widths: number[]; floors: number[]; at: number }, want: number): WidthMap {
-    const n = f.keys.length;
-    const side = f.at < n - 1 ? 'after' : 'before';
-    const absorb = f.widths.flatMap((_, j) => ((side === 'after' ? j > f.at : j < f.at) ? [j] : []));
-    const room = f.widths.reduce((a, w, j) => a + (absorb.includes(j) || j === f.at ? w : 0), 0);
-    const minAbsorb = absorb.reduce((a, j) => a + f.floors[j], 0);
-    const R = Math.max(f.floors[f.at], Math.min(want, room - minAbsorb));
-    const share = absorb.reduce((a, j) => a + f.widths[j], 0);
-    const out: WidthMap = {};
-    f.keys.forEach((k, j) => {
-      if (j === f.at) out[k] = R;
-      else if (absorb.includes(j)) out[k] = Math.max(f.floors[j], Math.round((f.widths[j] * (room - R)) / share));
-      else out[k] = f.widths[j];
-    });
-    return out;
   }
   function onResizeUp() {
     if (!resize) return;
