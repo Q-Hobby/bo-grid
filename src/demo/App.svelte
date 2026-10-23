@@ -72,7 +72,7 @@
   const FIGURES: Array<[string, string]> = [
     ['30,000', 'ticks a second, coalesced to one update a frame'],
     ['~1 ms', 'grid work per scroll step through 1,000 symbols'],
-    ['40 KB', 'gzip core, Svelte external, no runtime dependencies'],
+    ['46 KB', 'gzip core, Svelte external, no runtime dependencies'],
     ['$0', 'MIT licence, every feature included'],
   ];
 

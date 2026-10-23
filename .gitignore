@@ -2,6 +2,7 @@ node_modules/
 dist/
 demo-dist/
 lib-dist/
+lib-dist-grid/
 .svelte-kit/
 *.tgz
 coverage/
