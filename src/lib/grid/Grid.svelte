@@ -15,7 +15,6 @@
   import { aggregate, type AggResult } from './aggregate';
   import { buildFlatRows, buildLazyGroupRows, activeGroupsAt, type VisualRow, type GroupNode } from './grouping';
   import { buildTreeRows } from './tree';
-  import { moveIndex } from './reorder';
   import { FlashTracker, FlashClock, FlashLoad } from './flash';
   import { parseClipboard, isSingleCell } from './clipboard';
   import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, type WidthMap } from './sizing';
@@ -44,6 +43,7 @@
   import type { GridPropsDef } from './props';
   import { EditHistory } from './history';
   import { LiveRows } from './live.svelte';
+  import { ColumnState } from './columns.svelte';
 
   let {
     rows = [],
@@ -216,13 +216,11 @@
   const collapsed = new Set<string>();
   let collapsedVersion = $state(0);
 
-  // Column order (indices into `columns`); reordered by header drag-and-drop.
-  let order = $state<number[]>([]);
+  // Runtime column state (columns.svelte.ts): order, widths, autoWidth
+  // measurements, and columns hidden or pinned from the column menu.
+  const colState = new ColumnState(() => persistKey, () => columns);
   let dragSrc = $state(-1);
   let dragOver = $state(-1);
-
-  // User column-width overrides (drag-to-resize), keyed by column key.
-  let widths = $state<WidthMap>({});
 
   // Per-column filter text (filterRow), keyed by column key.
   let colFilters = $state<Record<string, string>>({});
@@ -347,12 +345,13 @@
     onRowSelectionChange?.([...selectedRows]);
   }
 
-  const ordered = $derived(order.length === columns.length ? order.map((i) => columns[i]) : columns);
+  const ordered = $derived(
+    colState.order.length === columns.length ? colState.order.map((i) => columns[i]) : columns,
+  );
   // Columns hidden at runtime via the column menu, unioned with the controlled
   // `hiddenColumns` prop.
-  let runtimeHidden = $state<string[]>([]);
   const effectiveHidden = $derived(
-    runtimeHidden.length ? [...new Set([...hiddenColumns, ...runtimeHidden])] : hiddenColumns,
+    colState.hidden.length ? [...new Set([...hiddenColumns, ...colState.hidden])] : hiddenColumns,
   );
   // Drop hidden columns. Applied after ordering so `order` stays indexed over the
   // full column set.
@@ -363,15 +362,14 @@
   // pin-arrange. Both are no-ops by default, so the grid stays fit-to-width.
   // autoWidth: content widths measured on screen (grow-only, not persisted),
   // layered under the user's own widths.
-  let autoMeasured = $state<Record<string, number>>({});
-  const sized = $derived(applyAutoWidths(applyWidths(visible, widths), autoMeasured, widths));
-  // Runtime pin overrides (column menu) layered on top of static `col.pinned`.
-  let pinOverrides = $state<Record<string, 'left' | 'right' | false>>({});
-  const pinnedSized = $derived(
-    Object.keys(pinOverrides).length
-      ? sized.map((c) => (c.key in pinOverrides ? { ...c, pinned: pinOverrides[c.key] } : c))
-      : sized,
+  const sized = $derived(
+    applyAutoWidths(applyWidths(visible, colState.widths), colState.autoMeasured, colState.widths),
   );
+  // Runtime pin overrides (column menu) layered on top of static `col.pinned`.
+  const pinnedSized = $derived.by(() => {
+    const pins = colState.pins;
+    return Object.keys(pins).length ? sized.map((c) => (c.key in pins ? { ...c, pinned: pins[c.key] } : c)) : sized;
+  });
   // Derived flash keeps its last-seen value per (row id, column key) — a cell
   // can't hold it, because the row loop is keyed by visual index and recycles
   // mounted cells across rows as you scroll.
@@ -588,59 +586,23 @@
   // Windowed data source controller (only in source mode).
   const controller = $derived(source ? new RowSourceController(source) : null);
 
-  $effect(() => {
-    columns;
-    untrack(() => {
-      const base = columns.map((_, i) => i);
-      const saved = loadSaved(storageKey('order', persistKey));
-      order = Array.isArray(saved) && saved.length === base.length && base.every((i) => saved.includes(i)) ? saved : base;
-    });
-  });
-
   function moveColumn(from: number, to: number) {
-    const next = moveIndex(order, from, to);
-    if (next === order) return;
-    order = next;
+    colState.move(from, to);
     sel.clear();
     editing = null;
-    persistOrder(next);
-    onColumnReorder?.(next.map((i) => columns[i].key));
+    onColumnReorder?.(colState.order.map((i) => columns[i].key));
   }
-  function persistOrder(next: number[]): void {
-    saveValue(storageKey('order', persistKey), next);
-  }
-
-  // ---- Column resizing -------------------------------------------------------
-  function persistWidths() {
-    saveValue(storageKey('widths', persistKey), widths);
-  }
-
-  $effect(() => {
-    const key = storageKey('widths', persistKey);
-    untrack(() => {
-      const saved = loadSaved(key);
-      if (saved && typeof saved === 'object') widths = saved as WidthMap;
-    });
-  });
 
   // ---- Runtime column visibility (column menu) ------------------------------
-  $effect(() => {
-    const key = storageKey('hidden', persistKey);
-    untrack(() => {
-      const saved = loadSaved(key);
-      if (Array.isArray(saved)) runtimeHidden = saved.filter((k) => typeof k === 'string');
-    });
-  });
   function setRuntimeHidden(next: string[]): void {
-    runtimeHidden = next;
-    saveValue(storageKey('hidden', persistKey), next);
+    colState.setHidden(next);
     onColumnVisibilityChange?.(effectiveHidden);
   }
   function hideColumn(key: string): void {
-    if (!runtimeHidden.includes(key)) setRuntimeHidden([...runtimeHidden, key]);
+    if (!colState.hidden.includes(key)) setRuntimeHidden([...colState.hidden, key]);
   }
   function showColumn(key: string): void {
-    if (runtimeHidden.includes(key)) setRuntimeHidden(runtimeHidden.filter((k) => k !== key));
+    if (colState.hidden.includes(key)) setRuntimeHidden(colState.hidden.filter((k) => k !== key));
   }
   function toggleColumnVisible(key: string): void {
     if (effectiveHidden.includes(key)) showColumn(key);
@@ -672,21 +634,6 @@
     };
   });
 
-  // ---- Runtime column pinning (column menu) ---------------------------------
-  $effect(() => {
-    const key = storageKey('pin', persistKey);
-    untrack(() => {
-      const saved = loadSaved(key);
-      if (saved && typeof saved === 'object') pinOverrides = saved as typeof pinOverrides;
-    });
-  });
-  function setPinOverride(key: string, side: 'left' | 'right' | false): void {
-    pinOverrides = { ...pinOverrides, [key]: side };
-    persistPins();
-  }
-  function persistPins(): void {
-    saveValue(storageKey('pin', persistKey), pinOverrides);
-  }
   // ---- Runtime row pinning (`rowPinning`) ------------------------------------
   // Ids pinned from the row menu or the API, in pin order. The rows stay in
   // the body; the area above the scroll shows them as well, after any
@@ -733,11 +680,6 @@
     return out;
   });
 
-  // Effective pin side for a column key: runtime override, else static config.
-  function pinSideOf(col: ColumnDef): 'left' | 'right' | false {
-    if (col.key in pinOverrides) return pinOverrides[col.key];
-    return col.pinned === true ? 'left' : col.pinned || false;
-  }
 
   let resize: {
     key: string;
@@ -772,7 +714,7 @@
   function onResizeMove(e: PointerEvent) {
     if (!resize) return;
     const w = clampWidth(resize.startW + (e.clientX - resize.startX), resize.min, resize.max);
-    widths = resize.fit ? { ...widths, ...fitResize(resize.fit, w) } : { ...widths, [resize.key]: w };
+    colState.widths = resize.fit ? { ...colState.widths, ...fitResize(resize.fit, w) } : { ...colState.widths, [resize.key]: w };
   }
   // Under fitColumns the widths always add up to the viewport, so dragging one
   // edge is a trade: the columns before it keep their widths, the dragged one
@@ -803,19 +745,14 @@
     justResized = true; // swallow the click that ends this drag (no sort toggle)
     window.removeEventListener('pointermove', onResizeMove);
     window.removeEventListener('pointerup', onResizeUp);
-    persistWidths();
-    onColumnResize?.(key, widths[key]);
+    colState.saveWidths();
+    onColumnResize?.(key, colState.widths[key]);
   }
   /** Double-click a resize grip to clear the override and restore the default. */
   function resetWidth(ci: number, e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const key = cols[ci].key;
-    if (widths[key] == null) return;
-    const next = { ...widths };
-    delete next[key];
-    widths = next;
-    persistWidths();
+    colState.resetWidth(cols[ci].key);
   }
 
   // Cycle one key: undefined → asc → desc → removed.
@@ -1566,8 +1503,7 @@
       }
     }
     const w = clampWidth(Math.round(maxLen * CHAR_PX) + PAD, col.minWidth, col.maxWidth);
-    widths = { ...widths, [col.key]: w };
-    persistWidths();
+    colState.setWidth(col.key, w);
     onColumnResize?.(col.key, w);
   }
 
@@ -1664,7 +1600,7 @@
     if (data.length === 0) return;
     let next: Record<string, number> | null = null;
     cols.forEach((col, ci) => {
-      if (!col.autoWidth || widths[col.key] != null) return;
+      if (!col.autoWidth || colState.widths[col.key] != null) return;
       const m = metricsFor(col, ci);
       if (!m) return;
       const need = contentWidth(
@@ -1674,9 +1610,9 @@
       );
       // The width it has now: the layout's when it computes widths, else its own.
       const cur = explicitWidths ? layout.info[ci].width : col.flex ? (col.minWidth ?? 0) : (col.width ?? 96);
-      if (need > cur && need > (autoMeasured[col.key] ?? 0)) (next ??= { ...autoMeasured })[col.key] = need;
+      if (need > cur && need > (colState.autoMeasured[col.key] ?? 0)) (next ??= { ...colState.autoMeasured })[col.key] = need;
     });
-    if (next) autoMeasured = next;
+    if (next) colState.autoMeasured = next;
   }
   $effect(() => {
     if (!columns.some((c) => c.autoWidth)) return;
@@ -1701,9 +1637,9 @@
     return {
       version: GRID_STATE_VERSION,
       order: ordered.map((c) => c.key),
-      widths: { ...widths },
-      hidden: [...runtimeHidden],
-      pinned: { ...pinOverrides },
+      widths: { ...colState.widths },
+      hidden: [...colState.hidden],
+      pinned: { ...colState.pins },
       sorts: sorts.map((s) => ({ ...s })),
       filters: { ...activeColumnFilters },
       ...(rowPinning || pinnedIds.length > 0 ? { pinnedRows: [...pinnedIds] } : {}),
@@ -1714,14 +1650,11 @@
     const st = reconcileState(state, columns.map((c) => c.key));
     if (!st) return false;
     const indexOf = new Map(columns.map((c, i) => [c.key, i] as const));
-    const nextOrder = st.order.map((k) => indexOf.get(k) as number);
-    order = nextOrder;
-    persistOrder(nextOrder);
-    widths = st.widths;
-    persistWidths();
+    colState.setOrder(st.order.map((k) => indexOf.get(k) as number));
+    colState.widths = st.widths;
+    colState.saveWidths();
     setRuntimeHidden(st.hidden);
-    pinOverrides = st.pinned;
-    persistPins();
+    colState.setPins(st.pinned);
     setSorts(st.sorts);
     setColumnFilters(st.filters);
     if (st.pinnedRows) setPinnedIds(st.pinnedRows);
@@ -1755,10 +1688,10 @@
     if (filterMenu && col.type !== 'sparkline' && col.filter !== false) {
       items.push({ label: L.filterEllipsis, onSelect: () => void openFilterMenu(col, anchor) });
     }
-    const side = pinSideOf(col);
-    if (side !== 'left') items.push({ label: L.pinLeft, onSelect: () => setPinOverride(col.key, 'left') });
-    if (side !== 'right') items.push({ label: L.pinRight, onSelect: () => setPinOverride(col.key, 'right') });
-    if (side) items.push({ label: L.unpin, onSelect: () => setPinOverride(col.key, false) });
+    const side = colState.pinSideOf(col.key, col.pinned);
+    if (side !== 'left') items.push({ label: L.pinLeft, onSelect: () => colState.setPin(col.key, 'left') });
+    if (side !== 'right') items.push({ label: L.pinRight, onSelect: () => colState.setPin(col.key, 'right') });
+    if (side) items.push({ label: L.unpin, onSelect: () => colState.setPin(col.key, false) });
     if (isResizable(col, resizable)) items.push({ label: L.autosize, onSelect: () => autosizeColumn(col) });
     items.push({ label: L.hideColumn, onSelect: () => hideColumn(col.key) });
     return items;
