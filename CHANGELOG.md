@@ -28,6 +28,13 @@ All notable changes to this project are documented here. Format follows
   over the rows**, so a row never moves just as it is clicked. The pause ends
   when the pointer leaves, the window loses focus or the tab is hidden; set
   `pauseOnHover={false}` for a wall screen nobody points at.
+- **`updateMs`: a column repaints at most every so many ms.** Under
+  `api.patchRows` each tick is still written into the row at once (sort,
+  filters, totals and other columns see it), but the cell shows the latest
+  value on its next beat, and the first change after a quiet spell at once.
+  For values that change on every trade and are read at a glance: on the Price
+  board, total volume and foreign buy and sell at 250 ms took 4–6% off the
+  frame at 10,000 and 30,000 events/s, and the board demo now uses it.
 
 ### Performance
 

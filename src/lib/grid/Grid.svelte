@@ -1633,6 +1633,25 @@
 
   // ---- Realtime path (`api.patchRows`, `api.flashCells`; live.svelte.ts) -----
   const live = createLiveRows();
+  $effect(() => () => live.stop());
+  // `updateMs`: the fields that repaint at most every so many ms, for
+  // live.patch. A field waits only if every column on screen that shows it
+  // sets a rate; the shortest wins.
+  const updateRates = $derived.by(() => {
+    let rates: Map<string, number> | undefined;
+    const now = new Set<string>();
+    for (const c of cols) {
+      if (c.value) continue;
+      if (!(c.updateMs && c.updateMs > 0)) {
+        now.add(c.key);
+        continue;
+      }
+      rates ??= new Map();
+      rates.set(c.key, Math.min(rates.get(c.key) ?? Infinity, c.updateMs));
+    }
+    if (rates) for (const key of now) rates.delete(key);
+    return rates?.size ? rates : undefined;
+  });
   // The same Map across adds and removes (syncRows updates it in place), so
   // readers that must follow `rows` read `rows` too. Reading the length here
   // makes a $state array grown or shrunk in place (push, splice) re-run this:
@@ -1821,6 +1840,7 @@
               }
               if (fields !== undefined) queueLive(changed, fields);
             },
+        updateRates,
       );
     } finally {
       if (store) {

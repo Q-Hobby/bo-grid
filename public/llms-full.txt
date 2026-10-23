@@ -230,6 +230,8 @@ interface ColBase {
   showChange?: boolean | { format?: (delta: number, row: GridRow) => string; ms?: number };
                               // '▲0.15' / '▼0.15' beside the value, held then faded (default 1000 ms), in the
                               // column's format; gives way first in a narrow column; use on 1–2 key columns only
+  updateMs?: number;          // repaint at most every N ms under patchRows (the row is written at once); for
+                              // values that change every tick and are read at a glance (total volume)
 
   sortable?: boolean;         // default true
   compare?: (a: unknown, b: unknown) => number;

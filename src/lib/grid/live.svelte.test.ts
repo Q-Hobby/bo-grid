@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import type { GridRow } from './column';
 import { createLiveRows } from './live.svelte';
@@ -148,5 +148,72 @@ describe('createLiveRows: renew', () => {
     live.flash({}, rs, idOf, 21_000, undefined);
     expect(live.cellFlash(1)?.seq).toBe(1);
     expect(live.cellFlash(3)?.seq).toBe(2);
+  });
+});
+
+describe('createLiveRows: update rates', () => {
+  afterEach(() => vi.useRealTimers());
+  const rates = new Map([['vol', 250]]);
+
+  it('shows the first change after a quiet spell at once, then at most one repaint per beat', () => {
+    vi.useFakeTimers({ now: 1000 });
+    const live = createLiveRows();
+    const rs = rows();
+    const vol1 = watch(() => live.fieldVersion(1, 'vol'));
+    live.patch(indexOf(rs), [[1, { vol: 101 }]], rs, idOf, undefined, rates);
+    flushSync();
+    expect(live.fieldVersion(1, 'vol')).toBe(1);
+    vi.advanceTimersByTime(100);
+    live.patch(indexOf(rs), [[1, { vol: 102 }]], rs, idOf, undefined, rates);
+    vi.advanceTimersByTime(50);
+    live.patch(indexOf(rs), [[1, { vol: 103 }]], rs, idOf, undefined, rates);
+    flushSync();
+    // Written at once, shown on the beat (250 ms after the last repaint).
+    expect(rs[0].vol).toBe(103);
+    expect(live.fieldVersion(1, 'vol')).toBe(1);
+    vi.advanceTimersByTime(99);
+    expect(live.fieldVersion(1, 'vol')).toBe(1);
+    vi.advanceTimersByTime(1);
+    flushSync();
+    expect(live.fieldVersion(1, 'vol')).toBe(2);
+    expect(vol1.runs()).toBe(3);
+    vol1.stop();
+  });
+
+  it('a row waits for its row version only when every field that changed waits', () => {
+    vi.useFakeTimers({ now: 1000 });
+    const live = createLiveRows();
+    const rs = rows();
+    live.patch(indexOf(rs), [[1, { vol: 101 }]], rs, idOf, undefined, rates);
+    expect(live.rowVersion(1)).toBe(1);
+    vi.setSystemTime(1100);
+    live.patch(indexOf(rs), [[1, { vol: 102 }]], rs, idOf, undefined, rates);
+    expect(live.rowVersion(1)).toBe(1);
+    live.patch(indexOf(rs), [[1, { px: 11 }]], rs, idOf, undefined, rates);
+    expect(live.fieldVersion(1, 'px')).toBe(1);
+    expect(live.rowVersion(1)).toBe(2);
+    expect(live.fieldVersion(1, 'vol')).toBe(1);
+    vi.advanceTimersByTime(150);
+    expect(live.fieldVersion(1, 'vol')).toBe(2);
+  });
+
+  it('shows every change of the call that ends a quiet spell', () => {
+    vi.useFakeTimers({ now: 1000 });
+    const live = createLiveRows();
+    const rs = rows();
+    live.patch(indexOf(rs), [[1, { vol: 101 }], [2, { vol: 201 }], [3, { vol: 301 }]], rs, idOf, undefined, rates);
+    expect([1, 2, 3].map((id) => live.fieldVersion(id, 'vol'))).toEqual([1, 1, 1]);
+  });
+
+  it('stop() drops what waits', () => {
+    vi.useFakeTimers({ now: 1000 });
+    const live = createLiveRows();
+    const rs = rows();
+    live.patch(indexOf(rs), [[1, { vol: 101 }]], rs, idOf, undefined, rates);
+    vi.setSystemTime(1100);
+    live.patch(indexOf(rs), [[1, { vol: 102 }]], rs, idOf, undefined, rates);
+    live.stop();
+    vi.advanceTimersByTime(1000);
+    expect(live.fieldVersion(1, 'vol')).toBe(1);
   });
 });
