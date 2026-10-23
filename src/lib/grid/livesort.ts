@@ -21,20 +21,38 @@ export function rowOrder(
   return (a, b) => compareBySorts(a, b, sorts, colOf) || position(a) - position(b);
 }
 
+/** Which rows a merge took out of the view and which it brought in. */
+export interface ViewDelta<T> {
+  left: T[];
+  joined: T[];
+}
+
 /** The view after `changed` rows moved: `view` without them, plus those that
     pass, merged in by `order`. `view` must already be in `order` and hold
     only rows that passed when it was built; changed rows that were filtered
-    out may come back in. */
+    out may come back in. With `delta`, also reports the rows that left the
+    view and the rows that joined it. */
 export function mergeChanged<T>(
   view: readonly T[],
   changed: ReadonlySet<T>,
   passes: ((row: T) => boolean) | null,
   order: (a: T, b: T) => number,
+  delta?: ViewDelta<T>,
 ): T[] {
   const kept: T[] = [];
-  for (const row of view) if (!changed.has(row)) kept.push(row);
+  const wasIn = delta ? new Set<T>() : null;
+  for (const row of view) {
+    if (!changed.has(row)) kept.push(row);
+    else wasIn?.add(row);
+  }
   const moved: T[] = [];
-  for (const row of changed) if (!passes || passes(row)) moved.push(row);
+  for (const row of changed) {
+    if (!passes || passes(row)) {
+      moved.push(row);
+      if (wasIn && !wasIn.delete(row)) delta!.joined.push(row);
+    }
+  }
+  if (wasIn) for (const row of wasIn) delta!.left.push(row);
   if (moved.length === 0) return kept;
   moved.sort(order);
   // Each moved row finds its place by binary search in what is left of

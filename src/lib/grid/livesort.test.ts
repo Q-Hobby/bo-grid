@@ -73,3 +73,27 @@ describe('mergeChanged', () => {
     expect(mergeChanged(rows, new Set([rows[0]]), () => false, (x, y) => x.v - y.v)).toEqual([rows[1]]);
   });
 });
+
+describe('mergeChanged delta', () => {
+  it('reports exactly the rows that left the view and the rows that joined', () => {
+    const rand = prng(5);
+    for (let round = 0; round < 100; round++) {
+      const rows = Array.from({ length: 50 }, (_, i) => ({ id: i, v: Math.floor(rand() * 20) }));
+      const passes = (r: { v: number }) => r.v >= 5;
+      const order = (a: { id: number; v: number }, b: { id: number; v: number }) => a.v - b.v || a.id - b.id;
+      const view = rows.filter(passes).sort(order);
+      const changed = new Set<(typeof rows)[number]>();
+      for (let k = 0; k < 10; k++) {
+        const r = rows[Math.floor(rand() * rows.length)];
+        r.v = Math.floor(rand() * 20);
+        changed.add(r);
+      }
+      const delta = { left: [] as typeof rows, joined: [] as typeof rows };
+      const next = mergeChanged(view, changed, passes, order, delta);
+      const before = new Set(view);
+      const after = new Set(next);
+      expect(new Set(delta.left)).toEqual(new Set(view.filter((r) => !after.has(r))));
+      expect(new Set(delta.joined)).toEqual(new Set(next.filter((r) => !before.has(r))));
+    }
+  });
+});

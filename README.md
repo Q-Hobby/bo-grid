@@ -11,7 +11,7 @@ element for every other framework.
 
 [![npm](https://img.shields.io/npm/v/bo-grid?color=f2a93b&label=npm)](https://www.npmjs.com/package/bo-grid)
 [![CI](https://github.com/bonguynvan/bo-grid/actions/workflows/ci.yml/badge.svg)](https://github.com/bonguynvan/bo-grid/actions/workflows/ci.yml)
-[![core size](https://img.shields.io/badge/core-~45%20KB%20gzip-34d399)](./BENCHMARKS.md)
+[![core size](https://img.shields.io/badge/core-~46%20KB%20gzip-34d399)](./BENCHMARKS.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![Sponsor](https://img.shields.io/badge/sponsor-GitHub-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/bonguynvan)
 
@@ -34,7 +34,7 @@ element for every other framework.
   formatting, and order book, price ladder and time-and-sales helpers.
 - **Complete.** Sorting, filtering, grouping, pivot, tree data, editing,
   clipboard and Excel export, all in one MIT package.
-- **Small and SSR-safe.** About 45 KB gzip, no runtime dependencies, and clean
+- **Small and SSR-safe.** About 46 KB gzip, no runtime dependencies, and clean
   server rendering in SvelteKit.
 - **Accessible.** A full keyboard model with grid and treegrid semantics.
 

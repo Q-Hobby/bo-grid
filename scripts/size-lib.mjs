@@ -6,7 +6,9 @@
 // code-splits into its own chunk and a consumer only downloads it on use. To
 // reflect that, the budget counts the EAGER core only — the entry plus the
 // chunks it statically imports — and reports lazy chunks separately.
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync } from 'node:fs';
+import { build } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { gzipSync } from 'node:zlib';
 
 const DIR = 'lib-dist';
@@ -82,6 +84,7 @@ for (const [name, kb, ceiling] of rows) {
   failed ||= !ok;
   console.log(`  ${ok ? '✓' : '✗'} ${name}  ${kb.toFixed(2)} KB  (regression ceiling ${ceiling} KB)`);
 }
+console.log(`  · Grid only (import { Grid }, the rest tree-shaken): ${(await gridOnlyKb()).toFixed(2)} KB`);
 if (lazy.length) {
   console.log(`  · lazy (loaded on use): ${lazyJs.toFixed(2)} KB`);
   for (const [f, kb] of lazy) console.log(`      ${f.replace(/-[^.]+(?=\.js$)/, '')}  ${kb.toFixed(2)} KB`);
@@ -92,3 +95,36 @@ if (failed) {
   process.exit(1);
 }
 console.log('\n✓ no size regression');
+
+/** What an app that imports only the component ships: a separate build, so
+    its chunks do not change how the full API above is split. */
+async function gridOnlyKb() {
+  const out = 'lib-dist-grid';
+  await build({
+    configFile: false,
+    logLevel: 'silent',
+    plugins: [svelte()],
+    publicDir: false,
+    build: {
+      outDir: out,
+      emptyOutDir: true,
+      minify: 'esbuild',
+      lib: { entry: { grid: 'scripts/size-entry-grid.ts' }, formats: ['es'] },
+      rollupOptions: { external: ['svelte', /^svelte\//, 'xlsx'] },
+    },
+  });
+  const files = readdirSync(out).filter((f) => f.endsWith('.js'));
+  const seen = new Set();
+  const queue = ['grid.js'];
+  while (queue.length) {
+    const f = queue.pop();
+    if (seen.has(f) || !files.includes(f)) continue;
+    seen.add(f);
+    for (const d of staticDeps(readFileSync(`${out}/${f}`, 'utf8'))) queue.push(d);
+  }
+  let kb = 0;
+  for (const f of seen) kb += gzipKb(`${out}/${f}`);
+  rmSync(out, { recursive: true, force: true });
+  return kb;
+}
+

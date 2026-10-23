@@ -398,7 +398,7 @@ document.body.append(createBoGrid(config));</code></pre>
 
       <!-- ============ REALTIME ============ -->
       <h2 id="realtime">Realtime <span class="tag">bo-grid/realtime</span></h2>
-      <p>The pipeline between a market-data socket and the grid. A feed pushes far more messages than a screen can show; writing each one straight into reactive state means thousands of updates to paint 60 frames. This coalesces raw messages per key (cheap, no reactive writes), then drains a bounded slice once per animation frame. A <strong>separate import</strong> on its own size budget — it adds nothing to the grid core (~1.6&nbsp;KB gzip), and it is framework-agnostic: the frame scheduler is injectable.</p>
+      <p>The pipeline between a market-data socket and the grid. A feed pushes far more messages than a screen can show; writing each one straight into reactive state means thousands of updates to paint 60 frames. This coalesces raw messages per key (cheap, no reactive writes), then drains a bounded slice once per animation frame. A <strong>separate import</strong> on its own size budget — it adds nothing to the grid core (~2&nbsp;KB gzip), and it is framework-agnostic: the frame scheduler is injectable.</p>
       <table>
         <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
         <tbody>
@@ -452,7 +452,7 @@ rows = tape.toArray();</code></pre>
 
       <!-- ============ TRADING ============ -->
       <h2 id="trading">Trading <span class="tag">bo-grid/trading</span></h2>
-      <p>Market-convention helpers for APAC trading screens. Pure functions only — no <code>ColumnDef</code> changes, no Grid/Cell wiring. Wire tone/formatting into a column via the <code>cell</code> snippet or a JS <code>render(ctx)</code> hook you already have. A <strong>separate import</strong> on its own budget (~1&nbsp;KB gzip) — adds nothing to the grid core.</p>
+      <p>Market-convention helpers for APAC trading screens. Pure functions only — no <code>ColumnDef</code> changes, no Grid/Cell wiring. Wire tone/formatting into a column via the <code>cell</code> snippet or a JS <code>render(ctx)</code> hook you already have. A <strong>separate import</strong> on its own budget (~1.5&nbsp;KB gzip) — adds nothing to the grid core.</p>
       <h3>Price-limit tone</h3>
       <p>The APAC convention: colour by position relative to the daily ceiling/floor/reference, not just up/down — a price pinned at the limit is a different signal from an ordinary move.</p>
       <table>
