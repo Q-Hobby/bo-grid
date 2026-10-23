@@ -16,7 +16,7 @@
   import { buildFlatRows, buildLazyGroupRows, activeGroupsAt, type VisualRow, type GroupNode } from './grouping';
   import { buildTreeRows } from './tree';
   import { FlashTracker, FlashClock, FlashLoad } from './flash';
-  import { parseClipboard, isSingleCell } from './clipboard';
+  import { parseClipboard, copyText, pastePlan, fillExtent, fillPlan } from './clipboard';
   import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, type WidthMap } from './sizing';
   import {
     passesFilters,
@@ -1381,15 +1381,7 @@
     filling = true;
   }
   // The rectangle the fill drag currently covers (extends down/right only).
-  const fillRange = $derived.by(() => {
-    if (!filling || !fillSource || !fillTo) return null;
-    return {
-      r0: fillSource.r0,
-      c0: fillSource.c0,
-      r1: Math.max(fillSource.r1, fillTo.r),
-      c1: Math.max(fillSource.c1, fillTo.c),
-    };
-  });
+  const fillRange = $derived(filling && fillSource && fillTo ? fillExtent(fillSource, fillTo) : null);
   function inFillPreview(r: number, c: number): boolean {
     const fr = fillRange;
     return !!fr && r >= fr.r0 && r <= fr.r1 && c >= fr.c0 && c <= fr.c1 && !sel.contains(r, c);
@@ -1402,24 +1394,16 @@
     const ft = fillTo;
     fillTo = null;
     fillSource = null;
-    if (!b || !ft) return;
-    const r1 = Math.max(b.r1, ft.r);
-    const c1 = Math.max(b.c1, ft.c);
-    if (r1 === b.r1 && c1 === b.c1) return; // no extension
-    const srcRows = b.r1 - b.r0 + 1;
-    const srcCols = b.c1 - b.c0 + 1;
+    const plan = b && ft ? fillPlan(b, ft) : null;
+    if (!plan) return;
     history.batch(() => {
-      for (let r = b.r0; r <= r1; r++) {
-        for (let c = b.c0; c <= c1; c++) {
-          if (r <= b.r1 && c <= b.c1) continue; // skip the source block
-          const srcRow = dataAt(b.r0 + ((r - b.r0) % srcRows));
-          if (!srcRow) continue;
-          writeCell(r, c, String(srcRow[cols[b.c0 + ((c - b.c0) % srcCols)].key] ?? ''));
-        }
+      for (const w of plan.writes) {
+        const srcRow = dataAt(w.fromR);
+        if (srcRow) writeCell(w.r, w.c, String(srcRow[cols[w.fromC].key] ?? ''));
       }
     });
-    sel.anchor = { r: b.r0, c: b.c0 };
-    sel.focus = { r: r1, c: c1 };
+    sel.anchor = { r: plan.extent.r0, c: plan.extent.c0 };
+    sel.focus = { r: plan.extent.r1, c: plan.extent.c1 };
   }
 
   // Right-click row menu (floating).
@@ -1764,21 +1748,13 @@
   async function copySelection() {
     const b = sel.bounds;
     if (!b) return;
-    const lines: string[] = [];
-    const rEnd = Math.min(b.r1, rowCount - 1);
-    const cEnd = Math.min(b.c1, cols.length - 1);
-    for (let r = b.r0; r <= rEnd; r++) {
-      const row = dataAt(r);
-      if (!row) continue;
-      const cells: string[] = [];
-      for (let c = b.c0; c <= cEnd; c++) {
-        const col = cols[c];
-        cells.push(col.type === 'sparkline' || col.type === 'custom' ? '' : formatCell(col, cellValue(col, row), row));
-      }
-      lines.push(cells.join('\t'));
-    }
+    const text = copyText(b, rowCount, cols.length, (r) => !!dataAt(r), (r, c) => {
+      const col = cols[c];
+      const row = dataAt(r) as GridRow;
+      return col.type === 'sparkline' || col.type === 'custom' ? '' : formatCell(col, cellValue(col, row), row);
+    });
     try {
-      await navigator.clipboard?.writeText(lines.join('\n'));
+      await navigator.clipboard?.writeText(text);
     } catch {
       /* clipboard unavailable — ignore */
     }
@@ -1796,36 +1772,16 @@
     }
     const grid = parseClipboard(text);
     if (grid.length === 0) return;
-
-    const single = isSingleCell(grid);
-    // Single value fills the whole selection (Excel behaviour); a block
-    // pastes from the top-left anchor, clamped to the grid bounds.
-    const r0 = anchor.r0;
-    const c0 = anchor.c0;
-    const rSpan = single ? anchor.r1 - anchor.r0 + 1 : grid.length;
+    // A single value fills the selection; a block pastes from its top-left.
+    const plan = pastePlan(grid, anchor, rowCount, cols.length);
     let wrote = 0;
     history.batch(() => {
-      for (let dr = 0; dr < rSpan; dr++) {
-        const r = r0 + dr;
-        if (r > rowCount - 1) break;
-        const srcRow = single ? grid[0] : grid[dr];
-        const cSpan = single ? anchor.c1 - anchor.c0 + 1 : srcRow.length;
-        for (let dc = 0; dc < cSpan; dc++) {
-          const c = c0 + dc;
-          if (c > cols.length - 1) break;
-          const raw = single ? grid[0][0] : (srcRow[dc] ?? '');
-          if (writeCell(r, c, raw)) wrote++;
-        }
-      }
+      for (const w of plan.writes) if (writeCell(w.r, w.c, w.raw)) wrote++;
     });
     // Surface the pasted region as the new selection so it's visible.
     if (wrote > 0) {
-      const rEnd = Math.min(r0 + rSpan - 1, rowCount - 1);
-      const cEnd = single
-        ? anchor.c1
-        : Math.min(c0 + Math.max(...grid.map((g) => g.length)) - 1, cols.length - 1);
-      sel.start(r0, c0);
-      sel.extendTo(rEnd, cEnd);
+      sel.start(plan.extent.r0, plan.extent.c0);
+      sel.extendTo(plan.extent.r1, plan.extent.c1);
     }
   }
 
