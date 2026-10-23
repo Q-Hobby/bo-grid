@@ -72,7 +72,8 @@ const WORKLOADS = [
   { name: 'live: board 10k ev/s (fade)', motion: 'fade', run: (page) => live(page, 10_000) },
 ]
   .filter((w) => !args.only || String(args.only).split(',').some((s) => w.name.includes(s)))
-  .map((w) => ({ ...w, rounds: w.gate ? ROUNDS : LIVE_ROUNDS }));
+  .map((w) => ({ ...w, rounds: w.gate ? ROUNDS : LIVE_ROUNDS }))
+  .filter((w) => w.rounds > 0);
 
 const results = {}; // workload -> build -> [sample per round]
 let failed = false;
