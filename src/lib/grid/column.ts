@@ -93,6 +93,16 @@ export interface ColBase {
       match price): each change runs a short animation, so a busy board with
       it on every column pays real frame time. */
   showChange?: boolean | ShowChangeOptions;
+  /** Repaint this column at most every this many ms under `api.patchRows`.
+      Each tick is still written into the row at once (sort, filters, totals
+      and other columns see it), but the cell shows the latest value on its
+      next beat: a value that changes on every tick and is read at a glance
+      (total volume, foreign buy and sell) stops repainting every frame. The
+      first change after a quiet spell shows at once. A flash or `showChange`
+      plays on the repaint, against the value shown before. For the field the
+      column shows (`key`), not a `value` column; when several columns show a
+      field, it waits only if they all set this. */
+  updateMs?: number;
   /** Set false to disable header-click sorting on this column. */
   sortable?: boolean;
   /** Custom ascending comparator for this column's values (e.g. enum priority or

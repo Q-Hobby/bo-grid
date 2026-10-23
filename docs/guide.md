@@ -312,6 +312,21 @@ board, one such column measured the same as none, while turning it on for all
 13 flashing columns at 30,000 events/s more than doubled the main thread's
 work per frame.
 
+**`updateMs`** on a column repaints it at most that often under
+`api.patchRows`. Every tick is still written into the row at once, so sort,
+filters, totals and the other columns see it; the cell shows the latest value
+on its next beat. Use it for values that change on every trade and are read at
+a glance (total volume, foreign buy and sell), so they stop repainting every
+frame while the prices stay instant:
+
+```ts
+{ type: 'number', key: 'tv', header: 'Total vol', updateMs: 250 }
+```
+
+The first change after a quiet spell shows at once, and a flash plays on the
+repaint, against the value shown before. On the Price board, three such
+columns at 250 ms took 4–6% off the frame at 10,000 and 30,000 events/s.
+
 #### Flash on demand — `api.flashCells`
 
 Some events don't change a value you show: a block trade, your order filling,

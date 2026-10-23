@@ -152,7 +152,12 @@
     { ...price('mp', 'Giá'), width: 104, showChange: true }, qty('mv', 'KL'),
     { type: 'number', key: 'chg', header: '+/-', width: 56, format: (v) => (Number(v) ? (Number(v) / 1000).toFixed(2) : ''), cellClass: (_v, r) => tone((r as Quote).mp, r) },
     price('ap1', 'G1'), qty('av1', 'KL1'), price('ap2', 'G2'), qty('av2', 'KL2'), price('ap3', 'G3'), qty('av3', 'KL3'),
-    price('hi', 'Cao'), price('lo', 'Thấp'), { ...qty('tv', 'Tổng KL'), width: 76, autoWidth: true }, qty('fb', 'NN mua'), qty('fs', 'NN bán'),
+    // Totals change on every trade and are read at a glance: four repaints a
+    // second is plenty (updateMs), where the prices repaint on every tick.
+    price('hi', 'Cao'), price('lo', 'Thấp'),
+    { ...qty('tv', 'Tổng KL'), width: 76, autoWidth: true, updateMs: 250 },
+    { ...qty('fb', 'NN mua'), updateMs: 250 },
+    { ...qty('fs', 'NN bán'), updateMs: 250 },
   ];
 
   // ---- Live mode: a feed at `rate` events/s, drained once per frame ----
