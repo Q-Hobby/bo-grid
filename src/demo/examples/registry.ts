@@ -89,6 +89,13 @@ export const EXAMPLES: Example[] = [
     file: 'TimeSales',
   },
   {
+    id: 'fxcrypto',
+    title: 'FX & crypto',
+    blurb: 'FX quotes with the big figure and pips, spreads in pips and the FX centres open now; a crypto watchlist in significant digits (bo-grid/trading).',
+    load: () => import('./FxCrypto.svelte'),
+    file: 'FxCrypto',
+  },
+  {
     id: 'vnboard',
     title: 'VN board',
     blurb: 'HOSE-style price-limit colouring (ceiling/floor/reference), tick-aware VND formatting & live session badge — bo-grid/trading.',

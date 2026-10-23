@@ -60,7 +60,10 @@ export interface SessionOptions {
   skipWeekends?: boolean;
 }
 
-function wallClock(date: Date, timeZone: string): { hhmm: string; weekday: string } {
+/** Wall-clock time of `date` in `timeZone`: `HH:mm` and the short weekday
+    ('Mon'…'Sun'). Shared with the FX helpers (fx.ts); not exported from the
+    entry. */
+export function wallClock(date: Date, timeZone: string): { hhmm: string; weekday: string } {
   const parts = dateFormat('en-US', `clock${timeZone}`, {
     timeZone,
     hour12: false,

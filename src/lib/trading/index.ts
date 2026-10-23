@@ -1,6 +1,8 @@
 // Public API for `bo-grid/trading` — market-convention helpers for APAC
 // trading screens: price-limit tone (ceiling/floor/reference colouring),
-// tick-aware price formatting, session state, and positions from fills.
+// tick-aware price formatting, session state, positions from fills, and the
+// FX and crypto conventions (pips and the FX week; round-the-clock sessions
+// and significant-digit prices).
 //
 // A separate entry, like `bo-grid/realtime`: pure
 // functions only, no Grid/Cell changes, so it adds nothing to the grid core
@@ -19,3 +21,8 @@ export type { SessionState, SessionWindow, SessionOptions } from './session';
 
 export { createPositions, unrealizedPnl } from './positions';
 export type { Position, PositionBook, PositionFill } from './positions';
+
+export { fxPipSize, fxQuoteParts, fxQuoteHtml, pipsBetween, fxMarketOpen, fxCentresOpen } from './fx';
+export type { FxQuoteParts, FxCentre, PipOf } from './fx';
+
+export { CRYPTO_SCHEDULE, fmtSigPrice } from './crypto';
