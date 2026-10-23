@@ -509,8 +509,15 @@
   // Windowed data source controller (only in source mode).
   const controller = $derived(source ? new RowSourceController(source) : null);
 
+  // A header drop reports positions among the columns on screen (`cols`),
+  // which skip hidden columns and put pinned ones at the edges; the order
+  // covers every column, so find the two columns in it by key.
   function moveColumn(from: number, to: number) {
-    colState.move(from, to);
+    const at = (ci: number) => colState.order.findIndex((i) => columns[i].key === cols[ci]?.key);
+    const src = at(from);
+    const dst = at(to);
+    if (src < 0 || dst < 0) return;
+    colState.move(src, dst);
     sel.clear();
     editing = null;
     onColumnReorder?.(colState.order.map((i) => columns[i].key));
