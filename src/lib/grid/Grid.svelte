@@ -17,7 +17,7 @@
   import { buildFlatRows, buildLazyGroupRows, activeGroupsAt, type VisualRow, type GroupNode, type LazyGroup } from './grouping';
   import { buildTreeRows } from './tree';
   import { moveIndex } from './reorder';
-  import { FlashTracker, FlashClock, FlashLoad, type CellFlash } from './flash';
+  import { FlashTracker, FlashClock, FlashLoad } from './flash';
   import { parseClipboard, isSingleCell } from './clipboard';
   import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, type WidthMap } from './sizing';
   import {
@@ -39,13 +39,13 @@
   import { resolveLabels, type GridLabels } from './labels';
   import { resolveColumns, type DefaultColumn } from './celltype';
   import { parseCellInput } from './edit';
-  import { patchRowsInPlace } from './patch';
   import { dataOrdinals, rowNumberWidth } from './rownumbers';
   import { scrollTopFor, type FlashCellsOptions, type GridApi, type ScrollAlign, type ViewportRange } from './api';
   import { buildMergePlan, combinedFlex, type MergePlan, type SpanRun } from './merge';
   import { GRID_STATE_VERSION, reconcileState, type GridState } from './state';
   import { loadSaved, saveValue, storageKey } from './persist';
   import { EditHistory } from './history';
+  import { LiveRows } from './live.svelte';
 
   let {
     rows = [],
@@ -1130,7 +1130,7 @@
   // view) for each column with a data bar or colour scale. Per-column `min`/`max`
   // config overrides are applied later, in the cell. Keyed by column key.
   const cfRanges = $derived.by<Record<string, { min: number; max: number }>>(() => {
-    dataVersion;
+    live.dataVersion;
     const out: Record<string, { min: number; max: number }> = {};
     for (const col of columns) {
       if (!col.dataBar && !col.colorScale) continue;
@@ -1266,7 +1266,7 @@
   // Pinned totals row: per-column `groupAgg` over all (filtered) rows. Reads row
   // values reactively so it stays live with the feed. In-memory mode only.
   const footerCells = $derived.by<string[] | null>(() => {
-    dataVersion;
+    live.dataVersion;
     if (!footer || source) return null;
     const v = view;
     return cols.map((col) => {
@@ -1562,7 +1562,7 @@
   }
 
   const agg = $derived.by<AggResult | null>(() => {
-    dataVersion;
+    live.dataVersion;
     const b = sel.bounds;
     if (!b || sel.count <= 1) return null;
     const vals: number[] = [];
@@ -1804,77 +1804,27 @@
     onColumnResize?.(col.key, w);
   }
 
-  // ---- Realtime fast path (`api.patchRows`) ----------------------------------
-  // Rows can be plain objects: patchRows writes into them directly (a fraction of
-  // the cost of writing through $state proxies) and repaints only the rendered
-  // rows it touched, by bumping a per-row version their cells read. Rows off
-  // screen pay nothing reactive; they read current values when they mount.
-  // `dataVersion` keeps the whole-view readers (footer totals, group subtotals,
-  // selection aggregates, conditional-format ranges) live, once per call.
-  // $state records, not SvelteMaps: reading a missing key of a proxied object
-  // subscribes to that key alone, so bumping one row (or one field) never wakes
-  // the others. Row versions drive row-aware work (cellClass/format/tooltip that
-  // read the row, renderers); field versions drive a cell's own value, so a tick
-  // that moves two fields repaints two cells, not the whole row.
-  const rowVersions: Record<string, number> = $state({});
-  const fieldVersions: Record<string, number> = $state({});
-  const fieldKey = (row: string | number, field: string): string => `${row}\u0001${field}`;
-  let dataVersion = $state(0);
+  // ---- Realtime path (`api.patchRows`, `api.flashCells`; live.svelte.ts) -----
+  const live = new LiveRows();
   const rowIndex = $derived(new Map(rows.map((r) => [getRowId(r), r] as const)));
 
   function refresh(): void {
     viewTick++;
   }
 
-  function patchRows(patches: Iterable<readonly [string | number, Record<string, unknown>]>): number {
-    const changed = patchRowsInPlace(rowIndex, patches);
-    if (changed.size === 0) return 0;
-    // Rendered rows repaint: the body's, and the pinned ones above the scroll
-    // (a pinned row may also be on screen in the body — bump it once).
-    const bumped = new Set<string | number>();
-    const bump = (row: GridRow) => {
-      const key = getRowId(row);
-      const fields = changed.get(key);
-      if (!fields || bumped.has(key)) return;
-      bumped.add(key);
-      rowVersions[key] = (rowVersions[key] ?? 0) + 1;
-      for (const f of fields) {
-        const fk = fieldKey(key, f);
-        fieldVersions[fk] = (fieldVersions[fk] ?? 0) + 1;
-      }
-    };
-    for (const item of renderItems) if (item.kind === 'data') bump(item.row);
-    for (const row of topRows) bump(row);
-    dataVersion++;
-    return changed.size;
+  /** The rows on screen: the body's, then the pinned ones above the scroll. */
+  function* renderedRows(): Generator<GridRow> {
+    for (const item of renderItems) if (item.kind === 'data') yield item.row;
+    yield* topRows;
   }
 
-  // ---- On-demand flash (`api.flashCells`) ------------------------------------
-  // Each rendered row a request covers keeps it (the latest) in a plain map; a
-  // per-row counter, read like rowVersions, wakes that row's cells alone. Rows
-  // off screen are skipped, as a tick off screen never shows either.
-  const rowFlashSeq: Record<string, number> = $state({});
-  const rowFlashes = new Map<string | number, CellFlash>();
-  const cellFlashOf = (key: string | number): CellFlash | null => (rowFlashSeq[key] ? (rowFlashes.get(key) ?? null) : null);
+  function patchRows(patches: Iterable<readonly [string | number, Record<string, unknown>]>): number {
+    return live.patch(rowIndex, patches, renderedRows(), getRowId);
+  }
 
   function flashCells(opts: FlashCellsOptions = {}): number {
-    const wanted = opts.rows ? new Set(opts.rows) : null;
-    const columns = opts.columns ? new Set(opts.columns) : null;
     const at = Date.now();
-    const hold = flashMotion === 'fade' ? undefined : flashHold.holds(at);
-    // A pinned row may share its id with a data row: one request per id.
-    const done = new Set<string | number>();
-    const flashRow = (row: GridRow) => {
-      const key = getRowId(row);
-      if ((wanted && !wanted.has(key)) || done.has(key)) return;
-      done.add(key);
-      const seq = (rowFlashes.get(key)?.seq ?? 0) + 1;
-      rowFlashes.set(key, { seq, dir: opts.dir ?? 'same', at, ms: opts.ms, columns, hold });
-      rowFlashSeq[key] = seq;
-    };
-    for (const row of topRows) flashRow(row);
-    for (const item of renderItems) if (item.kind === 'data') flashRow(item.row);
-    return done.size;
+    return live.flash(opts, renderedRows(), getRowId, at, flashMotion === 'fade' ? undefined : flashHold.holds(at));
   }
 
   // ---- Imperative handle (`onReady`) ----------------------------------------
@@ -2607,11 +2557,11 @@
                 cellId={`${gid}-pin${pi}-c${ci}`}
                 cellSnippet={cell}
                 rowKey={getRowId(prow)}
-                version={rowVersions[getRowId(prow)]}
-                fieldVersion={fieldVersions[fieldKey(getRowId(prow), col.key)]}
+                version={live.rowVersion(getRowId(prow))}
+                fieldVersion={live.fieldVersion(getRowId(prow), col.key)}
                 {flashTracker}
                 flashHold={flashMotion === 'fade' ? null : flashHold}
-                cellFlash={cellFlashOf(getRowId(prow))}
+                cellFlash={live.cellFlash(getRowId(prow))}
                 pinned={pinned && layout.info[ci].pinned}
                 pinSide={layout.info[ci].side ?? 'left'}
                 pinOffset={layout.info[ci].side === 'right' ? layout.info[ci].right + bodyPinFix : layout.info[ci].left + leadPx}
@@ -2635,7 +2585,7 @@
       <div class="sticky" style={pinnedPx ? `top:${pinnedPx}px` : undefined}>
         {#each stickyGroups as g (g.depth)}
           <div class="sticky-row" aria-hidden="true" style="height:{baseH}px">
-            <GroupRow version={dataVersion} group={g} columns={cols} onToggle={toggleGroup} colStart={1 + leadCols} focusable={false} />
+            <GroupRow version={live.dataVersion} group={g} columns={cols} onToggle={toggleGroup} colStart={1 + leadCols} focusable={false} />
           </div>
         {/each}
       </div>
@@ -2648,7 +2598,7 @@
             {#if rowNumbers}<span class="numcell" aria-hidden="true" style={numCellStyle(false)}></span>{/if}
             {#if expandable}<span class="expandcell" aria-hidden="true" style={expandCellStyle(false)}></span>{/if}
             {#if rowSelection}<span class="selcell" aria-hidden="true" style={selCellStyle(false)}></span>{/if}
-            <GroupRow version={dataVersion} group={item.group} columns={cols} onToggle={lazyGrouped ? toggleLazyGroup : toggleGroup} rowIndex={item.vr + 2} colStart={1 + leadCols} />
+            <GroupRow version={live.dataVersion} group={item.group} columns={cols} onToggle={lazyGrouped ? toggleLazyGroup : toggleGroup} rowIndex={item.vr + 2} colStart={1 + leadCols} />
           </div>
         {:else if item.kind === 'skeleton'}
           <div class="row skeleton" role="row" aria-rowindex={item.vr + 2} aria-hidden="true" style="top:{hm.offsetOf(item.vr)}px;height:{hm.heightOf(item.vr)}px;{rowWidthStyle}">
@@ -2723,11 +2673,11 @@
                   cellId={`${gid}-r${item.vr}-c${ci}`}
                   cellSnippet={cell}
                   rowKey={getRowId(item.row)}
-                  version={rowVersions[getRowId(item.row)]}
-                  fieldVersion={fieldVersions[fieldKey(getRowId(item.row), col.key)]}
+                  version={live.rowVersion(getRowId(item.row))}
+                  fieldVersion={live.fieldVersion(getRowId(item.row), col.key)}
                   {flashTracker}
                   flashHold={flashMotion === 'fade' ? null : flashHold}
-                  cellFlash={cellFlashOf(getRowId(item.row))}
+                  cellFlash={live.cellFlash(getRowId(item.row))}
                   selected={cellSelection && (m ? rectSelected(m.r0, m.r1, ci, m.c1) : sel.contains(item.vr, ci))}
                   focused={cellSelection && (m ? rectFocused(m.r0, m.r1, ci, m.c1) : sel.isFocus(item.vr, ci))}
                   span={m?.span}
