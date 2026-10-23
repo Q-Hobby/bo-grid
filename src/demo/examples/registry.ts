@@ -70,7 +70,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'ladder',
     title: 'Price ladder',
-    blurb: '120 levels, 16 visible — centred on the spread with manual page + recenter (bo-grid/realtime centeredWindow).',
+    blurb: 'A depth ladder on a live book: sizes and depth per price, your orders, click or key to trade — bo-grid/ladder DepthLadder.',
     load: () => import('./PriceLadder.svelte'),
     file: 'PriceLadder',
   },

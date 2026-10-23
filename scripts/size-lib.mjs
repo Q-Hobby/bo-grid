@@ -16,9 +16,10 @@ const DIR = 'lib-dist';
 // growth from new features is expected and is not a failure. The ceilings only
 // catch accidents — a dependency or an optional peer (xlsx is ~140 KB) bundled
 // into an entry by mistake — so they sit far above the current sizes.
-// `realtime` and `trading` are separate entries: a consumer pays for them only
-// when importing them, and they never add to the core number.
-const CEILING_KB = { js: 80, css: 12, realtime: 6, trading: 6 }; // gzipped, Svelte excluded
+// `realtime`, `trading` and `ladder` are separate entries: a consumer pays for
+// them only when importing them, and they never add to the core number. The
+// ladder builds on the grid: it counts only the code it adds.
+const CEILING_KB = { js: 80, css: 12, realtime: 6, trading: 6, ladder: 8 }; // gzipped, Svelte excluded
 
 const gzipKb = (path) => gzipSync(readFileSync(path)).length / 1024;
 const jsFiles = readdirSync(DIR).filter((f) => f.endsWith('.js'));
@@ -51,10 +52,12 @@ function eagerClosure(entry) {
 const core = eagerClosure('bo-grid.js');
 const realtimeSet = jsFiles.includes('realtime.js') ? eagerClosure('realtime.js') : new Set();
 const tradingSet = jsFiles.includes('trading.js') ? eagerClosure('trading.js') : new Set();
+const ladderSet = jsFiles.includes('ladder.js') ? eagerClosure('ladder.js') : new Set();
 
 let coreJs = 0;
 let realtimeJs = 0;
 let tradingJs = 0;
+let ladderJs = 0;
 let lazyJs = 0;
 const lazy = [];
 for (const f of jsFiles) {
@@ -62,6 +65,7 @@ for (const f of jsFiles) {
   if (core.has(f)) coreJs += kb;
   else if (realtimeSet.has(f)) realtimeJs += kb;
   else if (tradingSet.has(f)) tradingJs += kb;
+  else if (ladderSet.has(f)) ladderJs += kb;
   else {
     lazyJs += kb;
     lazy.push([f, kb]);
@@ -76,6 +80,7 @@ const rows = [
 ];
 if (realtimeSet.size) rows.push(['realtime', realtimeJs, CEILING_KB.realtime]);
 if (tradingSet.size) rows.push(['trading', tradingJs, CEILING_KB.trading]);
+if (ladderSet.size) rows.push(['ladder', ladderJs, CEILING_KB.ladder]);
 
 let failed = false;
 console.log('library size (gzip, Svelte external — eager core)');

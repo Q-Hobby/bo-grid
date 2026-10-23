@@ -417,11 +417,63 @@ of this is required to use `resolveTone`/`toneColor` — pass your own
 `{ ref, ceiling, floor }` for any other market's limit-price rule. See the **VN
 board** demo for it composed with `bo-grid/realtime`.
 
+#### Depth ladder — `bo-grid/ladder`
+
+`DepthLadder` is a price ladder (depth of market) built on the grid: one row
+per price on the tick grid, highest first, with the bid and ask sizes, their
+depth from the best price outward as bars, and your own working orders beside
+each side. It is a separate entry (~4 KB gzip on top of the grid).
+
+```svelte
+<script lang="ts">
+  import { DepthLadder, type LadderAction } from 'bo-grid/ladder';
+  import { vnTickSize } from 'bo-grid/trading';
+
+  let { bids, asks, last, orders } = $props(); // from your feed and order store
+  let following = $state(true);
+
+  function onAction(a: LadderAction) {
+    if (a.kind === 'cancel') venue.cancel(a.orders.map((o) => o.id));
+    else venue.place({ side: a.kind, price: a.price, qty: ticket.qty });
+  }
+</script>
+
+<DepthLadder {bids} {asks} {last} {orders} tick={(p) => vnTickSize(p, 'HOSE')} bind:following {onAction} />
+```
+
+- **The book:** `bids` and `asks` are `[price, size]` pairs, in any order. A
+  price that repeats is summed, and float noise in a feed still meets its
+  level. `tick` is one size or a function of the price for a tick table; the
+  step down from a band's first price uses the band below.
+- **Following the market:** the window centres on the middle of the spread
+  (`center="last"` follows the last trade) and recentres only once the market
+  leaves the middle half of the window, so the rows sit still between moves.
+  It never moves while the pointer is over it or a cell has focus, so a price
+  cannot shift under a click or a key.
+- **Paging:** the wheel pages through prices and turns `following` off (bind
+  it to see that); Space, setting `following` back to `true`, or `recenter()`
+  (via `bind:this`) centres on the market again. A click focuses the ladder
+  without holding it once the pointer leaves; the keyboard working in it does
+  hold it.
+- **Order entry is yours:** `onAction` hears what the user asked for. A click
+  on the bid side is `'buy'` at that row's price, on the ask side `'sell'`, on
+  your orders `'cancel'` with them; B, S and Delete do the same on the focused
+  row, once per press (a held key does not repeat it). Each action carries
+  the price of the row as it was shown. The ladder places nothing itself:
+  show an order once your venue acknowledges it.
+- **Looks:** ask prices in the down colour, bid prices in the up colour, the
+  best bid and ask in bold, the last trade tinted, and the depth bars of both
+  sides on one scale, so a lopsided book looks lopsided. `rows`, `rowHeight`,
+  `format`, `locale`, `headers` and `theme` adjust it.
+
+The helpers behind it (`ladderPrices`, `ladderRows`, `midPrice`, `stepPrice`
+and more) are exported too, for a ladder of a different shape.
+
 #### Price ladder & time & sales
 
 Two more pieces of `bo-grid/realtime` for the surfaces every trading desk
-needs, both pure — no ladder/tape component of their own, just the data
-structure or math that makes building one straightforward:
+needs, both pure: the windowing math for a ladder of your own (`DepthLadder`
+above is the ready-made one), and a trade tape:
 
 ```ts
 import { centeredWindow } from 'bo-grid/realtime';
@@ -1415,6 +1467,7 @@ when the grid mounts.
 | --- | --- |
 | `scrollToRow(key, align?)` | Scroll a row (by `getRowId`) into view; `align` is `'nearest'` (default), `'start'`, `'center'` or `'end'`. `false` when the row is not in the current view — filtered out, on another page, or in a `source` grid |
 | `focusCell(rowKey, columnKey)` | Focus and select one cell. `false` when the row or column is not visible |
+| `getFocusedCell()` | `{ row, column }` of the focused cell, or `null` when no data cell has focus. For hotkeys that act on the row the user is on |
 | `getSelectedRows()` | Ticked rows (needs `rowSelection`), in view order |
 | `autosizeColumns(keys?)` | Fit columns to their content, as the column menu's **Autosize** does |
 | `exportCSV(filename?)` | Download the **current view** (after filter and sort); the writer loads on demand |

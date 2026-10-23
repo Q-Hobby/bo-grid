@@ -31,7 +31,8 @@ element for every other framework.
   stays at about 12 ms of main-thread work per frame, with every changed cell
   flashing. [How it's measured](./BENCHMARKS.md)
 - **Built for trading.** Tick flashes, price-limit colours, tick-aware
-  formatting, and order book, price ladder and time-and-sales helpers.
+  formatting, a depth ladder with click-to-trade, and order book and
+  time-and-sales helpers.
 - **Complete.** Sorting, filtering, grouping, pivot, tree data, editing,
   clipboard and Excel export, all in one MIT package.
 - **Small and SSR-safe.** About 46 KB gzip, no runtime dependencies, and clean

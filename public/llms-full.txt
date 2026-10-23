@@ -11,7 +11,7 @@ Package: `bo-grid` (npm). Peer dependency: `svelte@^5`. `sideEffects: false`
 
 ## 0. The one rule that matters most
 
-**bo-grid ships THREE separate subpath entry points besides the main one. Importing one adds NOTHING to
+**bo-grid ships FOUR separate subpath entry points besides the main one. Importing one adds NOTHING to
 the others.** Never import something from the main entry if it belongs to a
 subpath — it isn't there.
 
@@ -19,6 +19,7 @@ subpath — it isn't there.
 bo-grid            → Grid component + core types/helpers (this file, §1-§4)
 bo-grid/realtime    → tick/trade-stream pipeline (§5)
 bo-grid/trading     → APAC market-convention helpers (§6)
+bo-grid/ladder      → DepthLadder price-ladder component (§6b)
 bo-grid/element     → framework-agnostic <bo-grid> web component (§7)
 ```
 
@@ -186,6 +187,7 @@ params include range/sort/filter/columnFilters).
 interface GridApi {
   scrollToRow(key: string | number, align?: 'nearest' | 'start' | 'center' | 'end'): boolean; // false if not in current view / source mode
   focusCell(rowKey: string | number, columnKey: string): boolean;
+  getFocusedCell(): { row: GridRow; column: ColumnDef } | null; // for hotkeys on the focused row
   getSelectedRows(): GridRow[];            // ticked rows (rowSelection), view order
   autosizeColumns(keys?: string[]): void;
   exportCSV(filename?: string): Promise<void>;  // current view (filtered + sorted)
@@ -425,6 +427,31 @@ correct for a viewer anywhere, not just Vietnam):
 sessionStateAt(new Date(), VN_HOSE_SCHEDULE);
 // → 'pre-open' | 'ato' | 'continuous' | 'break' | 'atc' | 'closed'
 ```
+
+## 6b. `bo-grid/ladder` — depth ladder (own entry, ~4 KB gzip on top of the grid)
+
+```svelte
+<script lang="ts">
+  import { DepthLadder, type LadderAction, type LadderOrder } from 'bo-grid/ladder';
+  // bids / asks: readonly [price, size][] in any order; orders: LadderOrder[] = { id, side: 'buy' | 'sell', price, qty }
+  let following = $state(true);
+  function onAction(a: LadderAction) {
+    // a.kind: 'buy' | 'sell' | 'cancel'; a.price: the row's price as shown; a.orders: your orders for a cancel
+    // a.via: 'click' | 'key'. The ladder places nothing itself.
+  }
+</script>
+<DepthLadder {bids} {asks} {last} {orders} tick={0.05} bind:following {onAction} />
+```
+
+- `tick`: number, or `(price) => number` for a tick table (`(p) => vnTickSize(p, 'HOSE')`).
+- Props: `rows` (default 21), `rowHeight` (24), `center: 'mid' | 'last'`, `format(price)`, `locale`,
+  `headers: { myBid?, bid?, price?, ask?, myAsk? }`, `theme`, `ariaLabel`.
+- Follows the market, recentring only when it leaves the middle half; never moves under the pointer or focus.
+  The wheel pages and sets `following = false`; Space / `following = true` / `recenter()` follow again.
+- Click bid side → 'buy', ask side → 'sell', your orders → 'cancel'; keys B / S / Delete on the focused row.
+- Helpers: `ladderPrices(center, count, tick)`, `ladderRows(prices, { bids, asks, orders?, last?, format? })`,
+  `midPrice`, `bestPrices`, `stepPrice`, `snapToTick`, `ordersAt`.
+- `LadderAction` is a union: `{ kind: 'buy' | 'sell', price, via }` | `{ kind: 'cancel', price, side?, orders, via }`.
 
 ## 7. `bo-grid/element` — framework-agnostic `<bo-grid>` web component
 

@@ -1,71 +1,76 @@
 <script lang="ts">
-  import { Grid, fmtPrice, type ColumnDef, type GridRow } from '../../lib';
-  import { centeredWindow } from '../../lib/realtime';
+  import { DepthLadder, type BookLevel, type LadderAction, type LadderOrder } from '../../lib/ladder';
   import { ui } from '../theme.svelte';
 
-  // A price ladder: MORE levels exist than fit on screen (120 here), kept
-  // centered on the spread as the book moves — "scroll-lock". `centeredWindow`
-  // is pure array-slicing math; centering is just handing the grid a different
-  // slice of the SAME levels array each tick, not scroll control. "Lock" state
-  // itself (follow the market vs. hold position) lives here, in the component —
-  // it's UI state, not something a library helper can decide for you.
-  interface Level extends GridRow {
-    side: 'ask' | 'bid';
-    price: number;
-    size: number;
-  }
-
-  const LEVELS = 60; // per side — 120 total, well beyond the visible window
-  const VISIBLE = 16;
-  const MID = 250;
+  // A depth ladder on a live book: one row per price, bid and ask sizes with
+  // their depth, your working orders beside each side. It follows the middle
+  // of the spread and recentres only when the market drifts out of the middle
+  // half; it holds still under the pointer. The ladder only reports what the
+  // user asked for; placing and cancelling is this demo's (a real app sends
+  // the order and shows it once the venue acknowledges it).
   const TICK = 0.05;
+  const DEPTH = 30; // levels per side
 
-  function build(): Level[] {
-    const asks: Level[] = [];
-    let id = 0;
-    for (let i = LEVELS; i >= 1; i--) {
-      asks.push({ id: id++, side: 'ask', price: MID + i * TICK, size: 40 + Math.floor(Math.random() * 900) });
+  let seed = 0x1add;
+  function rand(): number {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  const size = () => (1 + Math.floor(rand() * 40)) * 25;
+  const at = (i: number) => Math.round(i * TICK * 100) / 100;
+
+  // The book, as levels around a mid (in ticks): bids below it, asks above.
+  let midTicks = 5000; // 250.00
+  function book(): { bids: BookLevel[]; asks: BookLevel[] } {
+    const bids: BookLevel[] = [];
+    const asks: BookLevel[] = [];
+    for (let i = 1; i <= DEPTH; i++) {
+      bids.push([at(midTicks - i), size()]);
+      asks.push([at(midTicks + i), size()]);
     }
-    const bids: Level[] = [];
-    for (let i = 1; i <= LEVELS; i++) {
-      bids.push({ id: id++, side: 'bid', price: MID - i * TICK, size: 40 + Math.floor(Math.random() * 900) });
+    return { bids, asks };
+  }
+  let { bids, asks } = $state.raw(book());
+  let last = $state<number | undefined>(at(midTicks + 1));
+  let orders = $state<LadderOrder[]>([
+    { id: 1, side: 'buy', price: at(midTicks - 3), qty: 200 },
+    { id: 2, side: 'sell', price: at(midTicks + 4), qty: 100 },
+  ]);
+  let nextId = 3;
+  let following = $state(true);
+  let note = $state('Click a bid or an ask to place an order, one of yours to cancel it.');
+
+  function onAction(a: LadderAction): void {
+    const p = a.price.toFixed(2);
+    if (a.kind === 'cancel') {
+      const gone = new Set(a.orders.map((o) => o.id));
+      orders = orders.filter((o) => !gone.has(o.id));
+      note = `Cancelled ${a.orders.length} order${a.orders.length > 1 ? 's' : ''} at ${p} (${a.via})`;
+    } else {
+      orders = [...orders, { id: nextId++, side: a.kind, price: a.price, qty: 100 }];
+      note = `${a.kind === 'buy' ? 'Buy' : 'Sell'} 100 at ${p} (${a.via})`;
     }
-    return [...asks, ...bids]; // index LEVELS-1 / LEVELS is the spread
   }
 
-  const levels = $state<Level[]>(build());
-  const spreadIndex = LEVELS; // first bid — the natural centering point
-
-  // `null` = follow the live spread automatically. A number = the viewer paged
-  // manually and the ladder holds there until they hit "Recenter".
-  let lockedCenter = $state<number | null>(null);
-
-  const centerIndex = $derived(lockedCenter ?? spreadIndex);
-  const window_ = $derived(centeredWindow(levels.length, centerIndex, VISIBLE));
-  const visible = $derived(levels.slice(window_.start, window_.end) as unknown as GridRow[]);
-  const locked = $derived(lockedCenter === null);
-
-  function page(dir: -1 | 1): void {
-    lockedCenter = Math.max(0, Math.min(levels.length - 1, centerIndex + dir * 4));
-  }
-  function recenter(): void {
-    lockedCenter = null;
-  }
-
-  const columns: ColumnDef[] = [
-    { type: 'price', key: 'price', header: 'Price', width: 100, sortable: false },
-    { type: 'volume', key: 'size', header: 'Size', width: 90, flash: 'auto', sortable: false },
-  ];
-
-  let live = $state(false);
+  // The feed: sizes change on every beat; now and then a trade prints and
+  // the market moves a tick.
+  let live = $state(true);
   $effect(() => {
     if (!live) return;
     const h = setInterval(() => {
-      for (let n = 0; n < 3; n++) {
-        const lvl = levels[Math.floor(Math.random() * levels.length)];
-        lvl.size = Math.max(10, lvl.size + Math.floor((Math.random() - 0.5) * 300));
-      }
-    }, 300);
+      if (rand() < 0.12) midTicks += rand() < 0.5 ? -1 : 1;
+      const next = book();
+      // Keep most sizes from the last beat, so only some levels change.
+      const keep = (prev: BookLevel[], fresh: BookLevel[]) => {
+        const by = new Map(prev);
+        return fresh.map(([p, s]) => [p, rand() < 0.75 ? (by.get(p) ?? s) : s] as const);
+      };
+      bids = keep(bids, next.bids);
+      asks = keep(asks, next.asks);
+      if (rand() < 0.4) last = at(midTicks + (rand() < 0.5 ? -1 : 1));
+    }, 250);
     return () => clearInterval(h);
   });
 </script>
@@ -74,19 +79,15 @@
   <button class="live" class:on={live} onclick={() => (live = !live)}>
     <span class="dot"></span>{live ? 'Live' : 'Paused'}
   </button>
-  <div class="nav">
-    <button onclick={() => page(-1)} aria-label="Page up">▲</button>
-    <button onclick={() => page(1)} aria-label="Page down">▼</button>
-    <button class="recenter" class:on={locked} onclick={recenter} disabled={locked}>
-      {locked ? 'Locked to spread' : 'Recenter'}
-    </button>
-  </div>
-  <span class="stat">Showing <strong>{window_.start + 1}–{window_.end}</strong> of {levels.length}</span>
+  <button class="follow" class:on={following} onclick={() => (following = true)} disabled={following}>
+    {following ? 'Following the market' : 'Recenter'}
+  </button>
+  <span class="note">{note}</span>
 </div>
 
-<div class="gridwrap">
-  <Grid rows={visible} {columns} theme={ui.grid} height={VISIBLE * 32} rowHeight={32} rowClass={(r) => (r as Level).side} />
-</div>
+<DepthLadder {bids} {asks} {last} {orders} tick={TICK} bind:following {onAction} theme={ui.grid} />
+
+<p class="hint">Keys on the focused row: <kbd>B</kbd> buy, <kbd>S</kbd> sell, <kbd>Delete</kbd> cancel. The wheel pages through prices; <kbd>Space</kbd> follows the market again.</p>
 
 <style>
   .controls {
@@ -99,14 +100,7 @@
     font-size: 12px;
     color: var(--text-dim);
   }
-  .stat strong {
-    color: var(--text);
-  }
-  .nav {
-    display: flex;
-    gap: 6px;
-  }
-  .nav button,
+  .follow,
   .live {
     display: inline-flex;
     align-items: center;
@@ -119,12 +113,9 @@
     border-radius: 999px;
     cursor: pointer;
   }
-  .nav button:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-  .recenter.on {
+  .follow:disabled {
     color: var(--text-dim);
+    cursor: default;
   }
   .live .dot {
     width: 7px;
@@ -136,13 +127,19 @@
     background: var(--up);
     box-shadow: 0 0 6px var(--up);
   }
-  .gridwrap {
-    max-width: 400px;
+  .note {
+    color: var(--text);
   }
-  :global(.bo-grid .row.ask .num) {
-    color: var(--down);
+  .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
   }
-  :global(.bo-grid .row.bid .num) {
-    color: var(--up);
+  kbd {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 0 4px;
+    border: 0.5px solid var(--border);
+    border-radius: 3px;
   }
 </style>

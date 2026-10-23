@@ -169,6 +169,7 @@
         <a href="#element">Web&nbsp;component</a>
         <a href="#realtime">Realtime</a>
         <a href="#trading">Trading</a>
+        <a href="#ladder">Ladder</a>
         <a href="#source">Source</a>
         <a href="#theming">Theming</a>
         <a href="https://github.com/bonguynvan/bo-grid">GitHub</a>
@@ -208,8 +209,8 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
           <tr><td>onColumnVisibilityChange</td><td><span class="type">(hidden: string[]) =&gt; void</span></td><td>Called with all hidden column keys when the runtime set changes (column-menu hide/show).</td></tr>
           <tr><td>emptyMessage</td><td><span class="type">string</span></td><td>Text shown when there are no rows. Defaults to <code>labels.noRows</code>.</td></tr>
           <tr><td>loading</td><td><span class="type">boolean</span></td><td>Show a loading overlay (consumer-driven async in in-memory mode).</td></tr>
-          <tr><td>rowMenu</td><td><span class="type">(row) =&gt; {'{'} label, onSelect {'}'}[]</span></td><td>Right-click row menu items; each runs <code>onSelect</code> and closes. Keyboard: <kbd>ContextMenu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> opens it at the focused cell.</td></tr>
-          <tr><td>detail</td><td><span class="type">Snippet&lt;[{'{'} row {'}'}]&gt;</span></td><td>Master-detail panel under each row; adds a leading expand toggle. In-memory mode.</td></tr>
+          <tr><td>rowMenu</td><td><span class="type">(row) =&gt; { label, onSelect }[]</span></td><td>Right-click row menu items; each runs <code>onSelect</code> and closes. Keyboard: <kbd>ContextMenu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> opens it at the focused cell.</td></tr>
+          <tr><td>detail</td><td><span class="type">Snippet&lt;[{ row }]&gt;</span></td><td>Master-detail panel under each row; adds a leading expand toggle. In-memory mode.</td></tr>
           <tr><td>detailHeight</td><td><span class="type">number</span></td><td>Height (px) of the expanded detail panel. Default <code>160</code>.</td></tr>
           <tr><td>getChildren</td><td><span class="type">(row) =&gt; GridRow[]</span></td><td>Tree data: return a row's children. <code>rows</code> become roots; renders an indented, expandable tree.</td></tr>
           <tr><td>loadChildren</td><td><span class="type">(row) =&gt; Promise&lt;GridRow[]&gt;</span></td><td>Async tree: load children on expand (server-backed); shows a loading row, then caches. Pair with <code>hasChildren</code>.</td></tr>
@@ -232,7 +233,7 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
           <tr><td>filterTypes</td><td><span class="type">Record&lt;string, FilterTypeDef&gt;</span></td><td>Custom filter kinds. Each has <code>test(value, filter, row)</code>, an optional <code>isActive(filter)</code>, an editor <code>component</code> (props <code>{ filter, onChange, column, values, labels }</code>) and <code>needsValues</code> for distinct values. Columns opt in with <code>filter: 'name'</code>; an unregistered kind filters nothing.</td></tr>
           <tr><td>labels</td><td><span class="type">Partial&lt;GridLabels&gt;</span></td><td>Override any string the grid renders itself (menus, filter editor, pager, aria labels). Merged over English defaults; interpolated entries are functions, e.g. <code>filterFor: (h) =&gt; `Lọc ${h}`</code>. <code>DEFAULT_LABELS</code> lists every key.</td></tr>
           <tr><td>locale</td><td><span class="type">string</span></td><td>BCP 47 locale for built-in <code>price</code>/<code>date</code>/<code>currency</code>/<code>relative</code> formatting, the aggregation bar and the pager. A column's own <code>locale</code> wins.</td></tr>
-          <tr><td>onReady</td><td><span class="type">(api: GridApi) =&gt; void</span></td><td>Called once on mount with the grid handle: <code>scrollToRow(key, align?)</code>, <code>focusCell(rowKey, colKey)</code>, <code>getSelectedRows()</code>, <code>autosizeColumns(keys?)</code>, <code>exportCSV(filename?)</code>, <code>getState()</code> / <code>applyState(state)</code> (layout snapshot reconciled against the current columns), <code>patchRows(patches)</code> — the realtime fast path: rows may be plain objects; ticks are written in place and only rendered rows repaint — <code>refresh()</code> (re-sort / re-filter the whole view against current values; see <code>liveSort</code> to keep it in order automatically), <code>flashCells({ rows?, columns?, dir?, ms? })</code> — flash on-screen cells on demand (a fill, an alert) with the tick animation; returns how many rows flashed — <code>pinRow(id, pinned?)</code> / <code>getPinnedRowIds()</code> for runtime row pins, and <code>openFind(query?)</code> to open the find bar.</td></tr>
+          <tr><td>onReady</td><td><span class="type">(api: GridApi) =&gt; void</span></td><td>Called once on mount with the grid handle: <code>scrollToRow(key, align?)</code>, <code>focusCell(rowKey, colKey)</code>, <code>getFocusedCell()</code> (the focused cell's <code>{ row, column }</code>, or null), <code>getSelectedRows()</code>, <code>autosizeColumns(keys?)</code>, <code>exportCSV(filename?)</code>, <code>getState()</code> / <code>applyState(state)</code> (layout snapshot reconciled against the current columns), <code>patchRows(patches)</code> — the realtime fast path: rows may be plain objects; ticks are written in place and only rendered rows repaint — <code>refresh()</code> (re-sort / re-filter the whole view against current values; see <code>liveSort</code> to keep it in order automatically), <code>flashCells({ rows?, columns?, dir?, ms? })</code> — flash on-screen cells on demand (a fill, an alert) with the tick animation; returns how many rows flashed — <code>pinRow(id, pinned?)</code> / <code>getPinnedRowIds()</code> for runtime row pins, and <code>openFind(query?)</code> to open the find bar.</td></tr>
           <tr><td>columnHover</td><td><span class="type">boolean</span></td><td>Highlight the column under the pointer, body and header — handy on a wide board. One overlay for the whole column, not a class per cell; pinned columns included. Mouse and pen only. Colour: theme token <code>colHover</code> (default: the text colour at 6%).</td></tr>
           <tr><td>pauseOnHover</td><td><span class="type">boolean</span></td><td>While a mouse or pen is over the rows, <code>liveSort</code> waits, so a row does not move just as it is clicked; the rows re-sort once the pointer leaves, the window loses focus or the tab is hidden. Default <code>true</code>.</td></tr>
           <tr><td>staleAfter</td><td><span class="type">number</span></td><td>Dim a row (<code>--bo-stale-opacity</code>, 0.5) when nothing new has come for it for this many ms: a quote whose feed went quiet. News is a <code>api.patchRows</code> that changed the row, or a new object for it in <code>rows</code> (it arrived, or a copy replaced it); re-sending the same values is not. The row comes back the moment it ticks. Off by default.</td></tr>
@@ -433,7 +434,7 @@ socket.onmessage = (e) =&gt; stream.push(JSON.parse(e.data).symbol, JSON.parse(e
       <table>
         <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td>centeredWindow</td><td><span class="type">(totalCount, centerIndex, visibleCount) =&gt; {'{'} start, end {'}'}</span></td><td>The <code>[start, end)</code> slice of <code>visibleCount</code> contiguous indices centred on <code>centerIndex</code>, clamped to bounds. Feed <code>levels.slice(start, end)</code> to <code>&lt;Grid rows&gt;</code> instead of scrolling — centring is array slicing, not scroll control. Even <code>visibleCount</code> puts the extra row on the lower-index side.</td></tr>
+          <tr><td>centeredWindow</td><td><span class="type">(totalCount, centerIndex, visibleCount) =&gt; { start, end }</span></td><td>The <code>[start, end)</code> slice of <code>visibleCount</code> contiguous indices centred on <code>centerIndex</code>, clamped to bounds. Feed <code>levels.slice(start, end)</code> to <code>&lt;Grid rows&gt;</code> instead of scrolling — centring is array slicing, not scroll control. Even <code>visibleCount</code> puts the extra row on the lower-index side.</td></tr>
           <tr><td>TradeTape</td><td><span class="type">new TradeTape(capacity?)</span></td><td>Capped ring buffer for a trade log — <code>push(trade)</code> O(1) regardless of session length, <code>toArray()</code> a fresh snapshot newest-first (call once per render), <code>size</code>/<code>capacity</code>, <code>clear()</code>. Default capacity 500. Unlike a price update, a trade is never coalesced — every one shows.</td></tr>
         </tbody>
       </table>
@@ -462,12 +463,12 @@ rows = tape.toArray();</code></pre>
       <table>
         <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td>resolveTone</td><td><span class="type">(value, bands, opts?) =&gt; Tone</span></td><td>Classify a value against <code>{'{'} ref, ceiling?, floor? {'}'}</code> → <code>'ceiling' | 'floor' | 'ref' | 'up' | 'down'</code>. <code>ceiling</code>/<code>floor</code> are optional — omit for plain up/down/ref. <code>opts.epsilon</code> absorbs float noise at a boundary (default 1e-6).</td></tr>
+          <tr><td>resolveTone</td><td><span class="type">(value, bands, opts?) =&gt; Tone</span></td><td>Classify a value against <code>{ ref, ceiling?, floor? }</code> → <code>'ceiling' | 'floor' | 'ref' | 'up' | 'down'</code>. <code>ceiling</code>/<code>floor</code> are optional — omit for plain up/down/ref. <code>opts.epsilon</code> absorbs float noise at a boundary (default 1e-6).</td></tr>
           <tr><td>toneColor</td><td><span class="type">(tone, colors?) =&gt; string</span></td><td>Tone → CSS colour: purple ceiling, cyan floor, yellow ref, green up, red down. Uses <code>darkToneColors</code> by default; pass <code>lightToneColors</code> on a light theme, or a partial object for your own tones. Both palettes keep every tone at WCAG AA (4.5:1) on the grid's presets for their side.</td></tr>
         </tbody>
       </table>
       <h3>Vietnam bands <span style="font-weight:400;color:var(--dim)">(HOSE/HNX/UPCOM)</span></h3>
-      <p>Standard non-special-session rules only — no IPO first-day band, no ex-dividend reference adjustment. A broker with exact business rules should compute bands server-side and hand <code>{'{'} ref, ceiling, floor {'}'}</code> straight to <code>resolveTone</code>.</p>
+      <p>Standard non-special-session rules only — no IPO first-day band, no ex-dividend reference adjustment. A broker with exact business rules should compute bands server-side and hand <code>{ ref, ceiling, floor }</code> straight to <code>resolveTone</code>.</p>
       <table>
         <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
         <tbody>
@@ -503,6 +504,32 @@ rows = tape.toArray();</code></pre>
 <span class="tok-key">const</span> text  = fmtTradingPrice(row.price, vnTickSize(row.price, <span class="tok-str">'HOSE'</span>)); <span class="tok-com">// "68,500"</span></code></pre>
       <div class="note">
         None of this needs Grid/Cell support — wire it into a <code>type: 'custom'</code> column's <code>cell</code> snippet (or a JS <code>render(ctx)</code> hook) exactly like any other custom cell. See the <strong>VN board</strong> demo, which composes it with <code>bo-grid/realtime</code>.
+      </div>
+
+      <!-- ============ LADDER ============ -->
+      <h2 id="ladder">Depth ladder <span class="tag">bo-grid/ladder</span></h2>
+      <p>A price ladder (depth of market) built on the grid: one row per price on the tick grid, highest first, with the bid and ask sizes, their depth from the best price outward as bars, and your own working orders beside each side. It follows the market without moving under the pointer, and reports what the user asked for: placing and cancelling stay the app's. A <strong>separate import</strong> (~4&nbsp;KB gzip on top of the grid).</p>
+      <table>
+        <thead><tr><th>Prop</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>bids / asks</td><td><span class="type">readonly [price, size][]</span></td><td>The resting book, in any order. A repeated price is summed; float noise in a feed still meets its level.</td></tr>
+          <tr><td>tick</td><td><span class="type">number | (price) =&gt; number</span></td><td>The price step, or a function of the price for a tick table (<code>(p) =&gt; vnTickSize(p, 'HOSE')</code>). The step down from a band's first price uses the band below. A positive number, at least 1e-8; prices at or below zero are not shown.</td></tr>
+          <tr><td>last</td><td><span class="type">number</span></td><td>The last trade's price: its row is tinted.</td></tr>
+          <tr><td>orders</td><td><span class="type">LadderOrder[]</span></td><td>Your working orders, <code>{ id, side: 'buy' | 'sell', price, qty }</code>, summed per price beside their side.</td></tr>
+          <tr><td>rows / rowHeight</td><td><span class="type">number</span></td><td>Prices on screen (default 21) and row height (default 24).</td></tr>
+          <tr><td>center</td><td><span class="type">'mid' | 'last'</span></td><td>What it follows: the middle of the spread (default) or the last trade. It recentres only once the market leaves the middle half of the window, and never while the pointer is over it or a cell has focus.</td></tr>
+          <tr><td>following</td><td><span class="type">boolean</span> (bindable)</td><td>Whether it follows the market. The wheel pages through prices and turns it off (bind it to see that); Space, setting it back to <code>true</code>, or <code>recenter()</code> centres on the market again. It never moves while the pointer is over it or the keyboard works in it.</td></tr>
+          <tr><td>onAction</td><td><span class="type">(action: LadderAction, event) =&gt; void</span></td><td>A click on the bid side asks to <code>'buy'</code> at that row's price, on the ask side to <code>'sell'</code>, on your orders to <code>'cancel'</code> them; B, S and Delete do the same on the focused row (a held key acts once). <code>{ kind: 'buy' | 'sell', price, via }</code> or <code>{ kind: 'cancel', price, side?, orders, via }</code>, <code>via</code> being <code>'click' | 'key'</code>, with the price as the row showed it.</td></tr>
+          <tr><td>format / locale</td><td><span class="type">(price) =&gt; string / string</span></td><td>The price text. Default: the tick's decimals in <code>locale</code> ('en-US').</td></tr>
+          <tr><td>headers / theme / ariaLabel</td><td><span class="type">LadderHeaders / GridTheme / string</span></td><td>Column headers (<code>myBid</code>, <code>bid</code>, <code>price</code>, <code>ask</code>, <code>myAsk</code>), the grid theme, the accessible name.</td></tr>
+        </tbody>
+      </table>
+      <pre><code><span class="tok-key">import</span> { DepthLadder } <span class="tok-key">from</span> <span class="tok-str">'bo-grid/ladder'</span>;
+
+&lt;DepthLadder {bids} {asks} {last} {orders} tick={<span class="tok-num">0.05</span>} bind:following
+  onAction={(a) =&gt; a.kind === <span class="tok-str">'cancel'</span> ? venue.cancel(a.orders) : venue.place(a.kind, a.price)} /&gt;</code></pre>
+      <div class="note">
+        The math is exported too, for a ladder of a different shape: <code>ladderPrices(center, count, tick)</code>, <code>ladderRows(prices, { bids, asks, orders?, last?, format? })</code>, <code>midPrice</code>, <code>bestPrices</code>, <code>stepPrice</code>, <code>snapToTick</code>, <code>ordersAt</code>.
       </div>
 
       <!-- ============ SELECTION ============ -->
@@ -605,6 +632,8 @@ rows = tape.toArray();</code></pre>
           <h3 style="font-size:14px">Trading <span style="font-weight:400;color:var(--dim)">(bo-grid/trading)</span></h3>
           <span class="pill">resolveTone</span><span class="pill">toneColor</span><span class="pill">vnBands</span><span class="pill">vnFuturesBands</span><span class="pill">vnTickSize</span>
           <span class="pill">roundToTick</span><span class="pill">fmtTradingPrice</span><span class="pill">sessionStateAt</span><span class="pill">sessionLabel</span>
+          <h3 style="font-size:14px">Ladder <span style="font-weight:400;color:var(--dim)">(bo-grid/ladder)</span></h3>
+          <span class="pill">DepthLadder</span><span class="pill">ladderPrices</span><span class="pill">ladderRows</span><span class="pill">midPrice</span><span class="pill">stepPrice</span><span class="pill">LadderAction</span>
           <h3 style="font-size:14px">Web component <span style="font-weight:400;color:var(--dim)">(bo-grid/element)</span></h3>
           <span class="pill">createBoGrid</span><span class="pill">BoGridConfig</span><span class="pill">BoGridElement</span>
         </div>

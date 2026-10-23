@@ -63,6 +63,11 @@
       "svelte": "./dist/trading/index.js",
       "default": "./dist/trading/index.js"
     },
+    "./ladder": {
+      "types": "./dist/ladder/index.d.ts",
+      "svelte": "./dist/ladder/index.js",
+      "default": "./dist/ladder/index.js"
+    },
     "./element": {
       "types": "./dist/bo-grid.element.d.ts",
       "default": "./dist/bo-grid.element.js"

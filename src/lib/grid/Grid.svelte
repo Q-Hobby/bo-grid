@@ -1882,6 +1882,13 @@
     return true;
   }
 
+  function getFocusedCell(): { row: GridRow; column: ColumnDef } | null {
+    const f = sel.focus;
+    const item = f ? flat[f.r] : undefined;
+    const column = f ? cols[f.c] : undefined;
+    return item?.kind === 'data' && column ? { row: item.row, column } : null;
+  }
+
   function getSelectedRows(): GridRow[] {
     return view.filter((r) => rowState.isSelected(getRowId(r)));
   }
@@ -1970,7 +1977,7 @@
 
   $effect(() => {
     untrack(() =>
-      onReady?.({ scrollToRow, focusCell, getSelectedRows, autosizeColumns, exportCSV: exportViewCSV, getState, applyState, patchRows, refresh, flashCells, pinRow, getPinnedRowIds, openFind }),
+      onReady?.({ scrollToRow, focusCell, getFocusedCell, getSelectedRows, autosizeColumns, exportCSV: exportViewCSV, getState, applyState, patchRows, refresh, flashCells, pinRow, getPinnedRowIds, openFind }),
     );
   });
 

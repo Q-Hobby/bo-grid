@@ -16,13 +16,15 @@ export default defineConfig({
     emptyOutDir: true,
     minify: 'esbuild',
     lib: {
-      // Three entries: the grid core plus the optional realtime and trading
-      // companions. Measured separately by size-lib.mjs so each keeps
-      // its own budget and none can creep into the core number.
+      // Four entries: the grid core plus the optional realtime, trading and
+      // ladder companions. Measured separately by size-lib.mjs so each keeps
+      // its own budget and none can creep into the core number (the ladder
+      // builds on the grid, so it counts only what it adds).
       entry: {
         'bo-grid': 'src/lib/index.ts',
         realtime: 'src/lib/realtime/index.ts',
         trading: 'src/lib/trading/index.ts',
+        ladder: 'src/lib/ladder/index.ts',
       },
       formats: ['es'],
     },

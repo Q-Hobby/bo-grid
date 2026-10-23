@@ -64,10 +64,20 @@ try {
   });
   if (!heavy.body.includes('bo-grid')) fail('feature-heavy grid did not server-render');
 
+  // bo-grid/ladder: the depth ladder renders its prices on the server (its
+  // centre starts on the market; the wheel listener and the following are
+  // client-only).
+  const DepthLadder = (await server.ssrLoadModule('/src/lib/ladder/DepthLadder.svelte')).default;
+  const ladder = render(DepthLadder, {
+    props: { bids: [[249.95, 100]], asks: [[250.05, 80]], tick: 0.05, rows: 5 },
+  });
+  if (!ladder.body.includes('bo-ladder')) fail('depth ladder markup not produced on the server');
+  if (!ladder.body.includes('250.00') || !ladder.body.includes('249.95')) fail('depth ladder prices not present in server-rendered HTML');
+
   const cellCount = (basic.body.match(/role="gridcell"/g) || []).length;
   console.log(
     `✓ ssr: <Grid> server-rendered cleanly — ${cellCount} cells, ` +
-      `basic + feature-heavy (rowSelection/filterRow/footer/groupBy/pagination/persistKey/sparkline/theme) OK`,
+      `basic + feature-heavy (rowSelection/filterRow/footer/groupBy/pagination/persistKey/sparkline/theme) + DepthLadder OK`,
   );
 } catch (err) {
   fail(err && err.stack ? err.stack : String(err));

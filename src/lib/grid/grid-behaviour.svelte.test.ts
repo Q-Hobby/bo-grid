@@ -66,6 +66,20 @@ describe('keyboard navigation', () => {
     expect(active(m)).toBe('r0-c0');
   });
 
+  it('getFocusedCell reports the focused row and column as the focus moves', () => {
+    const m = mountTracked({ columns, rows: threeRows() });
+    expect(m.api().getFocusedCell()).toBeNull();
+    m.api().focusCell(1, 'sym');
+    flushSync();
+    press(gridEl(m), 'ArrowDown');
+    press(gridEl(m), 'ArrowRight');
+    const f = m.api().getFocusedCell();
+    expect(f?.row.id).toBe(2);
+    expect(f?.column.key).toBe('px');
+    press(gridEl(m), 'Escape');
+    expect(m.api().getFocusedCell()).toBeNull();
+  });
+
   it('PageDown moves by a page, clamped to the last row; Escape clears the focus', () => {
     const m = mountTracked({ columns, rows: threeRows() });
     m.api().focusCell(1, 'px');
