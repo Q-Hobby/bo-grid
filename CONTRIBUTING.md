@@ -69,6 +69,20 @@ needs numbers, not intuition:
   direction flips.
 - [BENCHMARKS.md](./BENCHMARKS.md) shows the method and the current numbers.
 
+## Releasing
+
+A release is a pull request that bumps `version` in `package.json` and renames
+`## [Unreleased]` in the CHANGELOG to `## [x.y.z] — <date>` (with its link at
+the bottom of the file). Merging it to `main` publishes it: once `ci` passes on
+that commit, the `release` workflow publishes the version to npm with
+provenance, tags the commit `vx.y.z` and opens a GitHub release with that
+CHANGELOG section. A pre-release version (`2.4.0-beta.1`) goes to the `next`
+dist-tag. A version already on npm is skipped, so merging other pull requests
+publishes nothing.
+
+The workflow needs the `NPM_TOKEN` repository secret. `pnpm release` still
+publishes by hand from a clean `main`.
+
 ## Accessibility
 
 New UI needs labelled controls and keyboard access. Inside the grid, every
