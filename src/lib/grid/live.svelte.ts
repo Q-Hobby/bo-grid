@@ -33,12 +33,13 @@ export interface LiveRows {
   /** Writes each patch into its row (looked up in `index`) and wakes the
       `rendered` rows it changed, each once even when it is rendered twice (a
       pinned row can also be on screen in the body). Returns how many rows
-      changed. */
+      changed. `onChanged` hears which fields changed, per row key. */
   patch(
     index: ReadonlyMap<RowKey, GridRow>,
     patches: Iterable<readonly [RowKey, Record<string, unknown>]>,
     rendered: Iterable<GridRow>,
     idOf: (row: GridRow) => RowKey,
+    onChanged?: (changed: ReadonlyMap<RowKey, ReadonlySet<string>>) => void,
   ): number;
   /** Starts an on-demand flash on the `rendered` rows that `opts.rows` names
       (all when omitted), each id once. Rows off screen are skipped, as a tick
@@ -70,9 +71,10 @@ export function createLiveRows(): LiveRows {
     rowVersion: (key) => rowVersions[key],
     fieldVersion: (key, field) => fieldVersions[fieldKey(key, field)],
     cellFlash: (key) => (flashSeq[key] ? (flashes.get(key) ?? null) : null),
-    patch(index, patches, rendered, idOf) {
+    patch(index, patches, rendered, idOf, onChanged) {
       const changed = patchRowsInPlace(index, patches);
       if (changed.size === 0) return 0;
+      onChanged?.(changed);
       const bumped = new Set<RowKey>();
       for (const row of rendered) {
         const key = idOf(row);

@@ -42,7 +42,8 @@ try {
     '/src/lib/grid/rowheight.ts',
   );
   const { aggregate } = await server.ssrLoadModule('/src/lib/grid/aggregate.ts');
-  const { compareBySorts } = await server.ssrLoadModule('/src/lib/grid/column.ts');
+  const { compareBySorts, sortRows } = await server.ssrLoadModule('/src/lib/grid/column.ts');
+  const { mergeChanged, rowOrder } = await server.ssrLoadModule('/src/lib/grid/livesort.ts');
   const { buildTreeRows } = await server.ssrLoadModule('/src/lib/grid/tree.ts');
   const { TickBuffer, createRowIndex, applyPatches } = await server.ssrLoadModule(
     '/src/lib/realtime/ticks.ts',
@@ -91,6 +92,30 @@ try {
   time('multi-key sort', `${fmt(M)} rows by 2 keys (compareBySorts)`, () => {
     rows.sort((a, b) => compareBySorts(a, b, sorts));
   }, 2500);
+
+  // --- Live sort: re-sort a board after a frame's ticks (liveSort) ---
+  // A movers board sorted by change: 500 of 100,000 rows changed since the last
+  // re-sort. A full re-sort (what api.refresh does) against merging just the
+  // changed rows back in (mergeChanged); both give the same order.
+  const liveCols = [{ type: 'number', key: 'chg', header: 'Chg' }];
+  const liveSorts = [{ key: 'chg', dir: 'desc' }];
+  const board = Array.from({ length: M }, (_, i) => ({ id: i, chg: ((i * 7919) % 2001) - 1000 }));
+  const boardPos = new Map(board.map((r, i) => [r, i]));
+  let boardView = sortRows(board, liveSorts, liveCols);
+  const moved = new Set();
+  for (let k = 0; k < 500; k++) {
+    const row = board[(k * 7877) % M];
+    row.chg = ((k * 104729) % 2001) - 1000;
+    moved.add(row);
+  }
+  let full;
+  time('live sort: full re-sort', `${fmt(M)} rows, 500 changed (sortRows)`, () => {
+    full = sortRows(board, liveSorts, liveCols);
+  }, 3000);
+  time('live sort: merge changed', `${fmt(M)} rows, 500 changed (mergeChanged)`, () => {
+    boardView = mergeChanged(boardView, moved, null, rowOrder(liveSorts, liveCols, (r) => boardPos.get(r)));
+  }, 600);
+  if (boardView.some((r, i) => r !== full[i])) throw new Error('mergeChanged disagrees with sortRows');
 
   // --- Tree flatten (pre-order DFS) ---
   const roots = [];

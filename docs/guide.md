@@ -223,17 +223,28 @@ Price board, one component column measured ~22% less main-thread work per
 frame at 30,000 events/s than rebuilding it on every patch, and dropped frames
 fell from ~20 to ~7.
 
-Values that change in place never re-sort or re-filter the view by themselves —
-that would mean sorting on every tick. Call **`api.refresh()`** when the order
-should catch up, e.g. once a second on a "top movers" board:
+Values that change in place do not re-sort or re-filter the view on every
+tick. For a board whose order must follow the feed (a "top movers" board, a
+watchlist sorted by change), set **`liveSort`**:
 
-```ts
-setInterval(() => api.refresh(), 1000); // re-sort by the live change column
+```svelte
+<Grid {rows} {columns} sort={[{ key: 'chg', dir: 'desc' }]} liveSort={500} onReady={(a) => (api = a)} />
 ```
 
-A refresh re-reads each row's sort value once (not once per comparison), and a
-row that keeps its position keeps its rendered cells; rows that moved repaint,
-so a re-sort costs one heavier frame — a few times an ordinary tick frame.
+When a patch changes a field the grid sorts or filters by, the rows it changed
+are merged back into place at most every `liveSort` ms (`true`: 500). Only
+those rows are sorted, and merged into the rest: on 100,000 rows with 500
+changed that takes ~5 ms, against ~21 ms for a full re-sort (`pnpm bench`). A
+row that changes only other fields queues nothing. Rows that stop matching a
+filter leave, rows that start matching join, and a row whose group field
+changed moves to its new group. The focused cell stays on its row as the row
+moves, and nothing moves while a cell is being edited. `liveSort` follows
+`patchRows`: values written into rows any other way still need
+`api.refresh()`.
+
+Without `liveSort`, rows hold their place until **`api.refresh()`**, which
+re-filters and re-sorts the whole view against the current values. A row that
+keeps its position keeps its rendered cells; rows that moved repaint.
 
 On a wall-sized board the per-frame cost grows with the rows on screen
 (roughly linearly — 80 rows cost ~2.5× what 30 do). Keep frames inside budget

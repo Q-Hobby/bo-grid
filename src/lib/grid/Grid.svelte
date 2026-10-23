@@ -47,6 +47,7 @@
   import { createRowState } from './rowstate.svelte';
   import { keyAction, type KeyState } from './keyboard';
   import { TextMeter } from './textmeter';
+  import { mergeChanged, rowOrder } from './livesort';
 
   let {
     rows = [],
@@ -93,6 +94,7 @@
     onReady,
     onViewportChange,
     flashMotion = 'fade',
+    liveSort = false,
     columnHover = false,
     rowNumbers = false,
     rowPinning = false,
@@ -690,35 +692,144 @@
     return c ? cellValue(c, row) : row[key];
   };
 
-  // Bumped by api.refresh(): the one way to make filter and sort catch up with
-  // values that changed in place (a live feed) without re-sorting every tick.
-  let viewTick = $state(0);
-  const view = $derived.by(() => {
-    if (source) return [] as GridRow[];
-    viewTick;
-    const base = rows;
-    const allCols = columns;
-    const f = filter.trim().toLowerCase();
-    const q = quickText.trim().toLowerCase();
-    const s = sorts;
-    // Active per-column filters: menu-driven structured filters (columnFilters)
-    // take precedence; filterRow text inputs (colFilters) fill in the rest as
-    // case-insensitive "contains".
+  // Active per-column filters: menu-driven structured filters (columnFilters)
+  // take precedence; filterRow text inputs (colFilters) fill in the rest as
+  // case-insensitive "contains".
+  const activeFilters = $derived.by(() => {
     const active: Record<string, AnyFilter> = { ...activeColumnFilters };
     for (const [k, v] of Object.entries(colFilters)) {
       if (!active[k] && v.trim()) active[k] = { kind: 'text', op: 'contains', q: v };
     }
+    return active;
+  });
+  // Every filter as one predicate (null: none). Built from the settings; it
+  // reads row values only when it runs.
+  const rowFilter = $derived.by<((row: GridRow) => boolean) | null>(() => {
+    const allCols = columns;
+    const f = filter.trim().toLowerCase();
+    const q = quickText.trim().toLowerCase();
+    const active = activeFilters;
     const hasColFilters = Object.keys(active).length > 0;
+    const types = filterTypes;
+    if (!f && !q && !hasColFilters) return null;
+    const hasText = (row: GridRow, t: string) =>
+      allCols.some((c) => String(cellValue(c, row) ?? '').toLowerCase().includes(t));
+    return (row) =>
+      (!f || hasText(row, f)) && (!q || hasText(row, q)) && (!hasColFilters || passesFilters(row, active, valueOf, types));
+  });
+
+  // Bumped by api.refresh(): makes filter and sort catch up with values that
+  // changed in place (a live feed) with a full re-sort.
+  let viewTick = $state(0);
+  const fullView = $derived.by(() => {
+    if (source) return [] as GridRow[];
+    viewTick;
+    // Turning liveSort on or changing it starts merges from a fresh full view:
+    // changes made while it was off were never queued.
+    liveSort;
+    const base = rows;
+    const allCols = columns;
+    const pass = rowFilter;
+    const s = sorts;
     return untrack(() => {
-      let r = base;
-      if (f) r = r.filter((row) => allCols.some((c) => String(cellValue(c, row) ?? '').toLowerCase().includes(f)));
-      if (q) r = r.filter((row) => allCols.some((c) => String(cellValue(c, row) ?? '').toLowerCase().includes(q)));
-      if (hasColFilters) {
-        r = r.filter((row) => passesFilters(row, active, valueOf, filterTypes));
-      }
-      if (s.length > 0) r = sortRows(r, s, allCols);
-      return r;
+      const r = pass ? base.filter(pass) : base;
+      return s.length > 0 ? sortRows(r, s, allCols) : r;
     });
+  });
+
+  // ---- Live sort (`liveSort`; livesort.ts) -----------------------------------
+  // A patch that changes a field the view sorts or filters by queues its row;
+  // at most every `liveSort` ms the queued rows are merged back into place
+  // (mergeChanged: n + k log k comparisons) instead of re-sorting everything.
+  // `view` is the full view with those merges applied; a new full view (new
+  // rows, sort, filter, or api.refresh) replaces it.
+  const liveMs = $derived(
+    liveSort === true ? 500 : typeof liveSort === 'number' && liveSort > 0 ? Math.min(liveSort, 2 ** 31 - 1) : 0,
+  );
+  const liveQueue = new Set<GridRow>();
+  let liveTick = $state(0);
+  let liveTimer: ReturnType<typeof setTimeout> | undefined;
+  let liveView: { base: GridRow[]; rows: GridRow[] } | null = null;
+  // Rows' positions in `rows`, for ties (as sortRows breaks them).
+  let rowPos: { rows: GridRow[]; at: Map<GridRow, number> } | null = null;
+  const positionOf = (row: GridRow): number => {
+    if (rowPos?.rows !== rows) rowPos = { rows, at: new Map(rows.map((r, i) => [r, i] as const)) };
+    return rowPos.at.get(row) ?? -1;
+  };
+  const view = $derived.by(() => {
+    const base = fullView;
+    liveTick;
+    return untrack(() => {
+      if (liveView?.base !== base) {
+        liveView = { base, rows: base };
+        liveQueue.clear(); // a full view already reflects every value
+      } else if (liveQueue.size > 0) {
+        liveView.rows = mergeChanged(liveView.rows, liveQueue, rowFilter, rowOrder(sorts, columns, positionOf));
+        liveQueue.clear();
+      }
+      return liveView.rows;
+    });
+  });
+  // The fields a re-sort follows: sort keys, filtered columns and group fields. null: any
+  // field (a computed sort or filter column, a text filter across every
+  // column, a custom filter that reads the row). undefined: live sort is off,
+  // or nothing is sorted or filtered.
+  const liveFields = $derived.by<Set<string> | null | undefined>(() => {
+    if (!liveMs || source) return undefined;
+    if (filter.trim() || quickText.trim()) return null;
+    const keys = new Set<string>();
+    for (const s of sorts) {
+      if (colByKey.get(s.key)?.value) return null;
+      keys.add(s.key);
+    }
+    for (const [key, f] of Object.entries(activeFilters)) {
+      if (colByKey.get(key)?.value || !isBuiltinFilter(f)) return null;
+      keys.add(key);
+    }
+    for (const key of groupBy) keys.add(key);
+    return keys.size > 0 ? keys : undefined;
+  });
+  let liveStopped = false;
+  function queueLive(changed: ReadonlyMap<string | number, ReadonlySet<string>>, fields: Set<string> | null): void {
+    if (liveStopped) return;
+    for (const [key, changedFields] of changed) {
+      if (fields) {
+        let hit = false;
+        for (const f of changedFields) if (fields.has(f)) hit = true;
+        if (!hit) continue;
+      }
+      const row = rowIndex.get(key);
+      if (row) liveQueue.add(row);
+    }
+    if (liveQueue.size > 0 && liveTimer === undefined) liveTimer = setTimeout(applyLive, liveMs);
+  }
+  function applyLive(): void {
+    liveTimer = undefined;
+    if (!liveMs) return void liveQueue.clear();
+    // Not under the user's hands: wait out an edit or a drag.
+    if (editing || dragging || filling) {
+      liveTimer = setTimeout(applyLive, liveMs);
+      return;
+    }
+    // A refresh or a new view since then already covered the queued rows.
+    if (liveQueue.size === 0) return;
+    // The selection is positional: keep its ends on the same rows. An end on a
+    // group header or a loading row stays where it is; a focused row that left
+    // the view (filtered out, or onto another page) clears the selection.
+    const anchorRow = sel.anchor ? dataAt(sel.anchor.r) : null;
+    const focusRow = sel.focus ? dataAt(sel.focus.r) : null;
+    liveTick++;
+    if (!sel.focus || !sel.anchor || (!anchorRow && !focusRow)) return;
+    const at = (row: GridRow) => flat.findIndex((v) => v.kind === 'data' && v.row === row);
+    const f = focusRow ? at(focusRow) : sel.focus.r;
+    if (f < 0) return sel.clear();
+    const a = anchorRow ? at(anchorRow) : sel.anchor.r;
+    sel.anchor = { r: a < 0 ? f : a, c: sel.anchor.c };
+    sel.focus = { r: f, c: sel.focus.c };
+  }
+  $effect(() => () => {
+    liveStopped = true;
+    clearTimeout(liveTimer);
   });
 
   // Conditional-formatting ranges: the data extent (min/max over the current
@@ -1372,7 +1483,14 @@
   }
 
   function patchRows(patches: Iterable<readonly [string | number, Record<string, unknown>]>): number {
-    return live.patch(rowIndex, patches, renderedRows(), getRowId);
+    const fields = liveFields;
+    return live.patch(
+      rowIndex,
+      patches,
+      renderedRows(),
+      getRowId,
+      fields === undefined ? undefined : (changed) => queueLive(changed, fields),
+    );
   }
 
   function flashCells(opts: FlashCellsOptions = {}): number {

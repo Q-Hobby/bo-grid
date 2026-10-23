@@ -80,6 +80,7 @@ interface GridProps {
   virtualizeColumns?: boolean;         // 100+ column grids, default false
   columnHover?: boolean;               // wash the column under the pointer (body + header), default false
   flashMotion?: 'fade' | 'hold' | 'auto'; // 'hold' = static tint, far cheaper on a busy board; 'auto' = fade when quiet, hold when busy; default 'fade'
+  liveSort?: boolean | number;             // keep sort/filters current under patchRows: rows a tick changed in a sorted/filtered field merge back into place at most every N ms (true = 500); off by default
 
   // Selection
   cellSelection?: boolean;             // range-select highlight, default true
@@ -187,7 +188,7 @@ interface GridApi {
   exportCSV(filename?: string): Promise<void>;  // current view (filtered + sorted)
   getState(): GridState;                   // { version, order, widths, hidden, pinned, sorts, filters } — JSON-safe
   applyState(state: unknown): boolean;     // reconciled against current columns; false for a foreign version
-  refresh(): void;                         // re-run filter+sort on current values (live values never re-sort by themselves) — e.g. every 1s for top movers
+  refresh(): void;                         // re-run filter+sort over the whole view on current values; for an order that follows the feed, use the liveSort prop instead
   patchRows(patches: Iterable<[rowId, Partial<Row>]>): number;  // BUSY FEEDS: rows may be plain objects ($state.raw); writes in place, repaints only rendered cells whose field changed (+ row-aware ones). format/cellClass/tooltip: declare `(value, row)` ONLY if the fn reads other row fields
   flashCells(opts?: { rows?: rowId[]; columns?: string[]; dir?: 'up' | 'down'; ms?: number }): number;  // flash on-screen cells on demand (a fill, an alert), changed or not; returns rows flashed
   pinRow(id: rowId, pinned?: boolean): boolean;  // pin above the scroll (row stays in the body); false = unknown id
