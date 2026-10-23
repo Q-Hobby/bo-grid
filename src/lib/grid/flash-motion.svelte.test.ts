@@ -42,6 +42,19 @@ describe("flashMotion: 'auto'", () => {
     expect(pxText(0).classList.contains('held')).toBe(true);
   });
 
+  it('counts every cell a whole-row flash lights, not one per request', () => {
+    const rows = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, sym: `S${i}`, px: 10 }));
+    grid = mountGrid({ rows, columns, flashMotion: 'auto' });
+    grid.api().flashCells();
+    flushSync();
+    expect(pxText(0).classList.contains('held')).toBe(false);
+    // A handful of requests, each lighting every rendered cell: well past the
+    // hold level, where one count per request would never get there.
+    for (let n = 0; n < 8; n++) grid.api().flashCells();
+    flushSync();
+    expect(pxText(0).classList.contains('held')).toBe(true);
+  });
+
   it("'fade' never holds, however busy", () => {
     const rows = Array.from({ length: 4 }, (_, i) => ({ id: i + 1, sym: `S${i}`, px: 10 }));
     grid = mountGrid({ rows, columns, flashMotion: 'fade' });

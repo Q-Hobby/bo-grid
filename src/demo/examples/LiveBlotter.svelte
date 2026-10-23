@@ -143,7 +143,7 @@
   {#if result}<span class="lb-result">{result}</span>{/if}
 </div>
 <div bind:this={host}>
-  <Grid rows={rows as unknown as GridRow[]} {columns} {sort} liveSort flashNewRows footer height={480} theme={ui.grid} ariaLabel="Order blotter" onReady={(a) => (api = a)} />
+  <Grid rows={rows as unknown as GridRow[]} {columns} {sort} liveSort flashNewRows flashMotion="auto" footer height={480} theme={ui.grid} ariaLabel="Order blotter" onReady={(a) => (api = a)} />
 </div>
 
 <style>

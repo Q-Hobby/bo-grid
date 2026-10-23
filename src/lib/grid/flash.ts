@@ -183,13 +183,15 @@ export class FlashLoad {
     private readonly windowMs: number = FLASH_MS,
   ) {}
 
-  /** Count a flash starting at `at` (ms) and say whether it should hold. */
-  start(at: number): boolean {
+  /** Count `count` flashing cells starting at `at` (ms) and say whether they
+      should hold. A request that lights many cells at once (a row arriving,
+      `api.flashCells`) counts each of them, as a cell's own tick counts one. */
+  start(at: number, count = 1): boolean {
     if (at > this.last) {
       this.level *= Math.exp((this.last - at) / this.windowMs);
       this.last = at;
     }
-    this.level += 1;
+    this.level += count;
     this.holding = this.level > (this.holding ? this.exit : this.enter);
     return this.holding;
   }

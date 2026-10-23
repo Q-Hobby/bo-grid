@@ -72,6 +72,13 @@ All notable changes to this project are documented here. Format follows
   order that covers every column, so the wrong column moved: with one column
   hidden, dragging B onto C did nothing, and `onColumnReorder` reported an
   order the user never made.
+- **`flashMotion: 'auto'` holds a burst of new rows.** A flash that lights
+  whole rows (`flashNewRows`, `api.flashCells`) counted as one flash however
+  many cells it lit, so a burst of new orders never reached the hold level and
+  every cell kept fading. Each cell now counts, as each cell's own tick does.
+  On the Live blotter (5 orders in per frame) the flashing cells switch to
+  held tints within a few frames; a fading cell costs about 0.02 ms of every
+  frame it fades through, a held one almost nothing.
 
 ## [2.3.0] — 2026-10-23
 

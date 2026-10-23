@@ -150,7 +150,9 @@ export interface GridPropsDef {
   /** How a flash plays. `'fade'` (default): the tint fades out. `'hold'`: the
       tint holds for the flash window, then drops — no CSS animation, so a busy
       board restyles and repaints a flashing cell twice instead of every frame.
-      `'auto'`: fade while few cells flash at once, hold when many do. */
+      `'auto'`: fade while few cells flash at once, hold when many do. A flash
+      that lights whole rows (`flashNewRows`, `api.flashCells`) counts each
+      cell it lights. */
   flashMotion?: 'fade' | 'hold' | 'auto';
   /** Keep the sort and filters current while `api.patchRows` changes values in
       place. When a patch changes a field the grid sorts or filters by, the

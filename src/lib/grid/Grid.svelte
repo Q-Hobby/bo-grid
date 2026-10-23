@@ -325,7 +325,7 @@
   const flashHold = {
     clock: () => flashNow,
     until: (t: number) => holdClock.until(t),
-    holds: (at: number) => flashMotion !== 'auto' || flashLoad.start(at),
+    holds: (at: number, cells = 1) => flashMotion !== 'auto' || flashLoad.start(at, cells),
   };
   $effect(() => () => holdClock.stop());
 
@@ -1749,8 +1749,7 @@
     // reload), nor a wholesale replacement (more rows than a diff takes).
     const loaded = prev.st.rows.length === 0;
     if (ms && !loaded && arrivals.length > 0 && arrivals.length <= Math.max(64, st.rows.length >> 3)) {
-      const hold = flashMotion === 'fade' ? undefined : flashHold.holds(now);
-      live.flash({ rows: arrivals, ms }, renderedRows(), getRowId, now, hold);
+      live.flash({ rows: arrivals, ms }, renderedRows(), getRowId, now, flashDecider(now));
     }
   }
   // `pauseOnHover`: whether a mouse or pen is over the rows, listened for only
@@ -1820,7 +1819,12 @@
 
   function flashCells(opts: FlashCellsOptions = {}): number {
     const at = Date.now();
-    return live.flash(opts, renderedRows(), getRowId, at, flashMotion === 'fade' ? undefined : flashHold.holds(at));
+    return live.flash(opts, renderedRows(), getRowId, at, flashDecider(at));
+  }
+  /** Whether a flash of whole rows holds, from the cells it lights: under
+      `'auto'` each counts toward holding, as each cell's own tick does. */
+  function flashDecider(at: number): ((rows: number, columns: number | null) => boolean) | undefined {
+    return flashMotion === 'fade' ? undefined : (rows, columns) => flashHold.holds(at, rows * (columns ?? cols.length));
   }
 
   // ---- Imperative handle (`onReady`) ----------------------------------------
