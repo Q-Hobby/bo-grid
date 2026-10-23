@@ -203,6 +203,27 @@ fade was off in them. Their comparisons hold for the work around the flash:
 - Removing `position: relative` from cells made paint slower (it lets Chrome
   reuse an unchanged cell's paint), so that stays.
 
+### In CI: every pull request against its base
+
+The `perf` workflow builds the demo from the pull request and from its base,
+then runs `scripts/bench-browser.mjs` on both in headless Chrome. Each round
+runs every workload on the two builds back to back, in alternating order, and
+the change is the median of the per-round ratios, so a slow moment on the
+runner cancels out.
+
+| Workload | What runs | Gate |
+| --- | --- | --- |
+| sync: board 10k and 30k ev/s | 240 seeded frames, each rendered synchronously, then style and layout forced | fails above +10% and +0.2 ms |
+| sync: scroll 3 rows/frame | 120 scroll steps, each rendered synchronously | fails above +10% and +0.2 ms |
+| live: board 10k hold, 30k auto, 10k fade | the real feed for 3 s, flashes and paint included | warns above +25% |
+
+Each run reports its median frame, so a GC pause does not move it. Pages are
+cross-origin isolated, which gives fine-grained timers (0.01 ms instead of
+0.1 ms steps), and web fonts are blocked so both builds lay out alike. A pull
+request that changes the board's bench hooks is reported but not gated. On a GitHub runner, two copies of the
+same build measured within 2% (sync) and 8% (live) of each other. The table is
+in the job summary of every run.
+
 ## Hot paths
 
 The reason scrolling stays smooth whether you have 1,000 rows or 1,000,000 is
@@ -270,9 +291,10 @@ on your hardware.
 
 ```sh
 pnpm install
-pnpm bench       # hot-path timings
-pnpm size:lib    # bundle size report
-pnpm dev         # demo with the 1M-row Big data example + FPS meter
+pnpm bench          # hot-path timings
+pnpm bench:browser  # frame cost of the Price board in headless Chrome
+pnpm size:lib       # bundle size report
+pnpm dev            # demo with the 1M-row Big data example + FPS meter
 ```
 
 Live frames: open the demo, scroll to the Price board, and run

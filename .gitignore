@@ -4,7 +4,8 @@ demo-dist/
 lib-dist/
 .svelte-kit/
 *.tgz
+coverage/
 .DS_Store
 
-# Claude Code harness runtime
+# Local tool state
 .claude/

@@ -1,0 +1,68 @@
+name: perf
+
+# Browser frame-cost gate. Builds the demo from the pull request and from its
+# base, runs both in headless Chrome (scripts/bench-browser.mjs) and fails when
+# a deterministic workload got slower; live workloads only warn. The table
+# lands in the job summary. On main it prints the numbers for the commit there.
+# A pull request that edits the board's bench hooks is reported, not gated:
+# base and head would run different workloads.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frame-cost:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: head
+      - if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          path: base
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          package_json_file: head/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: head/pnpm-lock.yaml
+      - name: Build head
+        working-directory: head
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec vite build --base=./ --outDir ../bench/head --emptyOutDir
+      - name: Build base
+        if: github.event_name == 'pull_request'
+        working-directory: base
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec vite build --base=./ --outDir ../bench/base --emptyOutDir
+      - name: Compare with base
+        if: github.event_name == 'pull_request'
+        working-directory: head
+        run: |
+          if cmp -s src/demo/examples/PriceBoard.svelte ../base/src/demo/examples/PriceBoard.svelte; then
+            node scripts/bench-browser.mjs --base ../bench/base --head ../bench/head
+          else
+            echo "::notice::PriceBoard.svelte changed: the frame-cost comparison is reported, not gated."
+            node scripts/bench-browser.mjs --base ../bench/base --head ../bench/head --no-gate
+          fi
+      - name: Measure
+        if: github.event_name == 'push'
+        working-directory: head
+        run: node scripts/bench-browser.mjs --dir ../bench/head
