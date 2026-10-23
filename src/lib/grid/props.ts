@@ -161,6 +161,27 @@ export interface GridPropsDef {
       `patchRows`; values written into rows any other way still need
       `api.refresh()`. */
   liveSort?: boolean | number;
+  /** While the pointer is over the rows, `liveSort` waits, so a row does not
+      move just as it is clicked; the rows re-sort once the pointer leaves (or
+      the window loses focus, or the tab is hidden). Mouse and pen only.
+      Default true; set false for a screen nobody points at. */
+  pauseOnHover?: boolean;
+  /** Dim a row when nothing new has come for it for this many ms: a quote
+      whose feed went quiet. News is a patch (`api.patchRows`) that changed
+      the row, or a new object for it in `rows` (the row arrived, or a copy
+      replaced it); a patch that re-sends the values the row already has is
+      not. The row comes back the moment it ticks. Rows already there count
+      from mount, or from when `staleAfter` is turned on. Dimmed with
+      `opacity: var(--bo-stale-opacity, 0.5)`. Off by default. */
+  staleAfter?: number;
+  /** Flash a row once when it arrives in `rows` (a new order, a new fill):
+      every cell, in the neutral flash colour, for this many ms (`true`: 600).
+      A row arrives when its id is new; a copy of a row already there does not
+      flash, nor do the rows an empty grid gets (a load or a reload), nor a
+      wholesale replacement (more than 64 rows, and more than an eighth of
+      them, at once). Rows on
+      screen only, as with every flash. Off by default. */
+  flashNewRows?: boolean | number;
   /** Highlight the column under the pointer (body and header) — handy on a
       wide board. One overlay for the whole column, not a class per cell. */
   columnHover?: boolean;

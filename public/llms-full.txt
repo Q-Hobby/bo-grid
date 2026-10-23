@@ -81,6 +81,9 @@ interface GridProps {
   columnHover?: boolean;               // wash the column under the pointer (body + header), default false
   flashMotion?: 'fade' | 'hold' | 'auto'; // 'hold' = static tint, far cheaper on a busy board; 'auto' = fade when quiet, hold when busy; default 'fade'
   liveSort?: boolean | number;             // keep sort/filters current under patchRows: rows a tick changed in a sorted/filtered field merge back into place at most every N ms (true = 500); off by default
+  pauseOnHover?: boolean;                  // liveSort waits while a mouse/pen is over the rows (default true)
+  staleAfter?: number;                     // dim a row (--bo-stale-opacity) after N ms without news (a patch that changed it, or a new row object); off by default
+  flashNewRows?: boolean | number;         // flash a row once when a new id arrives in rows (true = 600 ms); not copies, an empty grid's load or a wholesale replace; off by default
 
   // Selection
   cellSelection?: boolean;             // range-select highlight, default true
