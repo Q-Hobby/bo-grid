@@ -223,7 +223,8 @@ runner cancels out.
 Each run reports its median frame, so a GC pause does not move it. Pages are
 cross-origin isolated, which gives fine-grained timers (0.01 ms instead of
 0.1 ms steps), and web fonts are blocked so both builds lay out alike. A pull
-request that changes the board's bench hooks is reported but not gated. On a GitHub runner, two copies of the
+request that changes a benchmarked demo (the bench hooks) is reported but not
+gated. On a GitHub runner, two copies of the
 same build measured within 2% (sync) and 8% (live) of each other. The table is
 in the job summary of every run.
 

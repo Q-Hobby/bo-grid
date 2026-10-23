@@ -238,9 +238,28 @@ changed that takes ~5 ms, against ~21 ms for a full re-sort (`pnpm bench`). A
 row that changes only other fields queues nothing. Rows that stop matching a
 filter leave, rows that start matching join, and a row whose group field
 changed moves to its new group. The focused cell stays on its row as the row
-moves, and nothing moves while a cell is being edited. `liveSort` follows
-`patchRows`: values written into rows any other way still need
-`api.refresh()`.
+moves, and nothing moves while a cell is being edited or while the pointer
+is over the rows (`pauseOnHover`, on by default; mouse and pen only; the
+window losing focus or the tab hiding ends the pause), so a row never jumps
+just as it is clicked. `liveSort` follows `patchRows`: values
+written into rows any other way still need `api.refresh()`.
+
+Two more settings for live screens:
+
+- **`staleAfter`** (ms) dims a row when nothing new has come for it for that
+  long: a quote whose feed went quiet. The row comes back the moment it ticks.
+  News is a `patchRows` that changed the row, or a new object for it in
+  `rows` (it arrived, or an immutable update copied it); a patch that re-sends
+  the same values is not news. Style it with `--bo-stale-opacity`
+  (default 0.5).
+- **`flashNewRows`** flashes a row once when it arrives in `rows`, a new order
+  or a new fill (`true`: 600 ms, or a number of ms). A row arrives when its id
+  is new: a copy of a row already there does not flash, nor do the rows an
+  empty grid gets (a load or a reload), nor a wholesale replacement.
+
+```svelte
+<Grid {rows} {columns} liveSort staleAfter={5000} flashNewRows onReady={(a) => (api = a)} />
+```
 
 Without `liveSort`, rows hold their place until **`api.refresh()`**, which
 re-filters and re-sorts the whole view against the current values. A row that

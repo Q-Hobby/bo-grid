@@ -15,6 +15,19 @@ All notable changes to this project are documented here. Format follows
   needs a refresh timer. Rows that stop matching a filter leave, rows that
   start matching join, the focused cell stays on its row, and nothing moves
   while a cell is being edited.
+- **`staleAfter`: rows whose feed went quiet dim.** A row that has had no
+  news for this many ms fades (`--bo-stale-opacity`, 0.5) and comes back the
+  moment it ticks. News is a `patchRows` that changed the row, or a new
+  object for it in `rows`: a row that arrives, or a copy from an immutable
+  update.
+- **`flashNewRows`: a row that arrives flashes once** (a new order, a new
+  fill), every cell, for 600 ms or the given ms. A copy of a row already
+  there, the rows an empty grid gets (a load or a reload) and a wholesale
+  replacement do not flash.
+- **`pauseOnHover` (on by default): `liveSort` waits while a mouse or pen is
+  over the rows**, so a row never moves just as it is clicked. The pause ends
+  when the pointer leaves, the window loses focus or the tab is hidden; set
+  `pauseOnHover={false}` for a wall screen nobody points at.
 
 ### Performance
 

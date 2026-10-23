@@ -97,6 +97,9 @@
     onViewportChange,
     flashMotion = 'fade',
     liveSort = false,
+    pauseOnHover = true,
+    staleAfter = 0,
+    flashNewRows = false,
     columnHover = false,
     rowNumbers = false,
     rowPinning = false,
@@ -925,8 +928,9 @@
   function applyLive(): void {
     liveTimer = undefined;
     if (!liveMs) return void liveQueue.clear();
-    // Not under the user's hands: wait out an edit or a drag.
-    if (editing || dragging || filling) {
+    // Not under the user's hands: wait out an edit, a drag, or a pointer over
+    // the rows (a row must not move just as it is clicked).
+    if (editing || dragging || filling || pointerInRows) {
       liveTimer = setTimeout(applyLive, liveMs);
       return;
     }
@@ -1643,8 +1647,139 @@
     yield* topRows;
   }
 
+  // ---- Stale rows (`staleAfter`) and arrivals (`flashNewRows`) --------------
+  // `lastTick`: when each row in `rows` last had news, by id: a patch that
+  // changed it, or a row object the grid had not seen (`seen`), which is a row
+  // that arrived or a copy that replaced one. A row whose id is new arrived.
+  // The rows already there when tracking starts count from then. A change of
+  // `rows` that came with a diff (rowdiff.ts) looks only at the rows it names;
+  // any other (a rebuild, an array changed in place) walks the rows once.
+  // A clock bumps `staleNow` a few times per staleAfter window and only rows
+  // on screen read it; a row that ticks repaints at once through its row
+  // version.
+  const lastTick = new Map<string | number, number>();
+  let seen = new WeakSet<GridRow>();
+  let staleNow = $state(Date.now());
+  $effect(() => {
+    if (!(staleAfter > 0)) return;
+    staleNow = Date.now();
+    const h = setInterval(() => (staleNow = Date.now()), Math.max(100, Math.min(1000, staleAfter / 4)));
+    return () => clearInterval(h);
+  });
+  function isStale(row: GridRow): boolean {
+    const id = getRowId(row);
+    live.rowVersion(id); // a tick on this row re-evaluates it at once
+    // A row with no tick is not stale: one that rendered before the tracking
+    // saw it (always reading the clock, it picks up its tick on the next
+    // beat), or a `pinnedRows` row, which no patch reaches.
+    return staleNow - (lastTick.get(id) ?? staleNow) > staleAfter;
+  }
+  // What the tracking last looked at; null while it is off.
+  let tracked: { st: RowsState; stale: boolean } | null = null;
+  $effect(() => {
+    rows;
+    const ms = flashNewRows === true ? 600 : typeof flashNewRows === 'number' && flashNewRows > 0 ? flashNewRows : 0;
+    const stale = staleAfter > 0;
+    // Neither is on: leave the index alone (an app that never patches may not need it).
+    if (!ms && !stale) {
+      if (tracked) {
+        tracked = null;
+        lastTick.clear();
+        seen = new WeakSet();
+      }
+      return;
+    }
+    // Brings rowsState up to these rows. A new index for the same `rows`
+    // means the array changed in place (rows.push on a $state array).
+    void rowIndex;
+    untrack(() => trackRows(ms, stale));
+  });
+  function trackRows(ms: number, stale: boolean): void {
+    const st = rowsState;
+    const prev = tracked;
+    if (!st || (prev?.st === st && prev.stale === stale)) return;
+    tracked = { st, stale };
+    const now = Date.now();
+    const idOf = st.idOf;
+    if (!prev || prev.st.idOf !== idOf) {
+      // Tracking starts, or the ids changed: every row counts from now.
+      lastTick.clear();
+      for (const r of st.rows) {
+        seen.add(r);
+        lastTick.set(idOf(r), now);
+      }
+      return;
+    }
+    // staleAfter turned on: the ticks kept so far were arrivals only.
+    if (stale && !prev.stale) for (const id of lastTick.keys()) lastTick.set(id, now);
+    if (prev.st === st) return;
+    const arrivals: (string | number)[] = [];
+    let fresh = 0;
+    const d = st.prev === prev.st.rows ? st.diff : null;
+    if (d) {
+      // A copy of a row (its id removed and added) is news, not an arrival.
+      const gone = new Set<string | number>();
+      for (const r of d.removed) {
+        const id = idOf(r);
+        gone.add(id);
+        lastTick.delete(id);
+      }
+      for (const r of d.added) {
+        const id = idOf(r);
+        seen.add(r);
+        if (!gone.has(id) && !lastTick.has(id)) arrivals.push(id);
+        lastTick.set(id, now);
+      }
+      fresh = d.added.length;
+    } else {
+      for (const r of st.rows) {
+        const id = idOf(r);
+        const known = lastTick.has(id);
+        if (known && seen.has(r)) continue;
+        seen.add(r);
+        if (!known) arrivals.push(id);
+        lastTick.set(id, now);
+        fresh++;
+      }
+      for (const id of lastTick.keys()) if (!st.index.has(id)) lastTick.delete(id);
+    }
+    // A copy that revived a dimmed row repaints now, not on the next clock.
+    if (stale && fresh > 0) staleNow = now;
+    // Arrivals flash, but not the rows an empty grid gets (a load or a
+    // reload), nor a wholesale replacement (more rows than a diff takes).
+    const loaded = prev.st.rows.length === 0;
+    if (ms && !loaded && arrivals.length > 0 && arrivals.length <= Math.max(64, st.rows.length >> 3)) {
+      const hold = flashMotion === 'fade' ? undefined : flashHold.holds(now);
+      live.flash({ rows: arrivals, ms }, renderedRows(), getRowId, now, hold);
+    }
+  }
+  // `pauseOnHover`: whether a mouse or pen is over the rows, listened for only
+  // while it can pause something. A pointerleave can go missing when the
+  // window loses focus or the tab is hidden, so those end the pause too.
+  const pausing = $derived(pauseOnHover && liveMs > 0);
+  let pointerInRows = false;
+  $effect(() => {
+    if (!pausing) return;
+    const out = () => (pointerInRows = false);
+    const hidden = () => {
+      if (document.hidden) out();
+    };
+    window.addEventListener('blur', out);
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      out();
+      window.removeEventListener('blur', out);
+      document.removeEventListener('visibilitychange', hidden);
+    };
+  });
+  function leaveRows(): void {
+    pointerInRows = false;
+    if (columnHover) clearColHover();
+  }
+
   function patchRows(patches: Iterable<readonly [string | number, Record<string, unknown>]>): number {
     const fields = liveFields;
+    const stale = staleAfter > 0;
     // Running totals: take each patched row out of the current scan before the
     // write and put it back after (once per row, however many patches it
     // gets), even if something throws in between.
@@ -1663,7 +1798,17 @@
         list,
         renderedRows(),
         getRowId,
-        fields === undefined ? undefined : (changed) => queueLive(changed, fields),
+        fields === undefined && !stale
+          ? undefined
+          : (changed) => {
+              if (stale) {
+                // Rows the tracking knows: a row patched before it saw the
+                // row arrive is left to it, so the arrival still counts.
+                const now = Date.now();
+                for (const key of changed.keys()) if (lastTick.has(key)) lastTick.set(key, now);
+              }
+              if (fields !== undefined) queueLive(changed, fields);
+            },
       );
     } finally {
       if (store) {
@@ -2281,13 +2426,14 @@
     onscroll={onScroll}
     onpointerover={hasTooltips || columnHover ? onViewportOver : undefined}
     onpointerout={hasTooltips ? onTipOut : undefined}
-    onpointerleave={columnHover ? clearColHover : undefined}
+    onpointerenter={pausing ? (e) => (pointerInRows = e.pointerType !== 'touch') : undefined}
+    onpointerleave={pausing || columnHover ? leaveRows : undefined}
   >
     {#if topRows.length > 0}
       <div class="pinned-top" bind:clientHeight={pinnedH}>
         {#each topRows as prow, pi (getRowId(prow))}
           <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="row pinrow {rowClass?.(prow) ?? ''}" role="row" aria-hidden="true" style="height:{baseH}px;{rowWidthStyle}" oncontextmenu={rowPinning || rowMenu ? (e) => openRowMenu(prow, e) : undefined}>
+          <div class="row pinrow {rowClass?.(prow) ?? ''}" class:stale={staleAfter > 0 && isStale(prow)} role="row" aria-hidden="true" style="height:{baseH}px;{rowWidthStyle}" oncontextmenu={rowPinning || rowMenu ? (e) => openRowMenu(prow, e) : undefined}>
             {#if rowNumbers}<span class="numcell" style={numCellStyle(false)}></span>{/if}
             {#if expandable}<span class="expandcell" style={expandCellStyle(false)}></span>{/if}
             {#if rowSelection}<span class="selcell" style={selCellStyle(false)}></span>{/if}
@@ -2366,7 +2512,7 @@
         {:else}
           <!-- Row activation is keyboard-accessible at the grid level: Enter on the focused cell fires onRowClick (focus is via aria-activedescendant). -->
           <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-          <div class="row {rowClass?.(item.row) ?? ''}" class:alt={item.vr % 2 === 1} class:rowsel={rowSelection && isRowSelected(getRowId(item.row))} class:rowactive={selectedRowId != null && getRowId(item.row) === selectedRowId} class:clickable={!!onRowClick} class:droptarget={reorderable && dropRowVr === item.vr && dragRowVr !== item.vr} role="row" tabindex="-1" aria-rowindex={item.vr + 2} aria-selected={rowSelection ? isRowSelected(getRowId(item.row)) : undefined} aria-level={treeData ? (item.depth ?? 0) + 1 : undefined} aria-expanded={treeData && item.hasChildren ? isExpanded(getRowId(item.row)) : undefined} style="top:{hm.offsetOf(item.vr)}px;height:{expandable ? baseH : hm.heightOf(item.vr)}px;{rowWidthStyle}" onclick={(e) => onRowClick?.(item.row, e)} oncontextmenu={(e) => openRowMenu(item.row, e)} ondragover={reorderable ? (e) => { if (dragRowVr < 0) return; e.preventDefault(); dropRowVr = item.vr; } : undefined} ondrop={reorderable ? (e) => { e.preventDefault(); onRowDrop(); } : undefined}>
+          <div class="row {rowClass?.(item.row) ?? ''}" class:alt={item.vr % 2 === 1} class:stale={staleAfter > 0 && isStale(item.row)} class:rowsel={rowSelection && isRowSelected(getRowId(item.row))} class:rowactive={selectedRowId != null && getRowId(item.row) === selectedRowId} class:clickable={!!onRowClick} class:droptarget={reorderable && dropRowVr === item.vr && dragRowVr !== item.vr} role="row" tabindex="-1" aria-rowindex={item.vr + 2} aria-selected={rowSelection ? isRowSelected(getRowId(item.row)) : undefined} aria-level={treeData ? (item.depth ?? 0) + 1 : undefined} aria-expanded={treeData && item.hasChildren ? isExpanded(getRowId(item.row)) : undefined} style="top:{hm.offsetOf(item.vr)}px;height:{expandable ? baseH : hm.heightOf(item.vr)}px;{rowWidthStyle}" onclick={(e) => onRowClick?.(item.row, e)} oncontextmenu={(e) => openRowMenu(item.row, e)} ondragover={reorderable ? (e) => { if (dragRowVr < 0) return; e.preventDefault(); dropRowVr = item.vr; } : undefined} ondrop={reorderable ? (e) => { e.preventDefault(); onRowDrop(); } : undefined}>
             {#if rowNumbers}<span class="numcell" role="rowheader" aria-colindex={1} style={numCellStyle(false)}>{rowNumberAt(item.vr)}</span>{/if}
             {#if expandable}
               <span class="expandcell" role="gridcell" aria-colindex={1 + numOffset} style={expandCellStyle(false)}>
@@ -3086,6 +3232,10 @@
   }
   .row.alt {
     background: var(--bo-row-a);
+  }
+  /* `staleAfter`: a row whose feed went quiet. */
+  .row.stale {
+    opacity: var(--bo-stale-opacity, 0.5);
   }
   .row:not(.skeleton):hover {
     background: var(--bo-row-hover);

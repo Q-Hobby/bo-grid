@@ -54,8 +54,8 @@ needs numbers, not intuition:
   <build>` in headless Chrome. It fails when a deterministic (`sync`) workload
   is more than 10% and 0.2 ms per frame slower, and warns when a live one is
   more than 25% slower. The table is in the job summary. A pull request that
-  changes the board's bench hooks (`PriceBoard.svelte`) is reported but not
-  gated, since base and head would run different workloads: compare those by
+  changes a benchmarked demo (`PriceBoard.svelte`, `LiveBlotter.svelte`: the
+  bench hooks) is reported but not gated, since base and head would run different workloads: compare those by
   hand. Run the same comparison locally before
   pushing a hot-path change: build `main` and your branch with
   `vite build --base=./ --outDir <dir>` and pass both directories.
