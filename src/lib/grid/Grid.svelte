@@ -44,6 +44,7 @@
   import { EditHistory } from './history';
   import { LiveRows } from './live.svelte';
   import { ColumnState } from './columns.svelte';
+  import { dismissOnOutside } from './dismiss';
 
   let {
     rows = [],
@@ -621,17 +622,7 @@
     panelXY = { x: rect.left, y: rect.bottom + 2 };
   }
   $effect(() => {
-    if (!panelXY) return;
-    const close = () => (panelXY = null);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (panelXY = null);
-    window.addEventListener('pointerdown', close);
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('blur', close);
-    return () => {
-      window.removeEventListener('pointerdown', close);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('blur', close);
-    };
+    if (panelXY) return dismissOnOutside(() => (panelXY = null));
   });
 
   // ---- Runtime row pinning (`rowPinning`) ------------------------------------
@@ -1416,17 +1407,7 @@
     menu = { x: e.clientX, y: e.clientY, items };
   }
   $effect(() => {
-    if (!menu) return;
-    const close = () => (menu = null);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (menu = null);
-    window.addEventListener('pointerdown', close);
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('blur', close);
-    return () => {
-      window.removeEventListener('pointerdown', close);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('blur', close);
-    };
+    if (menu) return dismissOnOutside(() => (menu = null));
   });
 
   // Header filter menu (v0.3), lazy-loaded on first open to keep the core lean.
@@ -1460,17 +1441,7 @@
     filterUi = null;
   }
   $effect(() => {
-    if (!filterUi) return;
-    const close = () => (filterUi = null);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (filterUi = null);
-    window.addEventListener('pointerdown', close);
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('blur', close);
-    return () => {
-      window.removeEventListener('pointerdown', close);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('blur', close);
-    };
+    if (filterUi) return dismissOnOutside(() => (filterUi = null));
   });
 
   // Autosize a column to its content (a character-count heuristic — no DOM
