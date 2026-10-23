@@ -24,20 +24,20 @@ export type KeyAction =
   | { kind: 'focus'; r: number; c: number; extend: boolean }
   | { kind: 'move'; dr: number; dc: number; extend: boolean };
 
-/** What keyAction needs to know about the grid, read when a key arrives. */
+/** What keyAction needs to know about the grid, taken when a key arrives. */
 export interface KeyState {
-  readonly focus: Pos | null;
-  readonly editing: boolean;
-  readonly maxR: number;
-  readonly maxC: number;
+  focus: Pos | null;
+  editing: boolean;
+  maxR: number;
+  maxC: number;
   /** Rows a PageUp / PageDown moves. */
-  readonly pageRows: number;
-  readonly rowClick: boolean;
-  readonly rowSelection: boolean;
-  readonly findBar: boolean;
-  readonly canUndo: boolean;
-  readonly canRedo: boolean;
-  readonly columnMenu: boolean;
+  pageRows: number;
+  rowClick: boolean;
+  rowSelection: boolean;
+  findBar: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  columnMenu: boolean;
   /** Enter opens an editor on this column. */
   canEdit(c: number): boolean;
   /** A printable key opens an editor seeded with it (not dates or selects). */

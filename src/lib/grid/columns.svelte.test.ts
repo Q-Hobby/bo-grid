@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { flushSync } from 'svelte';
-import { ColumnState } from './columns.svelte';
+import { createColumnState, type ColumnState } from './columns.svelte';
 
 let stops: (() => void)[] = [];
 afterEach(() => {
@@ -16,7 +16,7 @@ function create(persistKey: string | undefined, count: number) {
   let state!: ColumnState;
   stops.push(
     $effect.root(() => {
-      state = new ColumnState(() => persistKey, () => cols);
+      state = createColumnState(() => persistKey, () => cols);
     }),
   );
   flushSync();

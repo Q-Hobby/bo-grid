@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { EditHistory, type EditEntry } from './history';
+import { createEditHistory, type EditEntry } from './history';
 
 const edit = (old: number, value: number): EditEntry<string, string> => ({ row: 'r', col: 'c', old, value });
 
-describe('EditHistory', () => {
+describe('createEditHistory', () => {
   it('undoes and redoes single edits in order', () => {
-    const h = new EditHistory<string, string>();
+    const h = createEditHistory<string, string>();
     expect(h.canUndo).toBe(false);
     h.record(edit(1, 2));
     h.record(edit(2, 3));
@@ -18,7 +18,7 @@ describe('EditHistory', () => {
   });
 
   it('records a batch as one step, and an empty batch as none', () => {
-    const h = new EditHistory<string, string>();
+    const h = createEditHistory<string, string>();
     h.batch(() => {
       h.record(edit(1, 2));
       h.record(edit(3, 4));
@@ -29,7 +29,7 @@ describe('EditHistory', () => {
   });
 
   it('a nested batch records its own step, closed before the outer one', () => {
-    const h = new EditHistory<string, string>();
+    const h = createEditHistory<string, string>();
     h.batch(() => {
       h.record(edit(1, 2));
       h.batch(() => h.record(edit(2, 3)));
@@ -39,7 +39,7 @@ describe('EditHistory', () => {
   });
 
   it('closes the batch when its function throws', () => {
-    const h = new EditHistory<string, string>();
+    const h = createEditHistory<string, string>();
     expect(() =>
       h.batch(() => {
         h.record(edit(1, 2));
@@ -52,7 +52,7 @@ describe('EditHistory', () => {
   });
 
   it('a new edit clears the redo stack', () => {
-    const h = new EditHistory<string, string>();
+    const h = createEditHistory<string, string>();
     h.record(edit(1, 2));
     h.undo();
     h.record(edit(1, 9));
@@ -60,7 +60,7 @@ describe('EditHistory', () => {
   });
 
   it('keeps at most `limit` steps, dropping the oldest', () => {
-    const h = new EditHistory<string, string>(2);
+    const h = createEditHistory<string, string>(2);
     h.record(edit(1, 2));
     h.record(edit(2, 3));
     h.record(edit(3, 4));

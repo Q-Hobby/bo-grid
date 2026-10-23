@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
-import { RowState } from './rowstate.svelte';
+import { createRowState, type RowState } from './rowstate.svelte';
 
 let stops: (() => void)[] = [];
 afterEach(() => {
@@ -12,7 +12,7 @@ afterEach(() => {
 
 function create(persistKey?: string): RowState {
   let state!: RowState;
-  stops.push($effect.root(() => void (state = new RowState(() => persistKey))));
+  stops.push($effect.root(() => void (state = createRowState(() => persistKey))));
   flushSync();
   return state;
 }

@@ -40,11 +40,11 @@
   import { buildMergePlan, combinedFlex, type MergePlan, type SpanRun } from './merge';
   import { GRID_STATE_VERSION, reconcileState, type GridState } from './state';
   import type { GridPropsDef } from './props';
-  import { EditHistory } from './history';
-  import { LiveRows } from './live.svelte';
-  import { ColumnState } from './columns.svelte';
+  import { createEditHistory } from './history';
+  import { createLiveRows } from './live.svelte';
+  import { createColumnState } from './columns.svelte';
   import { dismissOnOutside } from './dismiss';
-  import { RowState } from './rowstate.svelte';
+  import { createRowState } from './rowstate.svelte';
   import { keyAction, type KeyState } from './keyboard';
   import { TextMeter } from './textmeter';
 
@@ -168,7 +168,7 @@
   // ---- Edit history (undo / redo, history.ts) --------------------------------
   // Undo re-emits onCellEdit with the old value; paste and fill record as one
   // step (history.batch).
-  const history = new EditHistory<GridRow, ColumnDef>();
+  const history = createEditHistory<GridRow, ColumnDef>();
 
   // Parse a raw string for cell (r,c) and write it. Shared by the built-in
   // inline editor, paste and fill. False when rejected (not editable, missing
@@ -218,11 +218,11 @@
 
   // Per-row state (rowstate.svelte.ts): selection, collapsed groups, expanded
   // rows and their loaded children, rows pinned above the scroll.
-  const rowState = new RowState(() => persistKey);
+  const rowState = createRowState(() => persistKey);
 
   // Runtime column state (columns.svelte.ts): order, widths, autoWidth
   // measurements, and columns hidden or pinned from the column menu.
-  const colState = new ColumnState(() => persistKey, () => columns);
+  const colState = createColumnState(() => persistKey, () => columns);
   let dragSrc = $state(-1);
   let dragOver = $state(-1);
 
@@ -1357,7 +1357,7 @@
   }
 
   // ---- Realtime path (`api.patchRows`, `api.flashCells`; live.svelte.ts) -----
-  const live = new LiveRows();
+  const live = createLiveRows();
   const rowIndex = $derived(new Map(rows.map((r) => [getRowId(r), r] as const)));
 
   function refresh(): void {
@@ -1625,64 +1625,45 @@
     }
   }
 
-  // The keyboard model lives in keyboard.ts: keyAction reads this snapshot.
-  const keyState: KeyState = {
-    get focus() {
-      return sel.focus;
-    },
-    get editing() {
-      return !!editing;
-    },
-    get maxR() {
-      return maxR;
-    },
-    get maxC() {
-      return maxC;
-    },
-    get pageRows() {
-      return Math.max(1, Math.floor(viewPx / baseH) - 1);
-    },
-    get rowClick() {
-      return !!onRowClick;
-    },
-    get rowSelection() {
-      return rowSelection;
-    },
-    get findBar() {
-      return findBar && !source;
-    },
-    get canUndo() {
-      return history.canUndo;
-    },
-    get canRedo() {
-      return history.canRedo;
-    },
-    get columnMenu() {
-      return columnMenu;
-    },
-    canEdit: (c) => isEditable(cols[c]),
-    canTypeToEdit: (c) => {
-      const col = cols[c];
-      return isEditable(col) && col.type !== 'date' && !(col.options && col.options.length);
-    },
-    hasRow: (r) => !!dataAt(r),
-    rowMenuItems: (r) => {
-      const row = rowMenu ? dataAt(r) : null;
-      return row && rowMenu ? rowMenu(row) : [];
-    },
-    treeNode: (r) => {
-      const item = treeData ? flat[r] : undefined;
-      if (item?.kind !== 'data' || !item.hasChildren) return null;
-      return rowState.isExpanded(getRowId(item.row)) ? 'open' : 'closed';
-    },
-  };
+  // The keyboard model lives in keyboard.ts: keyAction reads this snapshot,
+  // taken when a key arrives.
+  function keyState(): KeyState {
+    return {
+      focus: sel.focus,
+      editing: !!editing,
+      maxR,
+      maxC,
+      pageRows: Math.max(1, Math.floor(viewPx / baseH) - 1),
+      rowClick: !!onRowClick,
+      rowSelection,
+      findBar: findBar && !source,
+      canUndo: history.canUndo,
+      canRedo: history.canRedo,
+      columnMenu,
+      canEdit: (c) => isEditable(cols[c]),
+      canTypeToEdit: (c) => {
+        const col = cols[c];
+        return isEditable(col) && col.type !== 'date' && !(col.options && col.options.length);
+      },
+      hasRow: (r) => !!dataAt(r),
+      rowMenuItems: (r) => {
+        const row = rowMenu ? dataAt(r) : null;
+        return row && rowMenu ? rowMenu(row) : [];
+      },
+      treeNode: (r) => {
+        const item = treeData ? flat[r] : undefined;
+        if (item?.kind !== 'data' || !item.hasChildren) return null;
+        return rowState.isExpanded(getRowId(item.row)) ? 'open' : 'closed';
+      },
+    };
+  }
   /** Where the focused cell is on screen, for a menu opened from the keyboard. */
   function focusAnchor(): { left: number; bottom: number } {
     const rect = document.getElementById(activeId ?? '')?.getBoundingClientRect();
     return { left: rect?.left ?? 0, bottom: rect?.bottom ?? 0 };
   }
   function onKeydown(e: KeyboardEvent) {
-    const a = keyAction(e, keyState);
+    const a = keyAction(e, keyState());
     if (!a) return;
     if (a.kind !== 'clear') e.preventDefault();
     switch (a.kind) {

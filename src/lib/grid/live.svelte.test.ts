@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { flushSync } from 'svelte';
 import type { GridRow } from './column';
-import { LiveRows } from './live.svelte';
+import { createLiveRows } from './live.svelte';
 
 const rows = (): GridRow[] => [
   { id: 1, px: 10, vol: 100 },
@@ -25,9 +25,9 @@ function watch(read: () => unknown): { runs: () => number; stop: () => void } {
   return { runs: () => n, stop };
 }
 
-describe('LiveRows.patch', () => {
+describe('createLiveRows: patch', () => {
   it('writes into the rows in place and reports how many rows changed', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     const rs = rows();
     const n = live.patch(indexOf(rs), [[1, { px: 11 }], [2, { px: 20 }], [9, { px: 1 }]], rs, idOf);
     expect(n).toBe(1); // row 2's value is unchanged, row 9 does not exist
@@ -35,7 +35,7 @@ describe('LiveRows.patch', () => {
   });
 
   it('bumps the row, each changed field and the data version, for rendered rows only', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     const rs = rows();
     live.patch(indexOf(rs), [[1, { px: 11, vol: 101 }], [3, { px: 31 }]], [rs[0]], idOf);
     expect(live.rowVersion(1)).toBe(1);
@@ -47,21 +47,21 @@ describe('LiveRows.patch', () => {
   });
 
   it('bumps a row rendered twice (pinned and in the body) once', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     const rs = rows();
     live.patch(indexOf(rs), [[1, { px: 11 }]], [rs[0], rs[0]], idOf);
     expect(live.rowVersion(1)).toBe(1);
   });
 
   it('a patch that changes nothing bumps nothing', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     const rs = rows();
     expect(live.patch(indexOf(rs), [[1, { px: 10 }]], rs, idOf)).toBe(0);
     expect(live.dataVersion).toBe(0);
   });
 
   it('wakes only the readers of what changed', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     const rs = rows();
     const px1 = watch(() => live.fieldVersion(1, 'px'));
     const vol1 = watch(() => live.fieldVersion(1, 'vol'));
@@ -75,9 +75,9 @@ describe('LiveRows.patch', () => {
   });
 });
 
-describe('LiveRows.flash', () => {
+describe('createLiveRows: flash', () => {
   it('flashes the named rendered rows once each, counting repeats', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     const rs = rows();
     expect(live.flash({ rows: [1, 3, 9], dir: 'up', ms: 500 }, [rs[0], rs[0], rs[1], rs[2]], idOf, 1000, undefined)).toBe(2);
     expect(live.cellFlash(1)).toEqual({ seq: 1, dir: 'up', at: 1000, ms: 500, columns: null, hold: undefined });
@@ -91,7 +91,7 @@ describe('LiveRows.flash', () => {
   });
 
   it('flashes every rendered row when no rows are named', () => {
-    const live = new LiveRows();
+    const live = createLiveRows();
     expect(live.flash({}, rows(), idOf, 0, undefined)).toBe(3);
   });
 });
