@@ -13,7 +13,12 @@
 //     ranges).
 // The version maps are $state records, not SvelteMaps: reading a missing key
 // of a proxied object subscribes to that key alone, so bumping one row (or one
-// field) never wakes the others.
+// field) never wakes the others. The price: a proxy keeps the signal of every
+// key ever read, missing ones included, and a delete does not drop it, so a
+// grid that draws many rows over a session (a blotter's churn, a long scroll)
+// would keep one per row and cell it ever drew. renew() swaps in fresh
+// records: every reader reads once more, and the old signals go with the old
+// records.
 //
 // A factory rather than a class: its state stays in local variables, which
 // minify; a class's $state fields compile to named accessors, which do not.
@@ -23,6 +28,10 @@ import type { CellFlash } from './flash';
 import { patchRowsInPlace } from './patch';
 
 type RowKey = string | number;
+
+/** renew() keeps the flash requests younger than this (ms), or than their own
+    window when it is longer, so a flash on screen plays out. */
+const FLASH_KEEP_MS = 10_000;
 
 export interface LiveRows {
   /** Bumped once per patch call that changed something. */
@@ -53,16 +62,20 @@ export interface LiveRows {
     at: number,
     hold: boolean | ((rows: number, columns: number | null) => boolean) | undefined,
   ): number;
+  /** Starts the version records afresh, dropping the signals that the rows
+      drawn so far left behind; flash requests still playing at `now` carry
+      over. Every reader reads once more (a missing version reads as none). */
+  renew(now: number): void;
 }
 
 const fieldKey = (row: RowKey, field: string): string => `${row}\u0001${field}`;
 
 export function createLiveRows(): LiveRows {
-  const rowVersions: Record<string, number> = $state({});
-  const fieldVersions: Record<string, number> = $state({});
+  let rowVersions: Record<string, number> = $state({});
+  let fieldVersions: Record<string, number> = $state({});
   // On-demand flashes: the latest request per rendered row in a plain map, and
   // a per-row counter, read like rowVersions, that wakes that row's cells alone.
-  const flashSeq: Record<string, number> = $state({});
+  let flashSeq: Record<string, number> = $state({});
   const flashes = new Map<RowKey, CellFlash>();
   let dataVersion = $state(0);
 
@@ -108,6 +121,16 @@ export function createLiveRows(): LiveRows {
         flashSeq[key] = seq;
       }
       return done.size;
+    },
+    renew(now) {
+      rowVersions = {};
+      fieldVersions = {};
+      const seq: Record<string, number> = {};
+      for (const [key, f] of flashes) {
+        if (now - f.at < Math.max(f.ms ?? 0, FLASH_KEEP_MS)) seq[key] = f.seq;
+        else flashes.delete(key);
+      }
+      flashSeq = seq;
     },
   };
 }
