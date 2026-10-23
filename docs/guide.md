@@ -819,6 +819,12 @@ that aggregate over all (filtered) rows, sticky to the bottom as you scroll
 <Grid {rows} {columns} height={640} footer />
 ```
 
+The totals follow a live feed without rescanning every row: `api.patchRows`
+moves them by the rows it changed, and rows edited any other way (`$state`
+rows, an `onCellEdit` handler) update them as well. A computed column (`value`)
+must depend only on its own row for this; one that reads other rows or the
+clock gets a fresh total on the next new view or `api.refresh()`.
+
 Pass `pinnedRows` to keep rows stuck to the **top**, always visible above the
 scroll — a benchmark, a summary, or "your position". They render with the normal
 columns (and `rowClass`) but are display-only:
