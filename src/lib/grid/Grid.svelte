@@ -48,6 +48,7 @@
   import { keyAction, type KeyState } from './keyboard';
   import { TextMeter } from './textmeter';
   import { mergeChanged, rowOrder } from './livesort';
+  import { DRIFT_LIMIT, scanTotals, type TotalTarget, type ViewTotals } from './totals';
 
   let {
     rows = [],
@@ -839,24 +840,42 @@
   // Conditional-formatting ranges: the data extent (min/max over the current
   // view) for each column with a data bar or colour scale. Per-column `min`/`max`
   // config overrides are applied later, in the cell. Keyed by column key.
+  // Running totals over the view (totals.ts) for the footer and the data-bar /
+  // colour-scale ranges. The scan runs in the `totals` derived with its cell
+  // reads tracked, so $state rows edited in place, or a computed column that
+  // reads reactive state, rescan as they always did. api.patchRows on plain
+  // rows (whose reads were never tracked) moves the totals by the rows it
+  // changed instead of rescanning on every tick. A new view, filter or column
+  // set rescans; so does a run of DRIFT_LIMIT patched rows.
+  let totalsRescan = $state(0);
+  const totalTargets = $derived.by<TotalTarget[]>(() => {
+    const out: TotalTarget[] = [];
+    if (source) return out;
+    if (footer) {
+      for (const col of columns) {
+        if (col.groupAgg && col.type !== 'sparkline' && col.type !== 'text' && col.type !== 'custom') {
+          out.push({ col, kind: 'footer', extremes: col.groupAgg === 'min' || col.groupAgg === 'max' });
+        }
+      }
+    }
+    for (const col of columns) if (col.dataBar || col.colorScale) out.push({ col, kind: 'range', extremes: true });
+    return out;
+  });
+  const totals = $derived.by<ViewTotals>(() => {
+    totalsRescan;
+    return scanTotals(view, totalTargets, !!rowFilter);
+  });
+
   const cfRanges = $derived.by<Record<string, { min: number; max: number }>>(() => {
     live.dataVersion;
+    const store = totals;
     const out: Record<string, { min: number; max: number }> = {};
     for (const col of columns) {
       if (!col.dataBar && !col.colorScale) continue;
-      let lo = Infinity;
-      let hi = -Infinity;
-      for (const row of view) {
-        const raw = cellValue(col, row);
-        if (raw === null || raw === undefined || raw === '') continue; // blanks aren't 0
-        const n = Number(raw);
-        if (!Number.isFinite(n)) continue;
-        if (n < lo) lo = n;
-        if (n > hi) hi = n;
-      }
-      if (!Number.isFinite(lo)) lo = 0;
-      if (!Number.isFinite(hi)) hi = lo + 1;
-      out[col.key] = { min: lo, max: hi };
+      // Blanks aren't 0 here (the range skips them).
+      const t = store.get('range', col.key);
+      const lo = t ? t.min : 0;
+      out[col.key] = { min: lo, max: t ? t.max : lo + 1 };
     }
     return out;
   });
@@ -970,20 +989,15 @@
     onRowSelectionChange?.(rowState.selectedIds());
   }
 
-  // Pinned totals row: per-column `groupAgg` over all (filtered) rows. Reads row
-  // values reactively so it stays live with the feed. In-memory mode only.
+  // Pinned totals row: per-column `groupAgg` over all (filtered) rows, from the
+  // running totals, so it stays live with the feed. In-memory mode only.
   const footerCells = $derived.by<string[] | null>(() => {
     live.dataVersion;
     if (!footer || source) return null;
-    const v = view;
+    const store = totals;
     return cols.map((col) => {
       if (col.type === 'sparkline' || col.type === 'text' || col.type === 'custom' || !col.groupAgg) return '';
-      const vals: number[] = [];
-      for (const row of v) {
-        const n = Number(cellValue(col, row));
-        if (Number.isFinite(n)) vals.push(n);
-      }
-      const a = aggregate(vals);
+      const a = store.get('footer', col.key);
       if (!a) return '';
       return col.groupAgg === 'count' ? String(a.count) : formatCell(col, a[col.groupAgg]);
     });
@@ -1494,13 +1508,32 @@
 
   function patchRows(patches: Iterable<readonly [string | number, Record<string, unknown>]>): number {
     const fields = liveFields;
-    return live.patch(
-      rowIndex,
-      patches,
-      renderedRows(),
-      getRowId,
-      fields === undefined ? undefined : (changed) => queueLive(changed, fields),
-    );
+    // Running totals: take each patched row out of the current scan before the
+    // write and put it back after (once per row, however many patches it
+    // gets), even if something throws in between.
+    const store = totalTargets.length > 0 ? totals : null;
+    const list = store && !Array.isArray(patches) ? [...patches] : patches;
+    const touched = new Set<GridRow>();
+    try {
+      if (store) {
+        for (const [key] of list) {
+          const row = rowIndex.get(key);
+          if (row && !touched.has(row) && store.remove(row)) touched.add(row);
+        }
+      }
+      return live.patch(
+        rowIndex,
+        list,
+        renderedRows(),
+        getRowId,
+        fields === undefined ? undefined : (changed) => queueLive(changed, fields),
+      );
+    } finally {
+      if (store) {
+        for (const row of touched) store.add(row);
+        if (store.updates >= DRIFT_LIMIT) totalsRescan++;
+      }
+    }
   }
 
   function flashCells(opts: FlashCellsOptions = {}): number {

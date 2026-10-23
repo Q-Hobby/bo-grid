@@ -27,6 +27,18 @@ All notable changes to this project are documented here. Format follows
   ~5 ms a frame.
 - **The row-id index rebuilds about 3× faster** when `rows` changes (a plain
   loop, `getRowId` read once).
+- **Footer totals and data-bar ranges no longer rescan every row on every
+  tick.** They are running totals: `patchRows` takes each changed row's values
+  out before the write and puts them back after, and min and max keep a count
+  of the rows that hold them, so a rescan happens only when the last of those
+  moves inward. On a 100,000-row blotter with a totals row and a data bar, a
+  frame of 200 fills went from ~6 ms to ~1 ms. Rows edited any other way
+  (`$state` rows, `onCellEdit`), and computed columns that read reactive
+  state, still rescan as before. A new view (new rows, sort, filter, a live
+  re-sort) rescans once; sums use compensated addition and are rescanned
+  after 50,000 updates, so rounding cannot build up. A computed column must
+  depend only on its own row: one that reads other rows or the clock gets a
+  fresh total on the next new view or `api.refresh()`.
 
 ### Fixed
 
