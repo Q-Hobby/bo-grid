@@ -5,6 +5,14 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-10-23
+
+**A cheaper busy board.** `flashMotion: 'auto'` fades while the board is quiet
+and holds once it gets busy, data bars repaint without layout, `vnBands` no
+longer drops a tick on exact bands, and VN30 index futures get their own bands.
+A minor release: nothing was removed or renamed, and `'fade'` stays the
+default.
+
 ### Added
 
 - **`flashMotion: 'auto'`.** Each flash decides as it starts: it fades while
@@ -1278,6 +1286,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.3.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.3.0
 [2.2.2]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.2
 [2.2.1]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.1
 [2.2.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.0
