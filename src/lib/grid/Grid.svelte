@@ -44,6 +44,7 @@
   import { scrollTopFor, type FlashCellsOptions, type GridApi, type ScrollAlign, type ViewportRange } from './api';
   import { buildMergePlan, combinedFlex, type MergePlan, type SpanRun } from './merge';
   import { GRID_STATE_VERSION, reconcileState, type GridState } from './state';
+  import { loadSaved, saveValue, storageKey } from './persist';
 
   let {
     rows = [],
@@ -845,27 +846,12 @@
   // Windowed data source controller (only in source mode).
   const controller = $derived(source ? new RowSourceController(source) : null);
 
-  function orderStorageKey(): string | null {
-    return persistKey ? `bo-grid:order:${persistKey}` : null;
-  }
-
   $effect(() => {
     columns;
     untrack(() => {
       const base = columns.map((_, i) => i);
-      const key = orderStorageKey();
-      if (key && typeof localStorage !== 'undefined') {
-        try {
-          const saved = JSON.parse(localStorage.getItem(key) ?? 'null');
-          if (Array.isArray(saved) && saved.length === base.length && base.every((i) => saved.includes(i))) {
-            order = saved;
-            return;
-          }
-        } catch {
-          /* corrupt value — fall through to default */
-        }
-      }
-      order = base;
+      const saved = loadSaved(storageKey('order', persistKey));
+      order = Array.isArray(saved) && saved.length === base.length && base.every((i) => saved.includes(i)) ? saved : base;
     });
   });
 
@@ -879,70 +865,33 @@
     onColumnReorder?.(next.map((i) => columns[i].key));
   }
   function persistOrder(next: number[]): void {
-    const key = orderStorageKey();
-    if (!key || typeof localStorage === 'undefined') return;
-    try {
-      localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      /* storage unavailable — order still applies this session */
-    }
+    saveValue(storageKey('order', persistKey), next);
   }
 
   // ---- Column resizing -------------------------------------------------------
-  function widthStorageKey(): string | null {
-    return persistKey ? `bo-grid:widths:${persistKey}` : null;
-  }
   function persistWidths() {
-    const key = widthStorageKey();
-    if (!key || typeof localStorage === 'undefined') return;
-    try {
-      localStorage.setItem(key, JSON.stringify(widths));
-    } catch {
-      /* storage unavailable — overrides still apply this session */
-    }
+    saveValue(storageKey('widths', persistKey), widths);
   }
 
   $effect(() => {
-    persistKey;
+    const key = storageKey('widths', persistKey);
     untrack(() => {
-      const key = widthStorageKey();
-      if (!key || typeof localStorage === 'undefined') return;
-      try {
-        const saved = JSON.parse(localStorage.getItem(key) ?? 'null');
-        if (saved && typeof saved === 'object') widths = saved as WidthMap;
-      } catch {
-        /* corrupt value — ignore */
-      }
+      const saved = loadSaved(key);
+      if (saved && typeof saved === 'object') widths = saved as WidthMap;
     });
   });
 
   // ---- Runtime column visibility (column menu) ------------------------------
-  function hiddenStorageKey(): string | null {
-    return persistKey ? `bo-grid:hidden:${persistKey}` : null;
-  }
   $effect(() => {
-    persistKey;
+    const key = storageKey('hidden', persistKey);
     untrack(() => {
-      const key = hiddenStorageKey();
-      if (!key || typeof localStorage === 'undefined') return;
-      try {
-        const saved = JSON.parse(localStorage.getItem(key) ?? 'null');
-        if (Array.isArray(saved)) runtimeHidden = saved.filter((k) => typeof k === 'string');
-      } catch {
-        /* corrupt value — ignore */
-      }
+      const saved = loadSaved(key);
+      if (Array.isArray(saved)) runtimeHidden = saved.filter((k) => typeof k === 'string');
     });
   });
   function setRuntimeHidden(next: string[]): void {
     runtimeHidden = next;
-    const key = hiddenStorageKey();
-    if (key && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(key, JSON.stringify(next));
-      } catch {
-        /* storage unavailable — still applies this session */
-      }
-    }
+    saveValue(storageKey('hidden', persistKey), next);
     onColumnVisibilityChange?.(effectiveHidden);
   }
   function hideColumn(key: string): void {
@@ -982,20 +931,11 @@
   });
 
   // ---- Runtime column pinning (column menu) ---------------------------------
-  function pinStorageKey(): string | null {
-    return persistKey ? `bo-grid:pin:${persistKey}` : null;
-  }
   $effect(() => {
-    persistKey;
+    const key = storageKey('pin', persistKey);
     untrack(() => {
-      const key = pinStorageKey();
-      if (!key || typeof localStorage === 'undefined') return;
-      try {
-        const saved = JSON.parse(localStorage.getItem(key) ?? 'null');
-        if (saved && typeof saved === 'object') pinOverrides = saved as typeof pinOverrides;
-      } catch {
-        /* corrupt value — ignore */
-      }
+      const saved = loadSaved(key);
+      if (saved && typeof saved === 'object') pinOverrides = saved as typeof pinOverrides;
     });
   });
   function setPinOverride(key: string, side: 'left' | 'right' | false): void {
@@ -1003,45 +943,23 @@
     persistPins();
   }
   function persistPins(): void {
-    const sk = pinStorageKey();
-    if (!sk || typeof localStorage === 'undefined') return;
-    try {
-      localStorage.setItem(sk, JSON.stringify(pinOverrides));
-    } catch {
-      /* storage unavailable — still applies this session */
-    }
+    saveValue(storageKey('pin', persistKey), pinOverrides);
   }
   // ---- Runtime row pinning (`rowPinning`) ------------------------------------
   // Ids pinned from the row menu or the API, in pin order. The rows stay in
   // the body; the area above the scroll shows them as well, after any
   // `pinnedRows`. Remembered with persistKey and carried by getState().
   let pinnedIds = $state<(string | number)[]>([]);
-  function rowPinStorageKey(): string | null {
-    return persistKey ? `bo-grid:rowpin:${persistKey}` : null;
-  }
   $effect(() => {
-    persistKey;
+    const key = storageKey('rowpin', persistKey);
     untrack(() => {
-      const key = rowPinStorageKey();
-      if (!key || typeof localStorage === 'undefined') return;
-      try {
-        const saved = JSON.parse(localStorage.getItem(key) ?? 'null');
-        if (Array.isArray(saved)) pinnedIds = saved.filter((id) => typeof id === 'string' || typeof id === 'number');
-      } catch {
-        /* corrupt value — ignore */
-      }
+      const saved = loadSaved(key);
+      if (Array.isArray(saved)) pinnedIds = saved.filter((id) => typeof id === 'string' || typeof id === 'number');
     });
   });
   function setPinnedIds(next: (string | number)[]): void {
     pinnedIds = next;
-    const key = rowPinStorageKey();
-    if (key && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(key, JSON.stringify(next));
-      } catch {
-        /* storage unavailable — still applies this session */
-      }
-    }
+    saveValue(storageKey('rowpin', persistKey), next);
     onRowPinChange?.([...next]);
   }
   function pinRow(key: string | number, pin = true): boolean {
