@@ -101,7 +101,12 @@ runs the real pipeline in real time — the feed, the coalescing tick stream,
 running flash animations — and times each frame from its start to a task posted
 after it rendered, so paint is included. It needs a visible tab (hidden tabs get
 no animation frames); a traced headless Chrome run gives the same numbers plus a
-main-thread breakdown.
+main-thread breakdown. The board shows the same measure live: start its feed
+and the controls show the frame time (median and p95 over the last 120 frames,
+the frames over the display's frame interval, and a bar per recent frame),
+measured the way the gate's live workloads measure it. It is comparable rather
+than identical: the gate generates its feed inside the frame and drops warm-up
+frames, while the demo feeds from a timer.
 
 Headless Chrome on an Intel UHD laptop GPU, the 620 px board on screen with
 the rest of the page hidden, motion allowed (`prefers-reduced-motion:
@@ -291,7 +296,8 @@ in-browser FPS, run the demo (`pnpm dev`) and open the **Big data** example
 example adds the realtime numbers next to it: frames per second, cell updates
 applied per second, and the queue depth waiting for a frame. Turn the feed on and
 watch all three at once — that's the measurement that matters for a live board,
-on your hardware.
+on your hardware. The **Price board** shows the frame time while its feed runs,
+measured as the CI gate measures it.
 
 ## Reproduce everything
 
