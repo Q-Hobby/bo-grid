@@ -6,7 +6,7 @@
   import { firstGrid } from '$lib/snippets';
   import CountUp from '$lib/home/CountUp.svelte';
   import Ticker from '$lib/home/Ticker.svelte';
-  import { reveal } from '$lib/home/reveal';
+  import { onScreen, reveal } from '$lib/home/reveal';
 
   // The live parts load in the browser only: the page pre-renders without
   // them and keeps its first paint light.
@@ -17,8 +17,19 @@
   let Groups = $state<Component | null>(null);
   let copied = $state(false);
   let tilt = $state(1);
+  let video = $state<HTMLVideoElement>();
+  let reducedMotion = $state(false);
+
+  // The tour plays muted while on screen; under reduced motion it waits for
+  // the reader to press play.
+  function tour(visible: boolean): void {
+    if (!video || reducedMotion) return;
+    if (visible) void video.play().catch(() => {});
+    else video.pause();
+  }
 
   onMount(() => {
+    reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     // Links to the old one-page demo (#ex-priceboard, #priceboard) open the
     // example's own page.
     const id = location.hash.replace(/^#(ex-)?/, '');
@@ -132,6 +143,19 @@
     <div class="fig"><strong><CountUp to={49} /> KB</strong><span>gzip for the grid, with no runtime dependencies</span></div>
     <div class="fig"><strong><CountUp to={1} />M rows</strong><span>windowed from a source on demand, sorted and filtered there</span></div>
     <div class="fig"><strong><CountUp to={24} /></strong><span>live examples, each with its source a tab away</span></div>
+  </section>
+
+  <section class="tour" aria-labelledby="tour-h">
+    <div class="sec-head" use:reveal>
+      <p class="kicker">Thirty seconds</p>
+      <h2 id="tour-h">See it move.</h2>
+    </div>
+    <div class="player" use:reveal use:onScreen={tour}>
+      <video bind:this={video} muted loop playsinline preload="metadata" controls={reducedMotion} poster="{base}/media/tour-poster.jpg" aria-label="A 30-second tour of bo-grid: the live price board, order books and ladders, docs as Markdown for AI agents, and the frameworks it runs in" width="1600" height="900">
+        <source src="{base}/media/tour.webm" type="video/webm" />
+        <source src="{base}/media/tour.mp4" type="video/mp4" />
+      </video>
+    </div>
   </section>
 
   <section class="agents" aria-labelledby="agents-h">
@@ -629,9 +653,28 @@
     color: var(--text);
   }
 
+  /* ---- Tour video -------------------------------------------------------- */
+  .tour {
+    padding-top: 120px;
+  }
+  .player {
+    position: relative;
+    overflow: hidden;
+    background: var(--cell);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    box-shadow: 0 40px 100px -40px color-mix(in srgb, var(--accent) 40%, rgb(0 0 0 / 0.7));
+  }
+  .player video {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
   /* ---- Agents ---------------------------------------------------------- */
   .agents {
-    padding-top: 128px;
+    padding-top: 120px;
   }
   .agent-stage {
     margin-top: 12px;
@@ -869,6 +912,7 @@
   .agent-card,
   .tile,
   .figures,
+  .player,
   .start-code,
   .cta {
     transition:
@@ -882,6 +926,7 @@
   .agent-card:not([data-in]),
   .tile:not([data-in]),
   .figures:not([data-in]),
+  .player:not([data-in]),
   .start-code:not([data-in]),
   .cta:not([data-in]) {
     opacity: 0;
@@ -983,6 +1028,7 @@
     .agent-card:not([data-in]),
     .tile:not([data-in]),
     .figures:not([data-in]),
+    .player:not([data-in]),
     .start-code:not([data-in]),
     .cta:not([data-in]) {
       opacity: 1;
