@@ -42,7 +42,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'orderbook',
     title: 'Order book',
-    blurb: 'A live depth ladder — per-row colour, depth bars, realtime size flashes.',
+    blurb: 'A live book from a depth feed (createOrderBook): grouping, stacked or side by side, depth bars, size flashes.',
     load: () => import('./OrderBook.svelte'),
     file: 'OrderBook',
   },

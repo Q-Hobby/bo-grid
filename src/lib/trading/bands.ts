@@ -6,6 +6,7 @@
 // screen needs; a broker with more exact business rules should compute bands
 // server-side and pass them straight to `resolveTone` (see ./tone.ts) — nothing
 // here is required to use the tone/colour machinery.
+import { decimalsForTick } from './format';
 
 export type Exchange = 'HOSE' | 'HNX' | 'UPCOM';
 
@@ -35,6 +36,22 @@ export function vnTickSize(price: number, exchange: Exchange = 'HOSE'): number {
 /** How close (in ticks) a price must be to a whole tick to count as one. */
 const TICK_EPSILON = 1e-9;
 
+// Decimal places per tick, cached: a tick table or a book's buckets use a
+// handful of ticks, and the count takes a string conversion.
+const tickDecimals = new Map<number, number>();
+function decimalsOf(tick: number): number {
+  let d = tickDecimals.get(tick);
+  if (d === undefined) {
+    if (tickDecimals.size >= 64) tickDecimals.clear();
+    // Every decimal the tick writes (0.25 → 2), and no fewer than its size
+    // implies, for a tick finer than decimalsForTick reads.
+    // toFixed takes at most 100.
+    d = Math.min(100, Math.max(decimalsForTick(tick), -Math.floor(Math.log10(tick) + 1e-9)));
+    tickDecimals.set(tick, d);
+  }
+  return d;
+}
+
 /**
  * Round `price` to the nearest multiple of `tick`.
  *
@@ -57,9 +74,9 @@ export function roundToTick(price: number, tick: number, mode: 'nearest' | 'down
   const units = Math.abs(raw - whole) <= TICK_EPSILON ? whole : raw;
   const rounded = mode === 'down' ? Math.floor(units) : mode === 'up' ? Math.ceil(units) : Math.round(units);
   // Round the final multiplication to the tick's own precision to clear any
-  // residual float noise (e.g. 0.0001 * 12346 !== exactly 1.2346).
-  const decimals = Math.max(0, -Math.floor(Math.log10(tick) + 1e-9));
-  return Number((rounded * tick).toFixed(decimals));
+  // residual float noise (e.g. 0.0001 * 12346 !== exactly 1.2346): every
+  // decimal the tick has, so 0.25 keeps two (1.75, not 1.8).
+  return Number((rounded * tick).toFixed(decimalsOf(tick)));
 }
 
 /** The daily price-band width, as a fraction of the reference price. */

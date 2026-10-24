@@ -46,6 +46,16 @@ describe('roundToTick', () => {
     expect(roundToTick(1.23456, 0.0001, 'down')).toBeCloseTo(1.2345, 10);
     expect(roundToTick(1.23456, 0.0001, 'up')).toBeCloseTo(1.2346, 10);
   });
+
+  it('keeps every digit of a tick such as 0.25, 0.125 or 2.5', () => {
+    expect(roundToTick(1.75, 0.25)).toBe(1.75);
+    expect(roundToTick(5000.75, 0.25)).toBe(5000.75);
+    expect(roundToTick(5000.8, 0.25, 'down')).toBe(5000.75);
+    expect(roundToTick(0.375, 0.125)).toBe(0.375);
+    expect(roundToTick(9.9, 2.5, 'down')).toBe(7.5);
+    expect(roundToTick(10.1, 2.5, 'up')).toBe(12.5);
+    expect(roundToTick(0.0175, 0.0025)).toBe(0.0175);
+  });
 });
 
 describe('vnBandPercent', () => {

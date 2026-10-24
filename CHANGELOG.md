@@ -30,8 +30,26 @@ All notable changes to this project are documented here. Format follows
   grains). `style: 'futures'` writes it as futures screens do (`"99'165"`).
   `parseFraction` reads either back, for a column's `parse`.
 
+- **`createOrderBook` (`bo-grid/realtime`): an order book from a depth
+  feed.** A snapshot, then the levels that change (size 0 removes one), as
+  numbers or numeric strings. Updates older than the last sequence number
+  are dropped, and with each update's first number (`from`) a missed one is
+  reported as a gap. It reads back the best levels a side, merged into price
+  buckets on request (0.1, 1, 10: bids rounded down, asks up), as stacked
+  rows (asks above bids) or side-by-side rows, each with its depth from the
+  spread. A level keeps its row id while it stays in the book, so a size
+  column's `flash: 'auto'` flashes the levels that changed. On a
+  5,000-level book a 40-level update takes about 5 µs near the spread.
+- **Order book demo** rebuilt on it: a live depth feed, grouping, and
+  stacked or side-by-side layouts.
+
 ### Fixed
 
+- **`roundToTick` with a tick such as 0.25, 0.125 or 2.5.** It kept only as
+  many decimals as the tick's size implied, so 5000.75 on a 0.25 tick came
+  back as 5000.8. It now keeps every decimal the tick has. `DepthLadder`
+  steps its prices with it, so a ladder on a quarter tick showed the same
+  wrong prices.
 - **`volume` columns near a unit boundary.** A volume that rounds up to the
   next unit now shows in it: 999,999 reads `1.00M`, not `1000.0K`. Negative
   volumes (a net flow) are abbreviated too (`-2.50M`, not `-2500000`), and

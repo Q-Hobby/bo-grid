@@ -333,7 +333,8 @@ column a `render(ctx)` function instead:
 ## 5. `bo-grid/realtime` — feed pipeline (own budget, ~2 KB gzip)
 
 ```ts
-import { createTickStream, createRowIndex, applyPatches, TickBuffer, TradeTape, centeredWindow, createViewportSubscriptions, createLinger } from 'bo-grid/realtime';
+import { createTickStream, createRowIndex, applyPatches, TickBuffer, TradeTape, centeredWindow, createViewportSubscriptions, createLinger,
+         createOrderBook } from 'bo-grid/realtime';
 ```
 
 **Price feed** (coalesces per key, drains a bounded slice per animation
@@ -361,6 +362,20 @@ trade must show) — use `TradeTape` instead.
 const tape = new TradeTape<Trade>(500);   // capacity must be a positive integer; default 500
 socket.onmessage = (e) => tape.push(JSON.parse(e.data));
 rows = tape.toArray();   // newest-first snapshot — call once per render, not per trade
+```
+
+**Order book** (from a depth feed: snapshot, then changed levels; size 0 removes):
+```ts
+const book = createOrderBook({ maxLevels: 1000 });
+book.snapshot({ bids, asks, seq });              // [price, size][] per side; numbers or numeric strings
+book.update({ bids: m.b, asks: m.a, from: m.U, seq: m.u });
+// → 'applied' | 'stale' (seq not newer) | 'gap' (from > last seq + 1: nothing applied, take a new snapshot)
+// once a frame, when book.version moved:
+book.top(20, { group: 0.5 });   // { bids, asks } best first; group: bids rounded down, asks up
+book.rows(20, { group });       // stacked rows { id, side, price, size, total, share, best }; ids follow the level → flash: 'auto' on size
+book.pairs(20);                 // side by side { id: depth, bidPrice, bidSize, bidTotal, bidShare, askPrice, ... }; ids are depth → don't flash by value
+// maxLevels: reads the best N a side, drops far levels (they return only with a snapshot); prices compare to 1e-8
+book.best(); book.crossed;      // crossed → missed updates: take a new snapshot
 ```
 
 **Stream only the symbols on screen** (the grid reports its viewport; the
