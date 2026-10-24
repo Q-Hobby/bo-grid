@@ -40,6 +40,7 @@ export type {
 export { resolveColumns } from './grid/celltype';
 export { sortRows } from './grid/column';
 export type { DefaultColumn } from './grid/celltype';
+export type { Hotkeys, HotkeyHandler, HotkeyContext } from './grid/hotkeys';
 export type { AggKind, AggResult } from './grid/aggregate';
 
 // Column filter model (for controlled filtering via `columnFilters`/`onFilterChange`)

@@ -46,6 +46,8 @@
   import { dismissOnOutside } from './dismiss';
   import { createRowState } from './rowstate.svelte';
   import { keyAction, type KeyState } from './keyboard';
+  import { compileHotkeys, hotkeyFor, type HotkeyHandler } from './hotkeys';
+  import { findRow } from './follow';
   import { TextMeter } from './textmeter';
   import { mergeChanged, rowOrder, type ViewDelta } from './livesort';
   import { diffRows, type RowsDiff } from './rowdiff';
@@ -79,6 +81,7 @@
     getRowId = (r: GridRow) => r.id,
     selectedRowId = null,
     onRowClick,
+    hotkeys,
     sort,
     onSortChange,
     columnFilters,
@@ -162,15 +165,34 @@
   let filling = $state(false);
   let fillTo = $state<{ r: number; c: number } | null>(null);
   let fillSource: { r0: number; c0: number; r1: number; c1: number } | null = null;
-  let editing = $state<{ r: number; c: number } | null>(null);
+  // The open editor: its cell, and the id of the row it was opened on, which
+  // the edit is written to wherever the view has moved that row since.
+  let editing = $state<{ r: number; c: number; id: string | number } | null>(null);
   // When editing was opened by typing a character (type-to-edit), the editor
   // seeds its input with it; null means edit the existing value (dblclick/Enter).
   let editSeed = $state<string | null>(null);
+  // What has been typed in the open editor, so it carries over when the
+  // editor moves with its row.
+  let editDraft: string | null = null;
 
   function startEdit(r: number, c: number, seed: string | null = null) {
-    if (!isEditable(cols[c]) || !dataAt(r) || isMerged(r, c)) return;
+    const row = dataAt(r);
+    if (!isEditable(cols[c]) || !row || isMerged(r, c)) return;
     editSeed = seed;
-    editing = { r, c };
+    editDraft = null;
+    editing = { r, c, id: getRowId(row) };
+  }
+  function closeEdit(): void {
+    editing = null;
+    editSeed = null;
+    editDraft = null;
+  }
+  // Whether a commit from the editor in row `rowId`, column `c`, is the open
+  // edit's: one from an editor that already closed or moved on (a late blur,
+  // a custom editor committing after the fact) is dropped, never written to
+  // another row.
+  function isOpenEdit(rowId: string | number, c: number): boolean {
+    return editing !== null && editing.c === c && editing.id === rowId;
   }
   // ---- Edit history (undo / redo, history.ts) --------------------------------
   // Undo re-emits onCellEdit with the old value; paste and fill record as one
@@ -199,21 +221,21 @@
     return true;
   }
   function undo(): void {
-    if (history.undo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.old }))) editing = null;
+    if (history.undo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.old }))) closeEdit();
   }
   function redo(): void {
-    if (history.redo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.value }))) editing = null;
+    if (history.redo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.value }))) closeEdit();
   }
 
-  function commitEdit(r: number, c: number, raw: string) {
-    editing = null;
-    editSeed = null;
+  function commitEdit(r: number, c: number, rowId: string | number, raw: string) {
+    if (!isOpenEdit(rowId, c)) return;
+    closeEdit();
     writeCell(r, c, raw);
   }
   // A custom editor's typed value: no parsing, still validated.
-  function commitValue(r: number, c: number, value: unknown) {
-    editing = null;
-    editSeed = null;
+  function commitValue(r: number, c: number, rowId: string | number, value: unknown) {
+    if (!isOpenEdit(rowId, c)) return;
+    closeEdit();
     writeValue(r, c, value);
   }
 
@@ -526,7 +548,7 @@
     if (src < 0 || dst < 0) return;
     colState.move(src, dst);
     sel.clear();
-    editing = null;
+    closeEdit();
     onColumnReorder?.(colState.order.map((i) => columns[i].key));
   }
 
@@ -1093,12 +1115,62 @@
     return untrack(() => buildFlatRows(v, gb, rowState.collapsed));
   });
 
+  // ---- Rows that move (follow.ts) --------------------------------------------
+  // The selection and an open editor belong to their rows. When the view
+  // changes under them (a new `rows` array, a row added or removed above, a
+  // group or tree opening), the focus, the anchor and the editor move with
+  // their rows, so a hotkey or a commit never lands on the row that slid into
+  // their place. A focused row that has left clears the selection, as live
+  // sort does; an open edit whose row has left closes unwritten. A focus on a
+  // group header stays where it is. In-memory mode only.
+  let focusMark: { ref: unknown; focus: string | number; anchor: string | number | undefined } | null = null;
+  function idAt(items: readonly VisualRow[], r: number): string | number | undefined {
+    const item = items[r];
+    return item?.kind === 'data' ? getRowId(item.row) : undefined;
+  }
+  $effect.pre(() => {
+    const items = flat;
+    const f = sel.focus;
+    untrack(() => {
+      if (source) return;
+      const e = editing;
+      if (e && idAt(items, e.r) !== e.id) {
+        const to = findRow(items, e.id, e.r, getRowId);
+        if (to < 0) closeEdit();
+        else {
+          if (editDraft !== null) editSeed = editDraft;
+          editing = { ...e, r: to };
+        }
+      }
+      const a = sel.anchor;
+      const mark = focusMark;
+      if (f && a && mark && mark.ref === f) {
+        const moved = idAt(items, f.r) !== mark.focus || (mark.anchor !== undefined && idAt(items, a.r) !== mark.anchor);
+        if (moved) {
+          const fr = findRow(items, mark.focus, f.r, getRowId);
+          if (fr < 0) {
+            focusMark = null;
+            sel.clear();
+            return;
+          }
+          const ar = mark.anchor === undefined ? a.r : findRow(items, mark.anchor, a.r, getRowId);
+          sel.anchor = { r: ar < 0 ? fr : ar, c: a.c };
+          sel.focus = { r: fr, c: f.c };
+          return; // runs again for the new focus, which marks it
+        }
+        return;
+      }
+      const id = f ? idAt(items, f.r) : undefined;
+      focusMark = f && id !== undefined ? { ref: f, focus: id, anchor: a ? idAt(items, a.r) : undefined } : null;
+    });
+  });
+
   function goToPage(p: number): void {
     const next = Math.max(0, Math.min(p, pageCount - 1));
     if (next === currentPage) return;
     setPage(next);
     sel.clear();
-    editing = null;
+    closeEdit();
     if (viewportEl) viewportEl.scrollTop = 0;
   }
 
@@ -1971,7 +2043,7 @@
     setColumnFilters(st.filters);
     if (st.pinnedRows) setPinnedIds(st.pinnedRows);
     sel.clear();
-    editing = null;
+    closeEdit();
     return true;
   }
 
@@ -2150,7 +2222,47 @@
     const rect = document.getElementById(activeId ?? '')?.getBoundingClientRect();
     return { left: rect?.left ?? 0, bottom: rect?.bottom ?? 0 };
   }
+  // ---- Hotkeys (hotkeys.ts) --------------------------------------------------
+  const hotkeyMap = $derived(hotkeys ? compileHotkeys(hotkeys) : new Map<string, HotkeyHandler>());
+  // Read the bindings as they are given, so one that cannot be read throws
+  // then rather than at the first key.
+  $effect.pre(() => void hotkeyMap);
+  // Keys whose last press a binding took: held down, they repeat into
+  // nothing (holding B places one order); the rest repeat as the grid's.
+  const heldByHotkey = new Set<string>();
+  // Runs the app's binding for a key, before the grid's own; true when it
+  // took the key.
+  function runHotkey(e: KeyboardEvent): boolean {
+    if (editing) return false;
+    let map: Map<string, HotkeyHandler>;
+    try {
+      map = hotkeyMap;
+    } catch {
+      return false; // an unreadable binding threw already; keep the grid's keys working
+    }
+    if (map.size === 0) return false;
+    const t = e.target;
+    if (t instanceof HTMLElement && (t.isContentEditable || t.closest('input, textarea, select, button, a[href], [role="menuitem"], [role="button"]'))) return false;
+    const handler = hotkeyFor(e, map);
+    const held = e.key.toLowerCase();
+    if (!handler) return false;
+    if (e.repeat) {
+      if (!heldByHotkey.has(held)) return false;
+      e.preventDefault();
+      return true;
+    }
+    const cell = getFocusedCell();
+    if (handler({ row: cell?.row ?? null, column: cell?.column ?? null, event: e }) === false) {
+      heldByHotkey.delete(held);
+      return false;
+    }
+    heldByHotkey.add(held);
+    e.preventDefault();
+    return true;
+  }
+
   function onKeydown(e: KeyboardEvent) {
+    if (runHotkey(e)) return;
     const a = keyAction(e, keyState());
     if (!a) return;
     if (a.kind !== 'clear') e.preventDefault();
@@ -2221,7 +2333,7 @@
     source;
     untrack(() => {
       sel.clear();
-      editing = null;
+      closeEdit();
     });
   });
 </script>
@@ -2644,12 +2756,12 @@
                   {onCellEnter}
                   onCellClick={onCellClick ? onCellClicked : undefined}
                   onCellDblClick={startEdit}
-                  onEditCommit={(raw) => commitEdit(item.vr, ci, raw)}
-                  onEditCommitValue={(v) => commitValue(item.vr, ci, v)}
+                  onEditCommit={(raw) => commitEdit(item.vr, ci, getRowId(item.row), raw)}
+                  onEditCommitValue={(v) => commitValue(item.vr, ci, getRowId(item.row), v)}
+                  onEditDraft={(raw) => (editDraft = raw)}
                   onEditCancel={() => {
                     if (editing?.r !== item.vr || editing?.c !== ci) return;
-                    editing = null;
-                    editSeed = null;
+                    closeEdit();
                   }}
                 />
                 {/if}

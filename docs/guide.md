@@ -1038,6 +1038,40 @@ first/last column (**+Ctrl/⌘** for the first/last cell), **PageUp/PageDown** m
 by a page, **Ctrl/⌘+A** select all, **Ctrl/⌘+C** copy the selection as TSV
 (Excel-pasteable), **Ctrl/⌘+V** paste, **Esc** clear.
 
+**Hotkeys.** `hotkeys` binds keys for your app, run before the grid's own,
+with the focused row and column:
+
+```svelte
+<Grid {rows} {columns} hotkeys={{
+  b: ({ row }) => row && openTicket(row, 'buy'),
+  s: ({ row }) => row && openTicket(row, 'sell'),
+  Delete: ({ row }) => row && cancel(row),
+  'Shift+C': () => cancelAll(),
+  'Mod+K': () => openSearch(),        // Ctrl+K, or ⌘K on a Mac
+  Enter: ({ row }) => (row?.locked ? undefined : false), // false: the grid's own Enter
+}} />
+```
+
+A binding is a key (`'b'`, `'Delete'`, `'F2'`, `'Space'`) after any of
+`Shift+`, `Alt+`, `Ctrl+`, `Meta+` and `Mod+` (Ctrl or ⌘, whichever is
+pressed); case does not matter. A symbol is bound by the character it types
+(`'?'`, not `'Shift+/'`, which throws). A letter also fires from its place on
+the keyboard when the layout types another alphabet there. The row is null
+when no data row has the focus. Keys go to the grid, not to a binding, while
+a cell is being edited or an input, button or menu inside the grid has them;
+a key a binding took runs it once when held down, so holding B opens one
+ticket. A binding that cannot be read, or binds a key twice, throws when the
+grid gets it.
+
+**The focus stays on its row.** The selection and an open editor belong to
+rows, not places. When rows are added, removed or reordered (a new `rows`
+array, a row arriving above the focused one), the focus, the selected range
+and the editor move with their rows, so a hotkey acts on the row you are
+looking at and an edit is written to the row it was opened on. If the
+focused row leaves, the selection clears; if the edited row leaves, the edit
+closes unwritten. (In-memory rows; with a server `source`, rows are where the
+source puts them.)
+
 Paste writes a TSV block (from a spreadsheet or the grid's own copy) into
 editable cells starting at the selection's top-left. A single copied value fills
 the whole selection (Excel behaviour); a block clamps to the grid edges. Pasted
