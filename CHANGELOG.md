@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.7.0] — 2026-10-24
+
+**React, Vue, and alerts that stay lit.** The grid ships as a React and a
+Vue component (`bo-grid/react`, `bo-grid/vue`): typed props, the grid's
+API on a ref, server rendering safe. `createAlerts` lights a row when a
+rule turns true and keeps it lit until acknowledged. Fixes a bundler being
+free to drop `import 'bo-grid/element'`. A minor release: nothing was
+removed or renamed.
+
 ### Added
 
 - **`createAlerts` (`bo-grid/realtime`): alerts that stay lit until
@@ -1538,6 +1547,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.7.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.7.0
 [2.6.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.6.0
 [2.5.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.5.0
 [2.4.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.4.0
