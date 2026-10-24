@@ -5,42 +5,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
-### Fixed
+## [2.10.0] — 2026-10-25
 
-- **The keyboard stays in the grid through an edit.** Enter (save) and
-  Escape (cancel) in an editor left the focus on the page, so the arrow keys
-  stopped working; Tab threw it out of the grid. Each now gives the keyboard
-  back to the grid, and Tab saves and moves to the next cell (Shift+Tab: the
-  previous one), on to the next row at the end of one. Picking an option
-  with the pointer in a dropdown editor saves at once (arrow keys wait for
-  Enter).
-- **Number editors type as expected.** They were `<input type="number">`,
-  which empties itself on a lone `-` or `.`; a blank (typed, or pasted) was
-  written as 0. They are text inputs with a numeric keypad now, and a blank
-  or a non-number is refused, typed, pasted or filled (a column `parse` still
-  sees it first).
-- **A live update no longer overwrites an open editor**: the editor starts
-  from the value as it was when it opened.
-- **A sort keeps the focus and the range on their rows**, as the docs said;
-  it cleared them. So do a filter and a collapse: a focus whose row leaves
-  clears, and a focus on a group header follows that group. With a row
-  `source`, whose rows reload, a new sort or filter still clears them.
-- **Group headers work from the keyboard**: the focus on a group header is
-  announced and marked, Enter, Space and the arrows toggle it, and a click on
-  one puts the focus there. Its toggle button left the tab order.
-- **The last column clears the scrollbar** at full sideways scroll; its last
-  10px stayed under the gutter (or under a right-pinned column).
-- **Menus stay inside the window** (row, column and filter menus).
-- **What the grid hands out can be cloned**: request params for a row source
-  and the `onSortChange` / `onFilterChange` payloads are plain copies, not
-  state proxies (which a worker or IndexedDB cannot take).
-- **The filter row and the filter menu agree**: one filter per column (the
-  last one set wins), and the funnel shows either. The filter row's
-  placeholder is `labels.filterPlaceholder`.
-
-### Added
-
-- **F2** edits the focused cell.
+**Columns that stay put, and a keyboard that stays in the grid.** Resizing
+a column now changes that column only, and every kind of row (group rows,
+the sticky group header, header groups, pinned columns) lines up with the
+columns in every layout. Editing keeps the keyboard in the grid, numbers
+type as typed, and a sort keeps the focus on its row. Found by auditing the
+grid's behaviour in real Chrome. A minor release: nothing was removed or
+renamed, but some behaviours change on purpose: see Changed.
 
 ### Changed
 
@@ -55,6 +28,21 @@ All notable changes to this project are documented here. Format follows
   `fitColumns`, the grid fits until the user sets a width. The held flex
   widths are saved with the dragged one (`persistKey`, `getState()`);
   `onColumnResize` still reports the dragged column only.
+- **Number editors type as expected.** They were `<input type="number">`,
+  which empties itself on a lone `-` or `.`; a blank (typed, or pasted) was
+  written as 0. They are text inputs with a numeric keypad now, and a blank
+  or a non-number is refused, typed, pasted or filled (a column `parse` still
+  sees it first).
+- **A sort keeps the focus and the range on their rows**, as the docs said;
+  it cleared them. So do a filter and a collapse: a focus whose row leaves
+  clears, and a focus on a group header follows that group. With a row
+  `source`, whose rows reload, a new sort or filter still clears them.
+
+### Added
+
+- **Reset widths** in the column menu gives every column back its own width
+  (the fit, under `fitColumns`). Translate it with `labels.resetWidths`.
+- **F2** edits the focused cell.
 
 ### Fixed
 
@@ -84,11 +72,27 @@ All notable changes to this project are documented here. Format follows
   order without showing it.
 - The detail panel and the "No rows" message stay in view when the grid
   scrolls sideways; a new page size keeps the first row on screen in view.
-
-### Added
-
-- **Reset widths** in the column menu gives every column back its own width
-  (the fit, under `fitColumns`). Translate it with `labels.resetWidths`.
+- **The keyboard stays in the grid through an edit.** Enter (save) and
+  Escape (cancel) in an editor left the focus on the page, so the arrow keys
+  stopped working; Tab threw it out of the grid. Each now gives the keyboard
+  back to the grid, and Tab saves and moves to the next cell (Shift+Tab: the
+  previous one), on to the next row at the end of one. Picking an option
+  with the pointer in a dropdown editor saves at once (arrow keys wait for
+  Enter).
+- **A live update no longer overwrites an open editor**: the editor starts
+  from the value as it was when it opened.
+- **Group headers work from the keyboard**: the focus on a group header is
+  announced and marked, Enter, Space and the arrows toggle it, and a click on
+  one puts the focus there. Its toggle button left the tab order.
+- **The last column clears the scrollbar** at full sideways scroll; its last
+  10px stayed under the gutter (or under a right-pinned column).
+- **Menus stay inside the window** (row, column and filter menus).
+- **What the grid hands out can be cloned**: request params for a row source
+  and the `onSortChange` / `onFilterChange` payloads are plain copies, not
+  state proxies (which a worker or IndexedDB cannot take).
+- **The filter row and the filter menu agree**: one filter per column (the
+  last one set wins), and the funnel shows either. The filter row's
+  placeholder is `labels.filterPlaceholder`.
 
 ## [2.9.0] — 2026-10-24
 
