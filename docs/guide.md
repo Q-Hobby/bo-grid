@@ -742,8 +742,22 @@ reaches its level, and A acknowledges it.
 
 ### React, Vue, Angular & vanilla
 
-bo-grid also ships a framework-agnostic **custom element**, fully typed. Import it
-and drive the whole API through a `config` property:
+In React and Vue, use the components: every `<Grid>` prop as a prop (Vue:
+attributes and events), the grid's API on a ref, server rendering safe.
+
+```tsx
+import { BoGrid } from 'bo-grid/react';
+<BoGrid ref={grid} rows={rows} columns={columns} height={520} onCellEdit={save} />
+```
+
+```vue
+<script setup lang="ts">import { BoGrid } from 'bo-grid/vue';</script>
+<BoGrid ref="grid" :rows="rows" :columns="columns" :height="520" @cell-edit="save" />
+```
+
+Underneath them, and for Angular or plain JS, bo-grid ships a framework-agnostic
+**custom element**, fully typed. Import it and drive the whole API through a
+`config` property:
 
 ```ts
 import { createBoGrid } from 'bo-grid/element'; // registers <bo-grid>, injects styles

@@ -7,6 +7,10 @@ element** (`<bo-grid>`) so you can use it anywhere.
 import 'bo-grid/element'; // registers <bo-grid> (styles inject automatically)
 ```
 
+> **React or Vue?** Use the components, `bo-grid/react` and `bo-grid/vue`
+> (below): typed props, the grid's API on a ref, and server rendering safe.
+> The element itself serves Angular and plain JS.
+>
 > **Runnable starters:** [`examples/`](../examples/) has build-free HTML files for
 > [vanilla](../examples/vanilla.html), [React](../examples/react.html) and
 > [Vue](../examples/vue.html) — `npx serve examples` and open one.
@@ -45,15 +49,40 @@ and a `createBoGrid(config)` helper for the safe create-before-attach pattern.
 
 ## React
 
-A small typed wrapper. `config` is safe to set after mount — the grid renders
-blank until it arrives, then reacts:
+`bo-grid/react` is a typed component: every `<Grid>` prop is a React prop, and
+its `ref` is the grid's API.
+
+```tsx
+import { useEffect, useRef } from 'react';
+import { BoGrid } from 'bo-grid/react';
+import type { GridApi } from 'bo-grid';
+
+export function Board({ rows }: { rows: Quote[] }) {
+  const grid = useRef<GridApi>(null);
+  // A live feed: patch the rows in place, with no React re-render.
+  useEffect(() => feed.subscribe((ticks) => grid.current?.patchRows(ticks)), []);
+  return <BoGrid ref={grid} rows={rows} columns={columns} height={520} onCellEdit={save} className="board" />;
+}
+```
+
+- It loads the `<bo-grid>` element on the client, so server rendering (Next.js,
+  Remix) renders its wrapper div and nothing else, and hydration matches it;
+  the bundle carries `'use client'` for server components.
+- `className` and `style` go on that wrapper div; until the element has
+  loaded, the div keeps the grid's `height` so nothing jumps.
+- Each render sets the element's config from the props. Unchanged arrays and
+  functions are not reprocessed, but a new `rows` array is a new view: for a
+  live feed, patch through the ref (`patchRows`, `flashCells`) instead.
+- React 18 and 19.
+
+Writing the element by hand instead (it is what the component does):
 
 ```tsx
 import { useEffect, useRef } from 'react';
 import 'bo-grid/element';
 import type { BoGridConfig, BoGridElement } from 'bo-grid/element';
 
-export function BoGrid(config: BoGridConfig) {
+export function MyGrid(config: BoGridConfig) {
   const ref = useRef<BoGridElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.config = config;
@@ -86,7 +115,40 @@ container.append(el);
 
 ## Vue 3
 
-Tell Vue `bo-grid` is a custom element (in `vite.config`:
+`bo-grid/vue` is a typed component: every `<Grid>` prop is an attribute
+(`:rows`, `:row-height`), every callback an event (`@cell-edit` is
+`onCellEdit`), and the template ref's `api` is the grid's API.
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { BoGrid } from 'bo-grid/vue';
+
+const grid = ref<InstanceType<typeof BoGrid>>();
+// A live feed: patch the rows in place, with no re-render.
+onMounted(() => feed.subscribe((ticks) => grid.value?.api?.patchRows(ticks)));
+</script>
+
+<template>
+  <BoGrid ref="grid" :rows="rows" :columns="columns" :height="520" :row-height="32" @cell-edit="save" class="board" />
+</template>
+```
+
+- It loads the `<bo-grid>` element on the client, so server rendering (Nuxt)
+  renders its wrapper div and nothing else, and hydration matches it; no
+  `isCustomElement` setting is needed.
+- A bare boolean attribute is true (`<BoGrid footer row-selection />`), and an
+  event bound more than once calls every listener.
+- **Rows:** the grid sees a new `rows` array, not changes inside one (a
+  `push`, or a field set on a row). Replace the array (keep it in a
+  `shallowRef` and assign a new one), or, for a live feed, patch through the
+  API: `grid.value?.api?.patchRows(ticks)`.
+- `class` and `style` go on that wrapper div; until the element has loaded,
+  the div keeps the grid's `height`.
+- Vue 3.3 and up.
+
+Writing the element by hand instead: tell Vue `bo-grid` is a custom element
+(in `vite.config`:
 `vue({ template: { compilerOptions: { isCustomElement: (t) => t === 'bo-grid' } } })`),
 then bind `config` as a property:
 

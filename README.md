@@ -74,7 +74,15 @@ element and need no Svelte setup.
 <Grid {rows} {columns} height={480} />
 ```
 
-React, Vue, Angular or plain JS:
+React or Vue:
+
+```tsx
+import { BoGrid } from 'bo-grid/react'; // or 'bo-grid/vue'
+
+<BoGrid rows={rows} columns={columns} height={480} />
+```
+
+Angular or plain JS:
 
 ```js
 import 'bo-grid/element';
@@ -88,7 +96,7 @@ document.querySelector('bo-grid').config = { columns, rows, height: 480 };
 | --- | --- |
 | [Guide](./docs/guide.md) | Every feature with examples, including the [realtime setup](./docs/guide.md#busy-markets--plain-rows--apipatchrows) for live boards |
 | [API reference](https://bonguynvan.github.io/bo-grid/api.html) | Every prop, column option and export |
-| [Frameworks](./docs/frameworks.md) | React, Vue and Angular recipes; build-free starters in [examples/](./examples/) |
+| [Frameworks](./docs/frameworks.md) | The React and Vue components, the Angular recipe; build-free starters in [examples/](./examples/) |
 | [SvelteKit](./docs/sveltekit.md) | Loading data, SSR, lazy loading and saved layouts |
 | [Benchmarks](./BENCHMARKS.md) | Bundle size and frame costs, and how to reproduce them |
 | [Accessibility](./ACCESSIBILITY.md) | Roles, keyboard model and contrast |

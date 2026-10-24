@@ -31,4 +31,34 @@ export default BoGrid;
 `;
 
 writeFileSync(out, dts);
-console.log('emit-element-dts: wrote dist/bo-grid.element.d.ts');
+
+// The React and Vue wrappers (src/wc/react.ts, src/wc/vue.ts), bundled by the
+// same Vite build.
+const react = `// Type declarations for the \`bo-grid/react\` entry.
+import type { CSSProperties, ForwardRefExoticComponent, RefAttributes } from 'react';
+import type { GridApi } from './index';
+import type { BoGridConfig } from './bo-grid.element';
+
+/** Every <Grid> prop, plus the wrapper div's \`className\` and \`style\`. */
+export interface BoGridProps extends BoGridConfig {
+  className?: string;
+  style?: CSSProperties;
+}
+
+/** The grid as a React component; its ref is the grid's API once it is ready. */
+export declare const BoGrid: ForwardRefExoticComponent<BoGridProps & RefAttributes<GridApi | null>>;
+`;
+writeFileSync(resolve('dist/bo-grid.react.d.ts'), react);
+
+const vue = `// Type declarations for the \`bo-grid/vue\` entry.
+import type { DefineComponent } from 'vue';
+import type { GridApi } from './index';
+import type { BoGridConfig } from './bo-grid.element';
+
+/** The grid as a Vue component: every <Grid> prop as an attribute, every
+ *  callback as an event (\`@cell-edit\` is \`onCellEdit\`); the template ref's
+ *  \`api\` is the grid's API once it is ready. */
+export declare const BoGrid: DefineComponent<BoGridConfig, { api: GridApi | null }>;
+`;
+writeFileSync(resolve('dist/bo-grid.vue.d.ts'), vue);
+console.log('emit-element-dts: wrote dist/bo-grid.element.d.ts, bo-grid.react.d.ts, bo-grid.vue.d.ts');
