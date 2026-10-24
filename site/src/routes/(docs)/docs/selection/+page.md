@@ -1,118 +1,107 @@
 ---
 title: Cell selection & clipboard
-description: TODO
+description: Select ranges of cells, copy and paste them as spreadsheet text, fill with a drag handle, and see live totals for a selection or the whole grid.
 ---
 
-Click a cell, then drag or **Shift-click** to extend a rectangular selection.
-Keyboard: **arrows** move, **Shift+arrows** extend, **Home/End** jump to the
-first/last column (**+Ctrl/⌘** for the first/last cell), **PageUp/PageDown** move
-by a page, **Ctrl/⌘+A** select all, **Ctrl/⌘+C** copy the selection as TSV
-(Excel-pasteable), **Ctrl/⌘+V** paste, **Esc** clear.
+<script>
+  import Example from '$lib/Example.svelte';
+  import Props from '$lib/Props.svelte';
+</script>
 
-**Hotkeys.** `hotkeys` binds keys for your app, run before the grid's own,
-with the focused row and column:
+Cells select like a spreadsheet: click a cell, then drag or Shift-click to select a rectangle. A selection copies as tab-separated text that pastes into a spreadsheet, and text from a spreadsheet pastes back into editable cells. A footer shows live statistics for the selected numbers.
 
-```svelte
-<Grid {rows} {columns} hotkeys={{
-  b: ({ row }) => row && openTicket(row, 'buy'),
-  s: ({ row }) => row && openTicket(row, 'sell'),
-  Delete: ({ row }) => row && cancel(row),
-  'Shift+C': () => cancelAll(),
-  'Mod+K': () => openSearch(),        // Ctrl+K, or ⌘K on a Mac
-  Enter: ({ row }) => (row?.locked ? undefined : false), // false: the grid's own Enter
-}} />
-```
+Drag across Price and Qty to see the sum and average below the grid, copy with Ctrl/⌘+C, or drag the small square at the selection's corner down to fill. The pinned last row totals every column.
 
-A binding is a key (`'b'`, `'Delete'`, `'F2'`, `'Space'`) after any of
-`Shift+`, `Alt+`, `Ctrl+`, `Meta+` and `Mod+` (Ctrl or ⌘, whichever is
-pressed); case does not matter. A symbol is bound by the character it types
-(`'?'`, not `'Shift+/'`, which throws). A letter also fires from its place on
-the keyboard when the layout types another alphabet there. The row is null
-when no data row has the focus. Keys go to the grid, not to a binding, while
-a cell is being edited or an input, button or menu inside the grid has them;
-a key a binding took runs it once when held down, so holding B opens one
-ticket. A binding that cannot be read, or binds a key twice, throws when the
-grid gets it.
+<Example name="selection" title="Range selection, fill and totals" />
 
-**The focus stays on its row.** The selection and an open editor belong to
-rows, not places. When rows are added, removed or reordered (a new `rows`
-array, a row arriving above the focused one), the focus, the selected range
-and the editor move with their rows, so a hotkey acts on the row you are
-looking at and an edit is written to the row it was opened on. If the
-focused row leaves, the selection clears; if the edited row leaves, the edit
-closes unwritten. (In-memory rows; with a server `source`, rows are where the
-source puts them.)
+## Selecting
 
-Paste writes a TSV block (from a spreadsheet or the grid's own copy) into
-editable cells starting at the selection's top-left. A single copied value fills
-the whole selection (Excel behaviour); a block clamps to the grid edges. Pasted
-values flow through the same validation as inline editing — non-editable columns
-and invalid numbers are skipped — and each accepted cell emits `onCellEdit`, so
-paste only does anything when you've wired that callback.
+- Click a cell; drag or <kbd>Shift</kbd>-click to extend to a rectangle.
+- <kbd>Shift</kbd>+arrows extend from the keyboard, and <kbd>Ctrl/⌘</kbd>+<kbd>A</kbd> selects everything.
+- <kbd>Escape</kbd> clears the selection.
 
-Set `fillHandle` for an **Excel-style fill handle**: the selection grows a small
-square at its bottom-right corner; drag it down or right to copy the selected
-value(s) across the extended range (editable columns; multi-cell selections tile).
+The full key map is in [Keyboard & hotkeys](../keyboard/).
 
-Edits, paste and fill are **undoable** with <kbd>Ctrl/⌘</kbd>+<kbd>Z</kbd> (redo
-with <kbd>Ctrl/⌘</kbd>+<kbd>Y</kbd>). A paste or fill undoes as a single step.
+## Copy and paste
 
-For a read-only / display grid, set `cellSelection={false}` to drop the blue
-range-selection highlight (and fill handle) entirely — clicks pass straight
-through to `onRowClick` / `onCellClick`:
+<kbd>Ctrl/⌘</kbd>+<kbd>C</kbd> copies the selection as tab-separated text, which a spreadsheet pastes as cells. <kbd>Ctrl/⌘</kbd>+<kbd>V</kbd> pastes such a block into editable cells, starting at the selection's top-left corner:
+
+- A single copied value fills the whole selection.
+- A block is cut off at the grid's edges.
+- Values go through the same checks as typing: cells in columns that are not editable, and values that `parse` or `validate` refuse, are skipped.
+- Every accepted cell calls `onCellEdit`, so paste does nothing until you handle that callback. See [Inline editing](../editing/).
+
+## Fill handle
+
+`fillHandle` puts a small square on the selection's bottom-right corner. Drag it down or right to copy the selected values over the cells you drag across, as a spreadsheet does; a multi-cell selection repeats as a pattern. Only editable columns are filled, in-memory data only.
 
 ```svelte
-<Grid {rows} {columns} height={640} cellSelection={false} onRowClick={open} />
+<Grid {rows} {columns} height={480} fillHandle onCellEdit={(e) => (e.row[e.column.key] = e.value)} />
 ```
 
-For a **list-detail / master-detail** layout, drive `selectedRowId` (keyed by
-`getRowId`) to highlight the active row — independent of the checkbox selection:
+Edits, pastes and fills undo with <kbd>Ctrl/⌘</kbd>+<kbd>Z</kbd> and redo with <kbd>Ctrl/⌘</kbd>+<kbd>Y</kbd>; a paste or a fill undoes as one step.
+
+## Totals for a selection
+
+When more than one cell is selected, a bar under the grid shows **Sum**, **Avg**, **Count**, **Min** and **Max** of the numbers in the range, and keeps them current as a live feed ticks. `aggregations` picks which to show:
 
 ```svelte
-<Grid {rows} {columns} height={640}
-  selectedRowId={active?.id} onRowClick={(r) => (active = r)} />
+<Grid {rows} {columns} height={480} aggregations={['sum', 'avg', 'count']} />
 ```
 
-When more than one cell is selected, a footer bar shows live **Sum / Avg / Count /
-Min / Max** over the numeric cells in the range — and it keeps updating as a
-realtime feed ticks. Choose which stats to show:
+## A totals row
+
+`footer` pins a totals row to the bottom: every column with a `groupAgg` shows that aggregate over all rows that pass the filters. In-memory data only.
+
+```ts
+const columns: ColumnDef[] = [
+  { type: 'number', key: 'qty', header: 'Qty', groupAgg: 'sum' },
+  { type: 'price', key: 'price', header: 'Price', groupAgg: 'avg' },
+];
+```
 
 ```svelte
-<Grid {rows} {columns} aggregations={['sum', 'avg', 'count']} height={640} />
+<Grid {rows} {columns} height={480} footer />
 ```
 
-Set `footer` for a **pinned totals row**: every column with a `groupAgg` shows
-that aggregate over all (filtered) rows, sticky to the bottom as you scroll
-(in-memory mode).
+The totals follow a live feed without rescanning every row: `api.patchRows` moves them by the rows it changed, and rows changed any other way (`$state` rows, an `onCellEdit` handler) update them too. A computed column must depend only on its own row for this; one that reads other rows or the clock gets a fresh total on the next view or `api.refresh()`.
+
+## Read-only grids and an active row
+
+For a display grid, `cellSelection={false}` drops the selection highlight and the fill handle, so clicks go straight to `onRowClick` and `onCellClick`:
 
 ```svelte
-<Grid {rows} {columns} height={640} footer />
+<Grid {rows} {columns} height={480} cellSelection={false} onRowClick={(row) => open(row)} />
 ```
 
-The totals follow a live feed without rescanning every row: `api.patchRows`
-moves them by the rows it changed, and rows edited any other way (`$state`
-rows, an `onCellEdit` handler) update them as well. A computed column (`value`)
-must depend only on its own row for this; one that reads other rows or the
-clock gets a fresh total on the next new view or `api.refresh()`.
-
-Pass `pinnedRows` to keep rows stuck to the **top**, always visible above the
-scroll — a benchmark, a summary, or "your position". They render with the normal
-columns (and `rowClass`) but are display-only:
+For a list beside a detail view, drive `selectedRowId` (by `getRowId`) to highlight the active row. It is separate from the cell selection and from checkbox [row selection](../row-selection/):
 
 ```svelte
-<Grid {rows} {columns} height={640} pinnedRows={[benchmark]} />
+<Grid {rows} {columns} height={480} selectedRowId={active?.id} onRowClick={(row) => (active = row)} />
 ```
 
-To let users pin rows themselves, such as the symbols they watch on a long
-board, add **`rowPinning`**. Right-clicking a row then offers "Pin to top", and
-on a pinned row "Unpin", ahead of any `rowMenu` items.
-- A pinned row shows above the scroll and also stays in its place in the body.
-  It keeps updating, `api.patchRows` included.
-- Pins are remembered with `persistKey` and carried by `getState()` /
-  `applyState()`.
-- `onRowPinChange(ids)` reports changes. `api.pinRow(id, pinned?)` and
-  `api.getPinnedRowIds()` do the same from code.
+## Pinned rows
+
+`pinnedRows` keeps rows of your own above the scroll, always visible: a benchmark, a summary, "your position". They use the grid's columns and `rowClass` but are display-only, and their ids must not collide with ids in `rows`.
 
 ```svelte
-<Grid {rows} {columns} rowPinning persistKey="watchlist" onRowPinChange={(ids) => save(ids)} />
+<Grid {rows} {columns} height={480} pinnedRows={[benchmark]} />
 ```
+
+`rowPinning` lets readers pin rows themselves, such as the symbols they watch on a long board: right-clicking a row offers **Pin to top**, and **Unpin** on a pinned row, ahead of any `rowMenu` items.
+
+- A pinned row shows above the scroll and also stays in its place in the body; it keeps updating, `api.patchRows` included.
+- Pins are remembered with `persistKey` and carried by `getState()` and `applyState()`.
+- `onRowPinChange(ids)` reports changes; `api.pinRow(id, pinned?)` and `api.getPinnedRowIds()` do the same from code.
+
+```svelte
+<Grid {rows} {columns} height={480} rowPinning persistKey="watchlist" onRowPinChange={(ids) => save(ids)} />
+```
+
+## Reference
+
+<Props names={['cellSelection', 'fillHandle', 'aggregations', 'footer', 'selectedRowId', 'onRowClick', 'onCellClick', 'pinnedRows', 'rowPinning', 'onRowPinChange', 'onCellEdit']} />
+
+<Props of="column" names={['groupAgg', 'editable']} />
+
+<Props of="api" names={['pinRow', 'getPinnedRowIds']} />

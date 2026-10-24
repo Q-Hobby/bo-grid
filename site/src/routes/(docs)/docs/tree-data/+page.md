@@ -1,29 +1,43 @@
 ---
 title: Tree data
-description: TODO
+description: Show hierarchical rows as an expandable tree, from children you already have or loaded from a server on expand.
 ---
 
 <script>
   import Example from '$lib/Example.svelte';
+  import Props from '$lib/Props.svelte';
 </script>
 
-Pass `getChildren` to render hierarchical rows — `rows` become the roots, and each
-node gets an indented first column with an expand chevron when it has children:
+Tree data shows rows that contain rows: folders and files, an org chart, accounts and sub-accounts. Tell the grid how to find a row's children, and `rows` become the roots of an indented tree with a chevron on every row that has children.
+
+Expand the folders with a click, or with <kbd>→</kbd> and <kbd>←</kbd> on the focused row.
+
+<Example id="tree" />
+
+## Children you already have
+
+`getChildren` returns a row's children, or `undefined` (or an empty array) for a leaf:
 
 ```svelte
-<Grid {rows} {columns} height={520} getChildren={(r) => r.children} />
+<script lang="ts">
+  import { Grid, type GridRow } from 'bo-grid';
+
+  let rows = $state<GridRow[]>([
+    { id: 'src', name: 'src', children: [{ id: 'src/app.ts', name: 'app.ts' }] },
+    { id: 'readme', name: 'README.md' },
+  ]);
+</script>
+
+<Grid {rows} {columns} height={520} getChildren={(r) => r.children as GridRow[] | undefined} />
 ```
 
-In tree mode the grid renders the tree directly (filter/sort/group/paginate are
-not applied to it). Nodes are keyboard-accessible: **→** expands a collapsed node,
-**←** collapses an expanded one, and rows expose `aria-level` / `aria-expanded`.
+The first column is indented by depth and carries the chevron. Every row in the tree needs an id unique across the whole tree, not just among its siblings.
 
-## Lazy (server-backed) trees
+In tree mode the grid shows the tree as given: filtering, sorting, grouping and pagination do not apply to it.
 
-For hierarchies too large to ship upfront, use **`loadChildren`** (async) instead
-of `getChildren`. Children load on first expand — the grid shows a loading row,
-then caches them. Pair it with **`hasChildren`** (a cheap predicate) so the chevron
-shows without loading. See the **Lazy tree** example.
+## Children loaded on expand
+
+For a hierarchy too large to send up front, use `loadChildren` instead of `getChildren`. It returns a promise of a row's children and runs the first time the row is expanded; the grid shows a loading row meanwhile and keeps the children once loaded. Pair it with `hasChildren`, a cheap test that decides which rows get a chevron before anything loads:
 
 ```svelte
 <Grid
@@ -35,8 +49,14 @@ shows without loading. See the **Lazy tree** example.
 />
 ```
 
-## Live example
-
-<Example id="tree" />
+A server-backed tree, with a loading row on each first expand:
 
 <Example id="lazytree" />
+
+## Keyboard and screen readers
+
+With tree data the grid takes the treegrid role: rows expose `aria-level` and `aria-expanded`, <kbd>→</kbd> expands a collapsed row and <kbd>←</kbd> collapses an expanded one. Other keys work as in a flat grid; see [Keyboard & hotkeys](../keyboard/).
+
+## Reference
+
+<Props names={['getChildren', 'loadChildren', 'hasChildren']} />
