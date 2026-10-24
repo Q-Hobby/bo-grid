@@ -16,16 +16,16 @@ Click the toggle at the start of a row to open its panel; open several, then scr
 
 ## Adding a detail panel
 
-Pass a `detail` snippet. It receives `{ row }`, and its content can be anything, including another `Grid`:
+Pass a `detail` snippet, declared inside `<Grid>` so it is typed from the prop. It receives `{ row }`, and its content can be anything, including another `Grid`:
 
 ```svelte
-{#snippet detail({ row })}
-  <div class="detail">
-    <strong>{row.name}</strong> · {row.sector}
-  </div>
-{/snippet}
-
-<Grid {rows} {columns} {detail} detailHeight={120} height={480} />
+<Grid {rows} {columns} detailHeight={120} height={480}>
+  {#snippet detail({ row })}
+    <div class="detail">
+      <strong>{row.name}</strong> · {row.sector}
+    </div>
+  {/snippet}
+</Grid>
 ```
 
 - `detailHeight` sets the panel's height in pixels (default 160).

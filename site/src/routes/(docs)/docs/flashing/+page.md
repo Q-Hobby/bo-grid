@@ -72,7 +72,7 @@ api.flashCells({ rows: [id], columns: ['last'], dir: 'up' });  // tinted like a 
 By default a flash fades out. A CSS fade is restyled and repainted on every frame it runs, and on a busy board most visible cells are always mid-fade, which becomes most of the frame. `flashMotion="hold"` shows a static tint for the flash window instead: repainted when it starts and when the grid's clock drops it, while a repeat tick during the hold changes nothing.
 
 ```svelte
-<Grid {rows} {columns} flashMotion="hold" onReady={(a) => (api = a)} />
+<Grid {rows} {columns} flashMotion="hold" onReady={(a) => (api = a)} height={480} />
 ```
 
 Measured on the Price board with motion allowed, held flashes cut the main thread's work per frame from about 30 to about 9.4 ms at 10,000 events/s, and from about 40 to about 12.3 ms at 30,000, with no dropped frames. That is within about 1 ms of no flash at all ([BENCHMARKS.md](https://github.com/bonguynvan/bo-grid/blob/main/BENCHMARKS.md#live-frames-where-the-time-goes)).

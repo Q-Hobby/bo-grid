@@ -33,7 +33,7 @@ toneColor(tone, lightToneColors);          // on a light theme
 Colour a column with `cellClass` and a class per tone. Set `flashColor: false` on a flashing column whose text carries the tone, so a flash lights only the background:
 
 ```ts
-const tone = (_v: unknown, row: GridRow) => `tone-${resolveTone(row.price, row)}`;
+const tone = (_v: unknown, row: GridRow) => `tone-${resolveTone(Number(row.price), vnBands(Number(row.ref)))}`;
 const columns: ColumnDef[] = [
   { type: 'text', key: 'symbol', header: 'Symbol', cellClass: tone },
   { type: 'number', key: 'price', header: 'Price', cellClass: tone, flash: 'auto', flashColor: false },
@@ -84,9 +84,9 @@ pipsBetween(ask, bid, 'EUR/USD');  // the spread in pips, to a tenth
 fxMarketOpen(new Date());          // Sunday 17:00 to Friday 17:00, New York time
 fxCentresOpen(new Date());         // e.g. ['London', 'New York']: the overlap
 
-const bid: ColumnDef = {
+const bidColumn: ColumnDef = {
   type: 'custom', key: 'bid', header: 'Bid',
-  render: ({ row }) => fxQuoteHtml(row.bid, row.pair), // big figure, pips, pipette
+  render: ({ row }) => fxQuoteHtml(Number(row.bid), String(row.pair)), // big figure, pips, pipette
 };
 ```
 

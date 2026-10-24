@@ -20,16 +20,17 @@ The Move column below is a `cell` snippet; hover the ⓘ in its header, or a cut
 
 ## A cell snippet
 
-Give the column `type: 'custom'` and pass a `cell` snippet to the grid. It receives `{ row, column, value }`, so one snippet can serve several custom columns by checking `column.key`:
+Give the column `type: 'custom'` and pass a `cell` snippet to the grid: declared inside `<Grid>`, it is the `cell` prop, and its parameters get their types from it. It receives `{ row, column, value }`, so one snippet can serve several custom columns by checking `column.key`:
 
 ```svelte
-{#snippet cell({ row })}
-  <span class="move" class:up={row.change >= 0}>
-    {row.change >= 0 ? '▲' : '▼'} {Math.abs(row.change).toFixed(2)}%
-  </span>
-{/snippet}
-
-<Grid {rows} {columns} {cell} height={400} />
+<Grid {rows} {columns} height={400}>
+  {#snippet cell({ row })}
+    {@const change = Number(row.change)}
+    <span class="move" class:up={change >= 0}>
+      {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+    </span>
+  {/snippet}
+</Grid>
 ```
 
 ## A component per column
@@ -69,8 +70,9 @@ Snippets and components are Svelte features, so outside Svelte (the React and Vu
   header: 'Trend',
   render: ({ row }) => {
     const el = document.createElement('span');
-    el.textContent = row.change >= 0 ? '▲' : '▼';
-    el.style.color = row.change >= 0 ? 'var(--bo-grid-up)' : 'var(--bo-grid-down)';
+    const up = Number(row.change) >= 0;
+    el.textContent = up ? '▲' : '▼';
+    el.style.color = up ? 'var(--bo-up)' : 'var(--bo-down)';
     return el;
   },
 }

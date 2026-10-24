@@ -41,14 +41,14 @@ When an order completes and leaves your list, `createLinger` keeps it on screen 
 import { createLinger } from 'bo-grid/realtime';
 
 let expired = $state(0);
-const linger = createLinger({ ms: 1500, key: (o) => o.id, onExpire: () => expired++ });
+const linger = createLinger<GridRow, number>({ ms: 1500, key: (o) => o.id, onExpire: () => expired++ });
 const shown = $derived.by(() => {
   void expired; // updates again when a row is due to go
   return linger.update(orders); // the orders, plus the ones that just left, in place
 });
 const rowClass = $derived.by(() => {
   void shown; // a new function per update, so the grid restyles the rows leaving
-  return (o) => (linger.leaving(o) ? 'leaving' : undefined);
+  return (o: GridRow) => (linger.leaving(o) ? 'leaving' : undefined);
 });
 ```
 
@@ -67,7 +67,7 @@ const book = createPositions();
 book.fill({ symbol: 'FPT', side: 'buy', qty: 400, price: 11.5 });
 book.fill({ symbol: 'FPT', side: 'sell', qty: 100, price: 13 }); // realizes 150
 const p = book.get('FPT'); // { symbol: 'FPT', qty: 300, avgPrice: 11.5, realized: 150, bought: 400, sold: 100 }
-unrealizedPnl(p, 12);      // 150: the open 300 marked at 12
+if (p) unrealizedPnl(p, 12); // 150: the open 300 marked at 12
 ```
 
 - Each fill moves the symbol's position on average cost. A fill against the position realizes P&L on the part it closes, at the average price. One that goes through flat opens the rest on the other side, at the fill price.
@@ -79,7 +79,8 @@ unrealizedPnl(p, 12);      // 150: the open 300 marked at 12
 **Live P&L.** Keep the last price as a field of each position row and compute unrealized P&L in a computed column. It depends only on its own row, so a `groupAgg: 'sum'` footer follows every tick:
 
 ```ts
-{ type: 'number', key: 'upnl', header: 'Unrealized', value: (r) => unrealizedPnl(r, r.last), groupAgg: 'sum' }
+{ type: 'number', key: 'upnl', header: 'Unrealized', groupAgg: 'sum',
+  value: (r) => unrealizedPnl({ qty: Number(r.qty), avgPrice: Number(r.avgPrice) }, Number(r.last)) }
 ```
 
 The full blotter: orders with status chips, cancel on C, and positions with live P&L:

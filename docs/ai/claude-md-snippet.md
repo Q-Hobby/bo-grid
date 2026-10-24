@@ -42,8 +42,8 @@ never `export let`, `on:click` or `<slot>`. The grid API comes from
 
 **Realtime cell flash — always `flash: 'auto'`, never hand-roll it:**
 ```ts
-{ type: 'price', key: 'price', flash: 'auto' }   // column
-row.price = next;                                 // the whole update
+const price: ColumnDef = { type: 'price', key: 'price', header: 'Price', flash: 'auto' }; // the column
+row.price = next; // the whole update
 ```
 Do **not** generate `row.flashSeq++`/`row.flashDir = ...` bookkeeping for a
 new column — that's the legacy `flash: true` pattern, only needed if the row-

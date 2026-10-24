@@ -23,8 +23,8 @@ Expand the folders with a click, or with <kbd>→</kbd> and <kbd>←</kbd> on th
   import { Grid, type GridRow } from 'bo-grid';
 
   let rows = $state<GridRow[]>([
-    { id: 'src', name: 'src', children: [{ id: 'src/app.ts', name: 'app.ts' }] },
-    { id: 'readme', name: 'README.md' },
+    { id: 1, name: 'src', children: [{ id: 2, name: 'app.ts' }] },
+    { id: 3, name: 'README.md' },
   ]);
 </script>
 

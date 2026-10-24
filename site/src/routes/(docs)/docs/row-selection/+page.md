@@ -34,7 +34,7 @@ Tick a few rows, then sort a column: the same rows stay ticked. The header check
 Selection is keyed by `row.id`. If your rows are identified by another field, such as a UUID or a composite key, pass `getRowId`:
 
 ```svelte
-<Grid {rows} {columns} rowSelection getRowId={(r) => r.uuid} />
+<Grid {rows} {columns} rowSelection getRowId={(r) => String(r.uuid)} height={480} />
 ```
 
 ## One active row
@@ -42,7 +42,7 @@ Selection is keyed by `row.id`. If your rows are identified by another field, su
 For a list-and-detail layout, where one row is "open", use `selectedRowId` instead. It highlights a single row, is fully controlled by your app, and is independent of the checkboxes. Pair it with `onRowClick`:
 
 ```svelte
-<Grid {rows} {columns} selectedRowId={openId} onRowClick={(r) => (openId = r.id)} />
+<Grid {rows} {columns} selectedRowId={openId} onRowClick={(r) => (openId = r.id)} height={480} />
 ```
 
 ## With server data

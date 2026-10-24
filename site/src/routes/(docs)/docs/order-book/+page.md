@@ -21,7 +21,8 @@ import { createOrderBook } from 'bo-grid/realtime';
 const book = createOrderBook({ maxLevels: 1000 });
 book.snapshot({ bids, asks, seq: snap.lastUpdateId }); // e.g. from REST
 
-socket.onmessage = (m) => {
+socket.onmessage = (e) => {
+  const m = JSON.parse(e.data);
   // [price, size] levels, as numbers or numeric strings; a size of 0 removes a level
   const result = book.update({ bids: m.b, asks: m.a, from: m.U, seq: m.u });
   if (result === 'gap') resnapshot(); // a message was missed
@@ -61,7 +62,7 @@ Three reads, each up to `n` levels a side:
 ## Showing it in the grid
 
 ```svelte
-<Grid {rows} rowClass={(r) => r.side} columns={[
+<Grid {rows} rowClass={(r) => String(r.side)} columns={[
   { type: 'number', key: 'price', header: 'Price' },
   { type: 'volume', key: 'size', header: 'Size', flash: 'auto' },
   { type: 'number', key: 'share', header: 'Depth', format: (_v, r) => String(r?.total ?? ''), dataBar: { min: 0, max: 1 } },

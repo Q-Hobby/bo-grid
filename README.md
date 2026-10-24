@@ -85,9 +85,9 @@ import { BoGrid } from 'bo-grid/react'; // or 'bo-grid/vue'
 Angular or plain JS:
 
 ```js
-import 'bo-grid/element';
+import { createBoGrid } from 'bo-grid/element';
 
-document.querySelector('bo-grid').config = { columns, rows, height: 480 };
+document.querySelector('#board')?.append(createBoGrid({ columns, rows, height: 480 }));
 ```
 
 ## Documentation

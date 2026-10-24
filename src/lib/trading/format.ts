@@ -133,12 +133,13 @@ function eighthsOf(c: string, style: FractionStyle): number {
 
 /** Reads a price written as `fmtFraction` writes it (`'99-16+'`, `'99-162'`,
     `"450'2"` with a denominator of 8), or as a plain decimal, for a column's
-    `parse`; pass the same `denominator` and `style` the column formats with.
+    `parse`; pass the same options the column formats with (`sub` and
+    `separator` only shape the output, so reading ignores them).
     The parts take as many digits as the denominator needs, so with a
     denominator of 8, `'99-12'` is 99 and 1¼ eighths. One more character
     counts part of a part, in the style's notation (`+` is a half in
     either). NaN for anything else, which refuses the edit. */
-export function parseFraction(text: string, opts: Pick<FractionOptions, 'denominator' | 'style'> = {}): number {
+export function parseFraction(text: string, opts: FractionOptions = {}): number {
   const s = text.trim();
   const denominator = opts.denominator ?? 32;
   const style = opts.style ?? 'cash';

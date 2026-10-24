@@ -37,11 +37,11 @@
   .move {
     padding: 1px 8px;
     font-weight: 600;
-    color: var(--bo-grid-down, #e5484d);
+    color: var(--bo-down);
     background: color-mix(in srgb, currentColor 14%, transparent);
     border-radius: 999px;
   }
   .move.up {
-    color: var(--bo-grid-up, #30a46c);
+    color: var(--bo-up);
   }
 </style>
