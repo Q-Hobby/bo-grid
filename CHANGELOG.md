@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Price board demo: a live frame-cost readout.** With the feed running,
+  the controls show the frame time, from the frame's start to a task after
+  its paint (median and p95 over the last 120 frames, frames over the
+  display's frame interval, and a bar per recent frame), measured the way
+  the CI perf gate's live workloads measure it, so a visitor sees a figure
+  comparable to what the gate checks.
+
 ## [2.7.0] — 2026-10-24
 
 **React, Vue, and alerts that stay lit.** The grid ships as a React and a

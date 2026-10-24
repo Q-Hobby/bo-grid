@@ -1097,6 +1097,7 @@ if (corrPinned === 0) fail('Correlation matrix label column did not pin');
 // Price board: plain rows fed through api.patchRows. A patch to an on-screen
 // symbol repaints its cell (and flashes it); the board renders all 24 columns.
 await solo('priceboard', '.bo-grid .row', 'Price board example rendered no rows');
+let pbCostBars = 0;
 {
   const pb = globalThis.__priceBoard ?? window.__priceBoard;
   if (!pb?.api?.()) fail('Price board: grid handle (onReady) not exposed');
@@ -1167,6 +1168,18 @@ await solo('priceboard', '.bo-grid .row', 'Price board example rendered no rows'
   const topSym = document.querySelector('.bo-grid .viewport .row [aria-colindex="1"]')?.textContent.trim();
   if (topSym !== last.symbol) fail(`Price board: refresh() did not re-sort (top is ${topSym}, expected ${last.symbol})`);
   pb.setMovers(false);
+  // The live frame-cost readout: with the feed running, the frame's work as
+  // the CI gate times it, and a bar per recent frame.
+  const feedBtn = () => [...document.querySelectorAll('button.pb-btn')].find((b) => /feed/i.test(b.textContent ?? ''));
+  feedBtn()?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await wait(700);
+  const costText = document.querySelector('.pb-cost')?.textContent ?? '';
+  pbCostBars = document.querySelectorAll('.pb-cost .pb-spark rect').length;
+  feedBtn()?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await wait(30);
+  if (!/frame [\d.]+ ms · p95 [\d.]+ ms · \d+ over [\d.]+ ms/.test(costText.replace(/\s+/g, ' '))) fail(`Price board: frame-cost readout missing or malformed ("${costText.trim()}")`);
+  if (pbCostBars === 0) fail('Price board: frame-cost readout drew no bars');
+  if (document.querySelector('.pb-cost')) fail('Price board: frame-cost readout still shown after the feed stopped');
 }
 
 await solo('blotter', '.bo-grid .row', 'Blotter example rendered no rows');
@@ -1467,6 +1480,6 @@ console.log(
     `${stickyHeaders} pinned columns (+right); pivot ${pivotHeaders.length} cols; ` +
     `gallery: portfolio ${portfolioRows} rows/${portfolioGroups} groups + header-groups + ctx-menu + ${cfBars} data-bars/${cfIcons} icons/${cfScale} scale + computed-col, sheet ${sheetRows} rows (light) + select-edit + row-select + col-hide + col-filter + empty-msg + master-detail + cell-class + pagination, ` +
     `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes + group/side-by-side ${obPairs} pairs (createOrderBook), vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer + C cancels the focused order, fxcrypto ${fxPips} pip quotes + continuous crypto + alert lit/acknowledged, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
-    `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok`,
+    `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok; priceboard frame-cost readout ${pbCostBars} bars`,
 );
 process.exit(0);

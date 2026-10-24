@@ -5,6 +5,7 @@
   import { vnBands, vnTickSize } from '../../lib/trading';
   import { ui } from '../theme.svelte';
   import { FpsMeter } from '../perf/fps.svelte';
+  import { FrameCostMeter } from '../perf/framecost.svelte';
 
   // A full VN-style price board (bảng giá) under a busy-market load: hundreds of
   // symbols, three bid/ask levels, match, high/low, foreign flow — every changed
@@ -185,10 +186,16 @@
   }
   let live = $state(false);
   const fps = new FpsMeter();
+  // The frame's time while the feed runs, measured as the CI gate's live
+  // runs measure it (framecost.svelte.ts). The benchmarks below turn the
+  // feed off and flush before they measure, which stops it.
+  const cost = new FrameCostMeter();
+  const ms = (x: number) => (x < 10 ? x.toFixed(1) : Math.round(x).toString());
   $effect(() => {
     if (!live) return;
     stream.start();
     fps.start();
+    cost.start();
     let last = performance.now();
     let carry = 0;
     const h = setInterval(() => {
@@ -204,6 +211,7 @@
       clearInterval(h);
       stream.stop();
       fps.stop();
+      cost.stop();
     };
   });
 
@@ -407,7 +415,21 @@
   <button class="pb-btn" class:on={live} onclick={() => (live = !live)}>{live ? 'Stop feed' : 'Start feed'}</button>
   <button class="pb-btn" onclick={() => bench()}>Benchmark</button>
   <span class="pb-stat">streaming {watching} of {rows.length.toLocaleString()} symbols</span>
-  {#if live}<span class="pb-stat">{fps.fps} fps · {stream.pending} pending</span>{/if}
+  {#if live}
+    <span class="pb-stat">{fps.fps} fps · {stream.pending} pending</span>
+    <span class="pb-stat pb-cost" title="Frame time, from the frame's start to a task after its paint, over the last 120 frames: measured as the CI perf gate's live runs measure it">
+      frame <strong>{ms(cost.p50)}</strong> ms · p95 {ms(cost.p95)} ms · {cost.over} over {ms(cost.budget)} ms
+      {#if cost.recent.length > 0}
+        {@const top = Math.max(cost.budget * 1.25, ...cost.recent)}
+        <svg class="pb-spark" viewBox="0 0 60 20" preserveAspectRatio="none" aria-hidden="true">
+          {#each cost.recent as w, i (i)}
+            <rect x={i} y={20 - (20 * w) / top} width="0.8" height={(20 * w) / top} class:over={w > cost.budget} />
+          {/each}
+          <line x1="0" x2="60" y1={20 - (20 * cost.budget) / top} y2={20 - (20 * cost.budget) / top} />
+        </svg>
+      {/if}
+    </span>
+  {/if}
   {#if result}<span class="pb-stat">{result}</span>{/if}
 </div>
 <div class="gridwrap" bind:this={host}>
@@ -442,6 +464,30 @@
   }
   .pb-stat {
     font-variant-numeric: tabular-nums;
+  }
+  .pb-cost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pb-cost strong {
+    color: var(--text, inherit);
+  }
+  .pb-spark {
+    width: 90px;
+    height: 20px;
+  }
+  .pb-spark rect {
+    fill: var(--text-dim, #8a8a8a);
+  }
+  .pb-spark rect.over {
+    fill: var(--down);
+  }
+  .pb-spark line {
+    stroke: var(--accent);
+    stroke-width: 0.5;
+    stroke-dasharray: 1.5 1;
+    vector-effect: non-scaling-stroke;
   }
   .gridwrap :global(.pb-up) { color: var(--up); }
   .gridwrap :global(.pb-down) { color: var(--down); }
