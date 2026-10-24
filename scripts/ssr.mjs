@@ -74,10 +74,25 @@ try {
   if (!ladder.body.includes('bo-ladder')) fail('depth ladder markup not produced on the server');
   if (!ladder.body.includes('250.00') || !ladder.body.includes('249.95')) fail('depth ladder prices not present in server-rendered HTML');
 
+  // bo-grid/react and bo-grid/vue on a server: no DOM there, so each renders
+  // its wrapper div (sized to the grid's height) and loads the element only
+  // once on the client.
+  const { createElement } = await import('react');
+  const { renderToString: reactToString } = await import('react-dom/server');
+  const { BoGrid: ReactGrid } = await server.ssrLoadModule('/src/wc/react.ts');
+  const reactHtml = reactToString(createElement(ReactGrid, { rows: [], columns: [], height: 240, className: 'wrap' }));
+  if (!/<div class="wrap" style="height:240px"><\/div>/.test(reactHtml)) fail(`bo-grid/react server render was not its sized wrapper: ${reactHtml}`);
+  const { createSSRApp, h } = await import('vue');
+  const { renderToString: vueToString } = await import('vue/server-renderer');
+  const { BoGrid: VueGrid } = await server.ssrLoadModule('/src/wc/vue.ts');
+  const vueHtml = await vueToString(createSSRApp({ render: () => h(VueGrid, { rows: [], columns: [], height: 240, class: 'wrap' }) }));
+  if (!/<div class="wrap" style="height:240px;?"><\/div>/.test(vueHtml)) fail(`bo-grid/vue server render was not its sized wrapper: ${vueHtml}`);
+
   const cellCount = (basic.body.match(/role="gridcell"/g) || []).length;
   console.log(
     `✓ ssr: <Grid> server-rendered cleanly — ${cellCount} cells, ` +
-      `basic + feature-heavy (rowSelection/filterRow/footer/groupBy/pagination/persistKey/sparkline/theme) + DepthLadder OK`,
+      `basic + feature-heavy (rowSelection/filterRow/footer/groupBy/pagination/persistKey/sparkline/theme) + DepthLadder OK; ` +
+      `bo-grid/react and bo-grid/vue render their wrapper on the server`,
   );
 } catch (err) {
   fail(err && err.stack ? err.stack : String(err));

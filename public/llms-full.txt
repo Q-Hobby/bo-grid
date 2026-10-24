@@ -528,7 +528,15 @@ parseFraction('99-16+', opts);            // 99.515625; plain decimals too; NaN 
 
 ## 7. `bo-grid/element` — framework-agnostic `<bo-grid>` web component
 
-For React, Vue, Angular, or vanilla JS. Registers `<bo-grid>` as a custom
+**React / Vue components** (preferred there): `import { BoGrid } from 'bo-grid/react'` →
+`<BoGrid ref={apiRef} rows={rows} columns={columns} height={520} onCellEdit={save} className="x" />`
+(every Grid prop as a prop; ref = GridApi; loads the element client-side; 'use client'; React 18/19).
+`import { BoGrid } from 'bo-grid/vue'` → `<BoGrid ref="grid" :rows :columns :row-height="32" @cell-edit="save" />`
+(attrs = Grid props, kebab ok, bare boolean = true; events = on* callbacks; `grid.value.api` = GridApi; SSR-safe; Vue 3.3+).
+Vue does not see changes INSIDE a rows array: assign a new array (shallowRef) or patch via api.
+For a live feed, patch through the API (`patchRows`) rather than passing new `rows` arrays.
+
+For Angular or vanilla JS (and under the components). Registers `<bo-grid>` as a custom
 element and takes the ENTIRE `<Grid>` API through one `config` object
 (bundle includes the Svelte runtime, so it's larger than the native import —
 ~80 KB gzip; if you're already in Svelte, import `Grid` directly instead).

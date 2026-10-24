@@ -17,6 +17,24 @@ All notable changes to this project are documented here. Format follows
   `onChange` restyles the rows when the lit alerts change.
 - **FX & crypto demo:** the crypto watchlist lights a row when its price
   reaches its alert level; A acknowledges the focused row.
+- **`bo-grid/react` and `bo-grid/vue`: the grid as a React or Vue
+  component.** React: every `<Grid>` prop as a prop, the grid's API on its
+  `ref` (`<BoGrid ref={grid} rows={rows} columns={columns} />`). Vue: props as
+  attributes (`:row-height` too), callbacks as events (`@cell-edit`), the API
+  on the template ref's `api`. Both load the `<bo-grid>` element on the
+  client, so server rendering (Next.js, Nuxt) is safe and hydrates
+  cleanly; the React bundle carries `'use client'`. In Vue a bare boolean
+  attribute is true and an event bound twice calls both listeners; the grid
+  sees a new `rows` array, so replace it or patch through the API. About
+  0.6 KB (React) and 0.9 KB (Vue) on top of the element; React and Vue are
+  optional peers.
+
+### Fixed
+
+- **`import 'bo-grid/element'` could be dropped by a production bundler.**
+  The package declared no side effects at all, so a bundler was free to
+  leave out an import used only to register `<bo-grid>`. The element's files
+  are now declared as having side effects.
 
 ## [2.6.0] — 2026-10-24
 
