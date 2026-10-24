@@ -35,7 +35,9 @@ function frames() {
 }
 
 /** Lets messages between the ports arrive. */
-const delivered = (ms = 5) => new Promise((r) => setTimeout(r, ms));
+// Long enough for a round trip over a real MessagePort (a drain request to
+// the worker, its batch back) on a busy CI runner; 5ms was not.
+const delivered = (ms = 25) => new Promise((r) => setTimeout(r, ms));
 
 type Patch = { px?: number; vol?: number };
 
