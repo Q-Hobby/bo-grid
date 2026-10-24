@@ -28,3 +28,5 @@ jobs:
       - run: pnpm size
       - run: pnpm size:lib
       - run: pnpm bench # also catches API drift in the measured hot paths
+      - run: pnpm site:check
+      - run: pnpm pages:build # the Pages build: demo + site (a broken link fails it) + api.html

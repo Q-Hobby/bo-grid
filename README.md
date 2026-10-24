@@ -15,9 +15,9 @@ element for every other framework.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![Sponsor](https://img.shields.io/badge/sponsor-GitHub-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/bonguynvan)
 
-**[Live demo](https://bonguynvan.github.io/bo-grid/)** ·
-**[Guide](./docs/guide.md)** ·
-**[API reference](https://bonguynvan.github.io/bo-grid/api.html)** ·
+**[Docs](https://bonguynvan.github.io/bo-grid/docs/)** ·
+**[Examples](https://bonguynvan.github.io/bo-grid/examples/)** ·
+**[API reference](https://bonguynvan.github.io/bo-grid/docs/reference/)** ·
 **[Benchmarks](./BENCHMARKS.md)** ·
 **[Changelog](./CHANGELOG.md)**
 
@@ -28,8 +28,8 @@ element for every other framework.
 ## Why bo-grid
 
 - **Fast under load.** A 1,000-symbol price board at 30,000 ticks a second
-  stays at about 12 ms of main-thread work per frame, with every changed cell
-  flashing. [How it's measured](./BENCHMARKS.md)
+  takes about 4.5 ms of main-thread work a frame (about 11 ms at p95), with
+  every changed cell flashing. [How it's measured](./BENCHMARKS.md)
 - **Built for trading.** Tick flashes, price-limit colours, tick-aware
   formatting, a depth ladder with click-to-trade, and order book and
   time-and-sales helpers.
@@ -94,13 +94,15 @@ document.querySelector('bo-grid').config = { columns, rows, height: 480 };
 
 | | |
 | --- | --- |
-| [Guide](./docs/guide.md) | Every feature with examples, including the [realtime setup](./docs/guide.md#busy-markets--plain-rows--apipatchrows) for live boards |
-| [API reference](https://bonguynvan.github.io/bo-grid/api.html) | Every prop, column option and export |
+| [Docs](https://bonguynvan.github.io/bo-grid/docs/) | A page per feature with live examples and their code, including [live updates](https://bonguynvan.github.io/bo-grid/docs/realtime/) for busy boards |
+| [Examples](https://bonguynvan.github.io/bo-grid/examples/) | Every example running, each with its source |
+| [Props reference](https://bonguynvan.github.io/bo-grid/docs/reference/) | Every prop, column option and API method, generated from the types; [all exports](https://bonguynvan.github.io/bo-grid/api.html) |
+| [Guide](./docs/guide.md) | The whole guide in one file |
 | [Frameworks](./docs/frameworks.md) | The React and Vue components, the Angular recipe; build-free starters in [examples/](./examples/) |
 | [SvelteKit](./docs/sveltekit.md) | Loading data, SSR, lazy loading and saved layouts |
 | [Benchmarks](./BENCHMARKS.md) | Bundle size and frame costs, and how to reproduce them |
 | [Accessibility](./ACCESSIBILITY.md) | Roles, keyboard model and contrast |
-| [llms-full.txt](https://bonguynvan.github.io/bo-grid/llms-full.txt) | The full API for AI coding assistants; editor rules in [docs/ai](./docs/ai) |
+| [For AI agents](https://bonguynvan.github.io/bo-grid/docs/ai/) | [llms.txt](https://bonguynvan.github.io/bo-grid/llms.txt), every docs page as Markdown, [api.json](https://bonguynvan.github.io/bo-grid/api.json) and editor rules in [docs/ai](./docs/ai) |
 
 ## Contributing
 

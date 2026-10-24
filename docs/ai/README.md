@@ -4,21 +4,24 @@ bo-grid ships machine-readable references so an AI agent generates correct
 code against it — real prop names, real subpath boundaries, no invented API —
 instead of guessing from a half-remembered training example.
 
-## 1. `llms.txt` / `llms-full.txt` — works with any agent that fetches URLs
+## 1. Docs an agent can read — works with any agent that fetches URLs
 
-Published alongside the live demo:
+Published with the docs site, all generated from the docs and the types on
+every build, so they match the released version:
 
-- **[llms.txt](https://bonguynvan.github.io/bo-grid/llms.txt)** — a short
-  index: what bo-grid is, the facts that matter most, links to the rest.
+- **[llms.txt](https://bonguynvan.github.io/bo-grid/llms.txt)** — the facts
+  an agent must get right first, then every docs page as a Markdown link.
+- **Every docs page as Markdown** — add `.md` to a page's path
+  (`/docs/realtime/` → [`/docs/realtime.md`](https://bonguynvan.github.io/bo-grid/docs/realtime.md)),
+  or use the page's Copy page button. Example code is inlined.
+- **[api.json](https://bonguynvan.github.io/bo-grid/api.json)** — every
+  `<Grid>` prop, column option and API method with its type, default and
+  docs, generated from the TypeScript sources.
 - **[llms-full.txt](https://bonguynvan.github.io/bo-grid/llms-full.txt)** —
-  the complete reference: every `ColumnDef`/`<Grid>` prop, every subpath's
-  exports, runnable snippets, and a "things an AI commonly gets wrong" list.
-  Paste this whole file into a chat, or point an agent that can fetch URLs
-  (Cursor, Windsurf, Claude Code with a rule that tells it to, ChatGPT with
-  browsing) at it before asking for bo-grid code.
+  every page and the full reference in one file, to paste into a chat.
 
-Tools that already look for a project's own `llms.txt` will find these if you
-vendor bo-grid's copy or link to it from your own project's `llms.txt`.
+The installed package's `.d.ts` files carry the same TSDoc, so an agent that
+reads `node_modules/bo-grid/dist` sees the API of the version you installed.
 
 ## 2. Project rule files — install once, every session gets it right
 
@@ -30,8 +33,8 @@ Two ready-to-copy files, same guidance in each tool's format:
 | Claude Code / any agent reading `CLAUDE.md`/`AGENTS.md` | [`claude-md-snippet.md`](./claude-md-snippet.md) | append into your `CLAUDE.md` (or `AGENTS.md`) |
 
 Both are short by design (they're injected into every relevant prompt) and
-point to `llms-full.txt` for anything beyond the essentials, rather than
-duplicating the whole API surface into a rule file that goes stale.
+point to `llms.txt` and `api.json` for anything beyond the essentials, rather
+than duplicating the whole API surface into a rule file that goes stale.
 
 ## 3. Keeping these current
 

@@ -18,6 +18,7 @@ export interface ShowChangeOptions {
 export interface ColBase {
   /** Field on the row to read for this column's value. */
   key: string;
+  /** The column's title in the header row. */
   header: string;
   /** BCP 47 locale for this column's built-in formatting (`price`, `date`,
       `currency`, `relative`). Defaults to the grid's `locale`, then `en-US`. */
@@ -41,8 +42,9 @@ export interface ColBase {
   colSpan?: (row: GridRow) => number;
   /** Fixed width in px. Ignored when `flex` is set. */
   width?: number;
-  /** Min/max width (px) enforced while drag-resizing this column. */
+  /** Smallest width (px) a drag-resize can give this column. */
   minWidth?: number;
+  /** Largest width (px) a drag-resize can give this column. */
   maxWidth?: number;
   /** flex-grow weight; column stretches to fill remaining space. */
   flex?: number;

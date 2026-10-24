@@ -13,7 +13,11 @@ import type { RowSource } from './source';
 import type { GridTheme } from './theme';
 
 export interface GridPropsDef {
+  /** The data: one plain object per row, each with a unique `id` (or name
+      another key with `getRowId`). */
   rows: GridRow[];
+  /** The columns, in display order. A column's `type` picks how its values
+      show, sort and filter. */
   columns: ColumnDef[];
   /** Viewport height. A **number** is the scroll viewport's pixel height (the
       grid's total height is that plus header/toolbar/footer chrome). A **CSS
@@ -135,13 +139,13 @@ export interface GridPropsDef {
       changes. Interpolated entries are functions so translations can reorder
       the parts. Resolved per grid. */
   labels?: Partial<GridLabels>;
+  /** Settings applied under every column — its own fields (and a registered
+      `cellType`) win. */
+  defaultColumn?: DefaultColumn;
   /** Reusable column types, by name. A column with `cellType: 'name'` gets
       that entry's defaults (format, compare, align, filter, width, a
       `component` renderer…) under its own fields, and the built-in type
       named by `extends` for sorting, filtering and export. */
-  /** Settings applied under every column — its own fields (and a registered
-      `cellType`) win. */
-  defaultColumn?: DefaultColumn;
   cellTypes?: Record<string, CellTypeDef>;
   /** Custom filter kinds, by name. A column selects one with `filter: 'name'`;
       the header filter menu draws its `component` and the view keeps rows
@@ -275,9 +279,17 @@ export interface GridPropsDef {
   onColumnResize?: (key: string, width: number) => void;
   /** Accessible name for the grid (`aria-label` on the `role="grid"` root). */
   ariaLabel?: string;
+  /** Quick-search text: a row is kept when any column's value, as text,
+      contains it (case-insensitive). Bind it to your own search input. */
   filter?: string;
+  /** Column keys to group rows by, outermost first (nested groups with
+      subtotals). In-memory mode only. */
   groupBy?: string[];
+  /** Which stats the selection footer shows over a multi-cell range
+      (`'sum' | 'avg' | 'count' | 'min' | 'max'`). */
   aggregations?: AggKind[];
+  /** Remember the user's layout (column order, widths, hidden and pinned
+      columns, pinned rows) in localStorage under this key. */
   persistKey?: string;
   /** Back the grid with a windowed/server data source instead of `rows`.
       In source mode, sort + filter are delegated to the source; grouping is

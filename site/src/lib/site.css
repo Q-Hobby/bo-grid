@@ -1,0 +1,198 @@
+/* The docs site's chrome, on the demo's tokens (src/demo/app.css): the same
+   terminal palette, IBM Plex type and amber accent, in light and dark. */
+:root {
+  --top: 56px;
+  --side: 264px;
+  --toc: 216px;
+  --measure: 52rem;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Code ------------------------------------------------------------- */
+pre.code {
+  margin: 0 0 1.25rem;
+  padding: 14px 16px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--cell);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  tab-size: 2;
+}
+pre.code .c {
+  color: var(--text-3);
+  font-style: italic;
+}
+pre.code .s {
+  color: var(--up);
+}
+pre.code .k {
+  color: var(--accent);
+}
+pre.code .t {
+  color: var(--floor);
+}
+pre.code .b,
+pre.code .r {
+  color: var(--ceil);
+}
+pre.code .n {
+  color: var(--info);
+}
+
+/* ---- Prose (docs pages) ----------------------------------------------- */
+.prose {
+  max-width: var(--measure);
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.prose h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2.1rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+  color: var(--text);
+}
+.prose .lead {
+  margin: 0 0 2rem;
+  font-size: 1.1rem;
+  color: var(--text-2);
+}
+.prose h2 {
+  margin: 2.75rem 0 0.75rem;
+  padding-top: 0.25rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text);
+  scroll-margin-top: calc(var(--top) + 16px);
+}
+.prose h3 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  scroll-margin-top: calc(var(--top) + 16px);
+}
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 0 0 1rem;
+}
+.prose li + li {
+  margin-top: 0.25rem;
+}
+.prose a {
+  color: var(--accent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.prose a:hover {
+  border-bottom-color: var(--accent);
+}
+.prose strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.prose :not(pre) > code {
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.87em;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+}
+.prose table {
+  width: 100%;
+  margin: 0 0 1.25rem;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.prose th,
+.prose td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line-soft);
+}
+.prose th {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom-color: var(--line);
+}
+.prose blockquote {
+  margin: 0 0 1.25rem;
+  padding: 10px 14px;
+  color: var(--text-2);
+  background: var(--accent-dim);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+/* A short identifier reads as one word: no break at its hyphens. */
+@media (min-width: 600px) {
+  .prose :not(pre) > code {
+    white-space: nowrap;
+  }
+}
+
+/* Keys named in the prose. */
+.prose kbd {
+  padding: 0.05em 0.4em;
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* Form controls an example draws itself (not the grid's own), on the site's
+   tokens. Zero specificity: an example's own styles always win. */
+:where(.ex .preview) :where(button, select, input:not([type='checkbox'], [type='radio'], [type='range'])):where(:not(.bo-grid *)) {
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+}
+:where(.ex .preview) :where(button):where(:not(.bo-grid *)) {
+  cursor: pointer;
+}
+:where(.ex .preview) :where(button:hover):where(:not(.bo-grid *)) {
+  border-color: var(--accent);
+}
+:where(.ex .preview) :where(input, select):where(:not(.bo-grid *)):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
