@@ -7,6 +7,18 @@ All notable changes to this project are documented here. Format follows
 
 ### Added
 
+- **`serveFeed` and `connectFeed` (`bo-grid/realtime`): a busy feed read in
+  a worker.** In the worker, the socket handler pushes into `serveFeed`,
+  which coalesces per key; on the page, `connectFeed(worker, { apply })`
+  takes one batch a frame over a `MessagePort` of its own and hands it to
+  `apply` (`api.patchRows`). Every socket message is a task on the thread
+  that receives it: at 30,000 messages a second that took 14–25% of the
+  main thread in headless Chrome, 40–70% at 100,000, mostly the dispatch of
+  each message, against 3–6% read in a worker, with the same latency
+  (`pnpm bench:feed`, which measures the shipped helpers). The worker may
+  set up its feed after an `await`; a patch that cannot be cloned is dropped
+  and reported, and a worker that stops answering is asked again.
+
 - **Price board demo: a live frame-cost readout.** With the feed running,
   the controls show the frame time, from the frame's start to a task after
   its paint (median and p95 over the last 120 frames, frames over the

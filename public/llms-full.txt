@@ -339,7 +339,7 @@ column a `render(ctx)` function instead:
 
 ```ts
 import { createTickStream, createRowIndex, applyPatches, TickBuffer, TradeTape, centeredWindow, createViewportSubscriptions, createLinger,
-         createOrderBook, createAlerts } from 'bo-grid/realtime';
+         createOrderBook, createAlerts, serveFeed, connectFeed } from 'bo-grid/realtime';
 ```
 
 **Price feed** (coalesces per key, drains a bounded slice per animation
@@ -358,6 +358,18 @@ socket.onmessage = (e) => stream.push(JSON.parse(e.data).symbol, JSON.parse(e.da
 // stream.applied  → successfully-applied count (a batch whose apply() threw is not counted)
 // stream.stop() / stream.flushNow()
 ```
+**Busy feed (>~10k msg/s): read the socket in a worker** — main thread 3–6% vs 14–25% at 30k/s, 40–70% at 100k/s, same latency
+(dedicated Worker; serveFeed may start after an await; one per `name`; uncloneable patches are dropped + reported via onError):
+```ts
+// feed.worker.ts
+const feed = serveFeed<string, Partial<Quote>>();            // coalesces per key
+socket.onmessage = (e) => { const m = JSON.parse(e.data); feed.push(m.symbol, m); };
+// page
+const feed = connectFeed(new Worker(new URL('./feed.worker.ts', import.meta.url), { type: 'module' }),
+                         { apply: (batch) => api.patchRows(batch), cap: 400 });
+feed.start();   // one batch per frame over a private MessagePort; feed.pending / applied / stop() / close()
+```
+
 Per key, only the LATEST patch is applied — intermediate values collapse.
 This is correct for a price board; do NOT use it for a trade tape (every
 trade must show) — use `TradeTape` instead.
