@@ -942,6 +942,27 @@ const obDirected = document.querySelectorAll(
 ).length;
 if (obDirected === 0) fail('Derived flash fired without an up/down direction');
 
+// bo-grid/realtime's createOrderBook behind it: grouping merges levels into
+// whole-number buckets, and the side-by-side layout pairs bids with asks.
+const obPrices = () => [...document.querySelectorAll('.bo-grid .row [aria-colindex="1"]')].map((c) => c.textContent?.trim() ?? '');
+const groupSel = document.querySelector('select.group');
+if (!groupSel) fail('Order book group control not found');
+groupSel.value = '1';
+groupSel.dispatchEvent(new window.Event('change', { bubbles: true }));
+await wait(50);
+const grouped = obPrices();
+if (grouped.length === 0 || !grouped.every((t) => /^\d+$/.test(t))) fail(`Order book group 1 did not show whole-number buckets (${grouped.slice(0, 4).join(', ')})`);
+groupSel.value = '0.05';
+groupSel.dispatchEvent(new window.Event('change', { bubbles: true }));
+await wait(50);
+const sideBtn = [...document.querySelectorAll('button.layout')].find((b) => b.textContent?.trim() === 'Side by side');
+if (!sideBtn) fail('Order book layout control not found');
+sideBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await waitFor('.bo-grid .c.bid', 'Order book side-by-side layout did not render');
+const obPairs = document.querySelectorAll('.bo-grid .row').length;
+const obPairBars = document.querySelectorAll('.bo-grid .row .depth .fill.bid').length + document.querySelectorAll('.bo-grid .row .depth .fill.ask').length;
+if (obPairBars < obPairs) fail(`Order book side by side shows depth bars on too few rows (${obPairBars} for ${obPairs} rows)`);
+
 // VN board: bo-grid/trading — price-limit tone (ceiling/floor/reference/up/down),
 // tick-aware VND formatting, and the live session badge, composed with the
 // bo-grid/realtime tick pipeline for price motion.
@@ -1421,7 +1442,7 @@ console.log(
     `paste + resize committed (+onColumnResize); collapse ${heightBefore}→${heightAfter}px; server loaded ${dataRows} rows; ` +
     `${stickyHeaders} pinned columns (+right); pivot ${pivotHeaders.length} cols; ` +
     `gallery: portfolio ${portfolioRows} rows/${portfolioGroups} groups + header-groups + ctx-menu + ${cfBars} data-bars/${cfIcons} icons/${cfScale} scale + computed-col, sheet ${sheetRows} rows (light) + select-edit + row-select + col-hide + col-filter + empty-msg + master-detail + cell-class + pagination, ` +
-    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes, vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer, fxcrypto ${fxPips} pip quotes + continuous crypto,timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
+    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes + group/side-by-side ${obPairs} pairs (createOrderBook), vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer, fxcrypto ${fxPips} pip quotes + continuous crypto, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
     `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok`,
 );
 process.exit(0);
