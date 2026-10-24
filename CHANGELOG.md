@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-10-24
+
+**A busy feed off the main thread.** `serveFeed` and `connectFeed` read a
+feed in a worker and hand the grid one batch a frame: at 30,000 messages a
+second that took 3–6% of the main thread in headless Chrome, against
+14–25% reading the socket on it, with the same latency. The price board
+demo shows its frame time live. A minor release: nothing was removed or
+renamed.
+
 ### Added
 
 - **`serveFeed` and `connectFeed` (`bo-grid/realtime`): a busy feed read in
@@ -1568,6 +1577,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.8.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.8.0
 [2.7.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.7.0
 [2.6.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.6.0
 [2.5.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.5.0
