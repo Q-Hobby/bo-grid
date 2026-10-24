@@ -1,6 +1,6 @@
 {
   "name": "bo-grid",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "type": "module",
   "license": "MIT",
   "description": "Tiny, fast Svelte 5 data grid for trading screens: batched realtime cell updates, virtual scrolling, grouping, pivot, tree data and canvas sparklines, MIT licensed.",
