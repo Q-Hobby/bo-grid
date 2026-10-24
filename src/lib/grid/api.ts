@@ -41,7 +41,8 @@ export interface GridApi {
   /** Ticked rows (needs `rowSelection`), in view order. */
   getSelectedRows(): GridRow[];
   /** Fit columns to their content, as the column menu's Autosize does. All
-      resizable columns when `keys` is omitted. */
+      resizable columns when `keys` is omitted. The other columns keep their
+      widths (flex ones are held where they are). */
   autosizeColumns(keys?: string[]): void;
   /** Download the current view (after filter and sort) as CSV. */
   exportCSV(filename?: string): Promise<void>;

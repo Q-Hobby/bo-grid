@@ -10,7 +10,7 @@ description: Set fixed and flexible widths, let users resize columns, scale ever
 
 Every column has a fixed `width` or a `flex` weight, and users can drag a header's edge to change it. Two switches change how columns respond to the grid's own width: `fitColumns` scales every column with it, and a column's `autoWidth` widens it when its values no longer fit.
 
-Drag a header's right edge to resize, and double-click it to reset. Toggle `fitColumns`, then resize the browser window to see the difference:
+Drag a header's right edge to resize: only that column changes. Double-click the edge to reset it. Toggle `fitColumns`, then resize the browser window to see the difference:
 
 <Example name="column-sizing" title="Resizing and fitColumns" />
 
@@ -23,9 +23,11 @@ By default, only flex columns take up a change in the grid's width; fixed column
 
 ## Resizing
 
-Drag the grip on a header's right edge to resize a column; double-click the grip to reset it to its defined width.
+Drag the grip on a header's right edge to resize a column. Only that column changes: every other column keeps the width it has on screen, flex columns included, and the columns after it move along. When the columns grow wider than the grid, it scrolls sideways; when they shrink, the space is left at the right.
 
-- Resizing a flex column fixes it at the dragged width, and its neighbours absorb the difference.
+- Double-click a grip to give that column back its own width. A flex column then fills the space the others leave again.
+- **Reset widths**, in the column menu (`columnMenu`), gives every column back its own width.
+- Autosize, from the column menu or `api.autosizeColumns`, changes columns the same way: the others keep their widths.
 - `minWidth` and `maxWidth` bound the drag.
 - Resizing is on by default. Turn it off for the grid with `resizable={false}`, or for one column with `resizable: false`, for example a narrow action column.
 - `onColumnResize(key, width)` reports each resize; `persistKey` remembers widths across reloads.
@@ -42,7 +44,7 @@ With `fitColumns`, every column scales with the grid. Each gets a share of the w
 <Grid {rows} {columns} fitColumns />
 ```
 
-Under `fitColumns`, a dragged edge still follows the pointer: the columns before it keep their widths, and the columns after it share the difference.
+`fitColumns` fits until the user sets a width. After a drag or an autosize, the columns keep the widths they were given, as they do without it, until **Reset widths** brings the fit back.
 
 ## Growing with the values: autoWidth
 

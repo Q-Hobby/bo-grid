@@ -11,6 +11,8 @@ export interface GridLabels {
   pinRight: string;
   unpin: string;
   autosize: string;
+  /** Column menu item that drops every user-set width. */
+  resetWidths: string;
   hideColumn: string;
   columnMenu: (header: string) => string;
   resizeColumn: (header: string) => string;
@@ -89,6 +91,7 @@ export const DEFAULT_LABELS: GridLabels = {
   pinRight: 'Pin right',
   unpin: 'Unpin',
   autosize: 'Autosize',
+  resetWidths: 'Reset widths',
   hideColumn: 'Hide column',
   columnMenu: (h) => `${h} menu`,
   resizeColumn: (h) => `Resize ${h}`,

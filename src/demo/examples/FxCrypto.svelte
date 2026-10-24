@@ -162,11 +162,11 @@
 <div class="desk">
   <section>
     <h4>FX</h4>
-    <Grid rows={pairs} columns={fxColumns} height={6 * 34} rowHeight={34} theme={ui.grid} ariaLabel="FX quotes" />
+    <Grid rows={pairs} columns={fxColumns} fitColumns height={6 * 34} rowHeight={34} theme={ui.grid} ariaLabel="FX quotes" />
   </section>
   <section>
     <h4>Crypto</h4>
-    <Grid rows={coins} columns={cryptoColumns} height={6 * 32} rowHeight={32} rowClass={coinClass} hotkeys={coinKeys} theme={ui.grid} ariaLabel="Crypto watchlist" />
+    <Grid rows={coins} columns={cryptoColumns} fitColumns height={6 * 32} rowHeight={32} rowClass={coinClass} hotkeys={coinKeys} theme={ui.grid} ariaLabel="Crypto watchlist" />
   </section>
 </div>
 

@@ -5,21 +5,42 @@
 
   let {
     candles,
-    width = 104,
+    width,
     height = 26,
-  }: { candles: Candle[]; width?: number; height?: number } = $props();
+  }: {
+    candles: Candle[];
+    /** A fixed width in px. Without one, the chart fills its cell and follows
+        the column's width (a resize, fitColumns). */
+    width?: number;
+    height?: number;
+  } = $props();
 
   let canvas: HTMLCanvasElement;
+  let box: HTMLDivElement;
   let hover = $state<number | null>(null);
+
+  // The cell's width, measured as it changes; 104 until the first measure
+  // (and where nothing can measure, such as on the server).
+  let fill = $state(0);
+  $effect(() => {
+    if (width != null || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = Math.floor(entry?.contentRect.width ?? 0);
+      if (w > 0 && w !== fill) fill = w;
+    });
+    ro.observe(box);
+    return () => ro.disconnect();
+  });
+  const w = $derived(width ?? (fill || 104));
 
   // Redraw whenever the candle array reference changes. Only mounted (= visible)
   // sparklines run this, so the realtime feed never repaints off-screen charts.
   $effect(() => {
-    const ctx = setupHiDpiCanvas(canvas, width, height);
+    const ctx = setupHiDpiCanvas(canvas, w, height);
     // Pull the grid's up/down colors so candles follow the active theme
     // (inherited --bo-up/--bo-down; falls back to the built-in defaults).
     const cs = getComputedStyle(canvas);
-    drawCandles(ctx, candles, width, height, {
+    drawCandles(ctx, candles, w, height, {
       up: cs.getPropertyValue('--bo-up').trim() || undefined,
       down: cs.getPropertyValue('--bo-down').trim() || undefined,
     });
@@ -29,11 +50,11 @@
 
   function onMove(e: MouseEvent) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    hover = candleAtX(e.clientX - rect.left, width, candles.length);
+    hover = candleAtX(e.clientX - rect.left, w, candles.length);
   }
 </script>
 
-<div class="spark" style="width:{width}px;height:{height}px" role="img" aria-label={label}>
+<div class="spark" bind:this={box} style="width:{width != null ? `${width}px` : '100%'};height:{height}px" role="img" aria-label={label}>
   <canvas bind:this={canvas}></canvas>
   <div
     class="hit"
@@ -53,6 +74,9 @@
   .spark {
     position: relative;
     display: inline-block;
+    /* Never wider than the cell, even before the first measure. */
+    max-width: 100%;
+    overflow: hidden;
   }
   canvas {
     display: block;

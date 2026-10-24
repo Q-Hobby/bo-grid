@@ -53,7 +53,7 @@
 </div>
 
 <div class="gridwrap">
-  <Grid rows={gridRows} {columns} theme={themePresets[active]} height={420} ariaLabel="Theme preview" />
+  <Grid rows={gridRows} {columns} fitColumns theme={themePresets[active]} height={420} ariaLabel="Theme preview" />
 </div>
 
 <style>

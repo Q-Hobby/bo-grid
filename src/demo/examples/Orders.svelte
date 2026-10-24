@@ -144,11 +144,11 @@
 <div class="desk">
   <section>
     <h4>Working orders</h4>
-    <Grid rows={shown} columns={orderColumns} {sort} {hotkeys} flashNewRows flashMotion="auto" rowClass={orderClass} height={300} rowHeight={30} theme={ui.grid} ariaLabel="Working orders" />
+    <Grid rows={shown} columns={orderColumns} fitColumns {sort} {hotkeys} flashNewRows flashMotion="auto" rowClass={orderClass} height={300} rowHeight={30} theme={ui.grid} ariaLabel="Working orders" />
   </section>
   <section>
     <h4>Positions</h4>
-    <Grid rows={positions as unknown as GridRow[]} columns={positionColumns} footer height={210} rowHeight={30} theme={ui.grid} ariaLabel="Positions" />
+    <Grid rows={positions as unknown as GridRow[]} columns={positionColumns} fitColumns footer height={210} rowHeight={30} theme={ui.grid} ariaLabel="Positions" />
   </section>
 </div>
 

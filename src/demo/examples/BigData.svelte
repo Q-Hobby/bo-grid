@@ -75,7 +75,7 @@
 </div>
 
 <div class="gridwrap">
-  <Grid rows={[]} {columns} {source} theme={ui.grid} height={620} {cell} />
+  <Grid rows={[]} {columns} {source} fitColumns theme={ui.grid} height={620} {cell} />
 </div>
 
 <style>

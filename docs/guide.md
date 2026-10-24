@@ -1512,12 +1512,13 @@ remember the user's order across reloads (saved to `localStorage`):
 
 ## Column resize
 
-Drag the grip on a header's right edge to resize a column; **double-click** the
-grip to reset it to its default width. Resizing a fit-to-width (`flex`) column
-pins it to the dragged width and lets its neighbours absorb the difference.
-Under `fitColumns` the edge still follows the pointer. The columns before it
-keep their widths, and the ones after it share the difference in proportion.
-The same `persistKey` remembers widths across reloads.
+Drag the grip on a header's right edge to resize a column. Only that column
+changes: every other column keeps the width it has on screen (flex columns
+included) and the columns after it move along, so the grid scrolls sideways
+when they outgrow it. **Double-click** a grip to give that column back its own
+width; **Reset widths** in the column menu gives every column back its own.
+Under `fitColumns` the grid fits until the user sets a width. The same
+`persistKey` remembers widths across reloads.
 
 Bound a column's draggable range with `minWidth` / `maxWidth`. Resizing is on by
 default. Turn it off for the whole grid with `resizable={false}`, or per column
@@ -1552,7 +1553,7 @@ visibility (and restore hidden columns). Runtime hide/pin compose with
 ## Header groups
 
 Give columns a `group` label to render a spanning parent header over consecutive
-columns that share it (works best with fixed-width columns):
+columns that share it (it keeps their width, flex columns included):
 
 ```ts
 const columns = [

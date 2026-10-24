@@ -149,6 +149,7 @@
 
 <div class="gridwrap">
   <Grid
+    fitColumns
     rows={effRows}
     columns={effColumns}
     {groupBy}

@@ -168,7 +168,7 @@ export interface ColBase {
       it, and a width the user dragged or autosized takes over. */
   autoWidth?: boolean;
   /** Parent header label. Consecutive columns sharing a `group` render under a
-      spanning header. Best with fixed-width columns. */
+      spanning header, which keeps the width of its columns (flex ones too). */
   group?: string;
   /** Header filter-menu control for this column (requires `filterMenu` on
       <Grid>). Defaults to the column's type; `'set'` shows a value checklist;

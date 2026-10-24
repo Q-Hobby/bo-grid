@@ -184,6 +184,7 @@
 
 <div class="gridwrap" style:max-width={pinMode ? '680px' : null}>
   <Grid
+    fitColumns
     rows={effRows}
     columns={effColumns}
     filter={filterText}

@@ -30,8 +30,12 @@ export interface GridPropsDef {
   rowHeight?: number | ((row: GridRow, index: number) => number);
   /** Built-in theme name or a custom token map. Default 'dark'. */
   theme?: 'dark' | 'light' | GridTheme;
-  /** Allow drag-to-resize column widths. Default true; opt out per column
-      with `resizable: false`. */
+  /** Allow drag-to-resize column widths. A drag (or an autosize) changes
+      that column only: the others keep the width they have on screen, flex
+      columns included, so the ones after it move along. Double-click a grip
+      to give that column back its own width; Reset widths in the column menu
+      gives every column back its own. Default true; opt out per column with
+      `resizable: false`. */
   resizable?: boolean;
   /** Highlight cells/ranges on click-drag (the blue selection fill + focus
       ring + fill handle). Set false for a read-only/display grid where clicks
@@ -223,7 +227,9 @@ export interface GridPropsDef {
       without hand-tuned flex weights. A column never gets narrower than its
       `minWidth` (64 px, or its own width if smaller, without one) nor wider
       than its `maxWidth`; when the floors no longer fit, the grid scrolls
-      sideways. Dragging a column edge still follows the pointer. */
+      sideways. It fits until the user sets a width (a drag, an autosize):
+      from then on the columns keep the widths they were given, until Reset
+      widths in the column menu. */
   fitColumns?: boolean;
   /** Called with the pinned row ids (in pin order) whenever they change. */
   onRowPinChange?: (ids: (string | number)[]) => void;

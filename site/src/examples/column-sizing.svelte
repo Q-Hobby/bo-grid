@@ -2,7 +2,8 @@
   import { Grid, type ColumnDef } from 'bo-grid';
   import { quotes } from './data';
 
-  // Drag a header's right edge to resize; double-click the edge to reset.
+  // Drag a header's right edge to resize (only that column changes);
+  // double-click the edge to reset it, or use Reset widths in a column menu.
   const columns: ColumnDef[] = [
     { type: 'text', key: 'symbol', header: 'Symbol', width: 90, minWidth: 70, maxWidth: 160 },
     { type: 'text', key: 'name', header: 'Company', width: 150 },
@@ -20,7 +21,7 @@
 </script>
 
 <label class="opt"><input type="checkbox" bind:checked={fit} /> fitColumns</label>
-<Grid {rows} {columns} fitColumns={fit} height={260} />
+<Grid {rows} {columns} fitColumns={fit} columnMenu height={260} />
 
 <style>
   .opt {

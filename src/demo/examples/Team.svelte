@@ -134,6 +134,7 @@
     Cell selection ({cellSelection ? 'on' : 'off'})
   </label>
   <Grid
+    fitColumns
     rows={gridRows}
     {columns}
     {cellTypes}
