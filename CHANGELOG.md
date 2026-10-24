@@ -5,6 +5,14 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-10-24
+
+**Keys on the row you are looking at.** `hotkeys` binds keys for your app
+on the focused row (B or S for a ticket, Delete to cancel). The focus, the
+selection and an open editor now stay on their rows as a live list moves,
+which fixes an edit being written to the wrong row when rows arrived above
+it while it was open. A minor release: nothing was removed or renamed.
+
 ### Added
 
 - **`hotkeys`: keys for your app, on the focused row.** `{ b: ({ row }) =>
@@ -1499,6 +1507,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.6.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.6.0
 [2.5.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.5.0
 [2.4.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.4.0
 [2.3.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.3.0
