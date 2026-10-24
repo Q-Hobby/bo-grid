@@ -5,7 +5,12 @@
   // so the docs never drift from the types. An unknown name fails the build.
   type Entry = { name: string; type?: string; signature?: string; required?: boolean; default?: string; doc: string };
 
-  let { of = 'grid', names, title }: { of?: 'grid' | 'column' | 'api'; names: string[]; title?: string } = $props();
+  let {
+    of = 'grid',
+    names,
+    title,
+    anchors = false,
+  }: { of?: 'grid' | 'column' | 'api'; names: string[]; title?: string; anchors?: boolean } = $props();
 
   const pool: Entry[] = $derived(of === 'grid' ? api.grid.props : of === 'column' ? api.column.props : api.api.methods);
   const rows = $derived(
@@ -31,7 +36,7 @@
     <a href="https://github.com/bonguynvan/bo-grid/blob/main/scripts/api-manifest.mjs" target="_blank" rel="external noopener" title="Generated from the TypeScript sources; also at /api.json">from the types</a>
   </header>
   {#each rows as p (p.name)}
-    <div class="row">
+    <div class="row" id={anchors ? `${of}-${p.name}` : undefined}>
       <div class="sig">
         <code class="name">{p.name}{#if p.required}<span class="req" title="Required">*</span>{/if}</code>
         <code class="type">{p.signature ? p.signature.slice(p.name.length) : p.type}</code>
@@ -76,6 +81,10 @@
   }
   .row {
     padding: 12px 14px;
+    scroll-margin-top: calc(var(--top) + 72px);
+  }
+  .row:target {
+    background: var(--accent-dim);
   }
   .row + .row {
     border-top: 1px solid var(--line-soft);

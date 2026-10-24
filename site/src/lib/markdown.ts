@@ -105,3 +105,42 @@ export function referenceMarkdown(): string {
   const types = api.column.types.map((t) => `- \`${t.type}\`${t.options.length ? `: ${t.options.map((o) => `\`${o.name}\``).join(', ')}` : ''}`).join('\n');
   return `# Props reference\n\n> Every Grid prop, column option and grid API method, generated from the TypeScript types (bo-grid ${api.version}). As JSON: ${SITE}/api.json\n\n## Grid props\n\n${list(api.grid.props)}\n\n## Column options\n\n${list(api.column.props)}\n\n## Column types\n\n${types}\n\n## Grid API\n\n${list(api.api.methods)}\n`;
 }
+
+export interface SearchEntry {
+  title: string;
+  /** Base-relative path, with a #fragment for a section. */
+  href: string;
+  group: string;
+  text: string;
+}
+
+/** A heading's id, as the site's rehype plugin (svelte.config.js) makes it. */
+const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section';
+const plain = (s: string) => s.replace(/`([^`]*)`/g, '$1').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_]/g, '').trim();
+
+/** Every docs page and section, and every prop, for the search palette. */
+export function searchIndex(): SearchEntry[] {
+  const out: SearchEntry[] = [];
+  for (const g of DOCS_NAV) {
+    for (const item of g.items) {
+      const doc = DOCS.get(item.href);
+      if (!doc) continue;
+      out.push({ title: doc.title, href: item.href, group: g.title, text: doc.description });
+      const seen = new Map<string, number>();
+      let fence = false;
+      for (const line of doc.body.split('\n')) {
+        if (line.startsWith('```')) fence = !fence;
+        const m = fence ? null : /^#{2,3} (.+)$/.exec(line);
+        if (!m) continue;
+        const text = plain(m[1]);
+        const base = slugify(text);
+        const n = seen.get(base) ?? 0;
+        seen.set(base, n + 1);
+        out.push({ title: text, href: `${item.href}#${n ? `${base}-${n}` : base}`, group: doc.title, text: '' });
+      }
+    }
+  }
+  const props = (of: string, list: { name: string; doc: string }[]) =>
+    list.map((p) => ({ title: p.name, href: `/docs/reference/#${of}-${p.name}`, group: `Props · ${of}`, text: p.doc.slice(0, 140) }));
+  return [...out, ...props('grid', api.grid.props), ...props('column', api.column.props), ...props('api', api.api.methods)];
+}

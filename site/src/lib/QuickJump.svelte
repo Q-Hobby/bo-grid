@@ -5,24 +5,56 @@
   import { DOCS_NAV, EXAMPLE_NAV } from './nav';
   import { shell } from './shell.svelte';
 
-  // Every page, and every example by its title and its description.
+  // Every page and example from the nav at once; the docs' sections and
+  // every prop join from search.json the first time the palette opens.
+  type Entry = { title: string; href: string; group: string; blurb: string; external?: boolean; reload?: boolean };
   const blurbs = new Map(CATALOG.map((e) => [`/examples/${e.id}/`, e.blurb]));
-  const entries = [...DOCS_NAV, ...EXAMPLE_NAV].flatMap((g) =>
+  const navEntries: Entry[] = [...DOCS_NAV, ...EXAMPLE_NAV].flatMap((g) =>
     g.items.map((i) => ({ ...i, group: g.title, blurb: blurbs.get(i.href) ?? '' })),
   );
+  let indexed = $state<Entry[] | null>(null);
+  const entries = $derived.by(() => {
+    if (!indexed) return navEntries;
+    const known = new Set(indexed.map((e) => e.href));
+    return [...indexed, ...navEntries.filter((e) => !known.has(e.href))];
+  });
+  let loading = false;
+  async function loadIndex(): Promise<void> {
+    if (indexed || loading) return;
+    loading = true;
+    try {
+      const res = await fetch(`${base}/search.json`);
+      if (res.ok) indexed = ((await res.json()) as { title: string; href: string; group: string; text: string }[]).map((e) => ({ ...e, blurb: e.text }));
+    } catch {
+      /* offline: the nav entries still work */
+    } finally {
+      loading = false;
+    }
+  }
 
   let query = $state('');
   let at = $state(0);
   let input = $state<HTMLInputElement>();
+  // Every word must match; a match in the title ranks above one in the text.
   const found = $derived.by(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-    return entries.filter((e) => words.every((w) => `${e.title} ${e.group} ${e.blurb}`.toLowerCase().includes(w))).slice(0, 12);
+    if (words.length === 0) return navEntries.slice(0, 12);
+    const scored: { e: Entry; score: number }[] = [];
+    for (const e of entries) {
+      const title = e.title.toLowerCase();
+      const all = `${title} ${e.group} ${e.blurb}`.toLowerCase();
+      if (!words.every((w) => all.includes(w))) continue;
+      const score = words.reduce((n, w) => n + (title.startsWith(w) ? 3 : title.includes(w) ? 2 : 0), 0) + (e.href.includes('#') ? 0 : 1);
+      scored.push({ e, score });
+    }
+    return scored.sort((a, b) => b.score - a.score).slice(0, 14).map((s) => s.e);
   });
 
   $effect(() => {
     if (shell.jump) {
       query = '';
       at = 0;
+      void loadIndex();
       queueMicrotask(() => input?.focus());
     }
   });
@@ -31,7 +63,7 @@
     at = 0;
   });
 
-  function open(e: (typeof entries)[number]): void {
+  function open(e: Entry): void {
     shell.jump = false;
     if (e.external) window.open(e.href, '_blank', 'noopener');
     else if (e.reload) location.href = base + e.href;
@@ -59,9 +91,9 @@
 {#if shell.jump}
   <div class="scrim" role="presentation" onclick={() => (shell.jump = false)}></div>
   <div class="palette" role="dialog" aria-modal="true" aria-label="Jump to a page">
-    <input bind:this={input} bind:value={query} onkeydown={onlist} placeholder="Jump to a page or an example…" aria-label="Page or example" role="combobox" aria-expanded="true" aria-controls="jump-list" aria-activedescendant={found[at] ? `jump-${at}` : undefined} />
+    <input bind:this={input} bind:value={query} onkeydown={onlist} placeholder="Search pages, sections, props and examples…" aria-label="Search the docs" role="combobox" aria-expanded="true" aria-controls="jump-list" aria-activedescendant={found[at] ? `jump-${at}` : undefined} />
     <ul id="jump-list" role="listbox">
-      {#each found as e, i (e.href)}
+      {#each found as e, i (e.href + e.group)}
         <li id="jump-{i}" role="option" aria-selected={i === at}>
           <button onclick={() => open(e)} onmouseenter={() => (at = i)}>
             <span class="title">{e.title}{#if e.external}<span class="ext">↗</span>{/if}</span>

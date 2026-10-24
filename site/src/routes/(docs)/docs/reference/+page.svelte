@@ -25,11 +25,11 @@
 
   <h2 id="grid-props">Grid props</h2>
   <p>Set on <code>&lt;Grid&gt;</code> (or <code>BoGrid</code> in React and Vue). Required props are starred.</p>
-  {#if grid.length}<Props of="grid" names={grid} />{:else}<p class="none">No grid prop matches.</p>{/if}
+  {#if grid.length}<Props of="grid" names={grid} anchors />{:else}<p class="none">No grid prop matches.</p>{/if}
 
   <h2 id="column-options">Column options</h2>
   <p>Fields of a column definition (<code>ColumnDef</code>), shared by every column type.</p>
-  {#if column.length}<Props of="column" names={column} />{:else}<p class="none">No column option matches.</p>{/if}
+  {#if column.length}<Props of="column" names={column} anchors />{:else}<p class="none">No column option matches.</p>{/if}
 
   <h2 id="column-types">Column types</h2>
   <p>A column's <code>type</code>, and the options each type adds.</p>
@@ -47,7 +47,7 @@
 
   <h2 id="grid-api">Grid API</h2>
   <p>Methods of the grid handle, from <code>bind:api</code>, <code>onReady</code>, or a React or Vue ref.</p>
-  {#if methods.length}<Props of="api" names={methods} />{:else}<p class="none">No API method matches.</p>{/if}
+  {#if methods.length}<Props of="api" names={methods} anchors />{:else}<p class="none">No API method matches.</p>{/if}
 </DocPage>
 
 <style>

@@ -36,7 +36,7 @@
   </nav>
   <button class="jump" onclick={() => (shell.jump = true)}>
     <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="m13.5 13.5 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
-    <span>Jump to…</span>
+    <span>Search docs…</span>
     <kbd>{mac ? '⌘' : 'Ctrl'} K</kbd>
   </button>
   <div class="tools">
