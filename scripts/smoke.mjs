@@ -1028,6 +1028,18 @@ if (ordersBadges === 0) fail('Orders & positions shows no status chips');
 await wait(1200);
 const ordersFooter = document.querySelectorAll('.bo-grid .footer').length;
 if (ordersFooter === 0) fail('Orders & positions has no positions footer');
+// Hotkeys: C on the focused order cancels that order.
+document.querySelector('button.live')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await wait(30);
+const openRow = [...document.querySelectorAll('.bo-grid .row')].find((r) => /Working|Partial/.test(r.textContent ?? ''));
+if (!openRow) fail('Orders & positions has no working order to cancel');
+const openId = openRow.querySelector('[aria-colindex="1"]')?.textContent?.trim();
+openRow.querySelector('.c').dispatchEvent(new window.MouseEvent('pointerdown', { button: 0, bubbles: true }));
+window.dispatchEvent(new window.Event('pointerup'));
+document.querySelector('.bo-grid .gridmain').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'c', bubbles: true, cancelable: true }));
+await wait(30);
+const cancelled = [...document.querySelectorAll('.bo-grid .row')].find((r) => r.querySelector('[aria-colindex="1"]')?.textContent?.trim() === openId);
+if (!/Cancelled/.test(cancelled?.textContent ?? '')) fail(`Orders hotkey C did not cancel the focused order #${openId}`);
 
 // FX & crypto: bo-grid/trading's dealing-screen quotes (big figure, pips,
 // pipette) on six pairs, and a crypto watchlist whose market never closes.
@@ -1442,7 +1454,7 @@ console.log(
     `paste + resize committed (+onColumnResize); collapse ${heightBefore}→${heightAfter}px; server loaded ${dataRows} rows; ` +
     `${stickyHeaders} pinned columns (+right); pivot ${pivotHeaders.length} cols; ` +
     `gallery: portfolio ${portfolioRows} rows/${portfolioGroups} groups + header-groups + ctx-menu + ${cfBars} data-bars/${cfIcons} icons/${cfScale} scale + computed-col, sheet ${sheetRows} rows (light) + select-edit + row-select + col-hide + col-filter + empty-msg + master-detail + cell-class + pagination, ` +
-    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes + group/side-by-side ${obPairs} pairs (createOrderBook), vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer, fxcrypto ${fxPips} pip quotes + continuous crypto, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
+    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes + group/side-by-side ${obPairs} pairs (createOrderBook), vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer + C cancels the focused order, fxcrypto ${fxPips} pip quotes + continuous crypto, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
     `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok`,
 );
 process.exit(0);

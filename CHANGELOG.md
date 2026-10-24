@@ -5,6 +5,35 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`hotkeys`: keys for your app, on the focused row.** `{ b: ({ row }) =>
+  buy(row), 'Shift+C': cancelAll, 'Mod+K': openSearch }` runs before the
+  grid's own keys, with the focused row and column; return `false` to leave
+  a key to the grid. A binding is a key after any of `Shift+`, `Alt+`,
+  `Ctrl+`, `Meta+` and `Mod+` (Ctrl or ⌘); a symbol is bound by the
+  character it types. Not while a cell is edited or an input has the key,
+  and a key a binding took runs once when held. The Orders & positions demo
+  cancels the focused order with C.
+
+### Changed
+
+- **The focus, the selection and an open editor stay on their rows.** When
+  rows are added, removed or reordered (a new `rows` array, an order
+  arriving above the focused one), they move with their rows instead of
+  staying at the same place while another row slides under them. A focused
+  row that leaves clears the selection, as `liveSort` already did. In-memory
+  rows; a server `source` places its own rows.
+
+### Fixed
+
+- **An edit open while rows arrived above it was written to the wrong row.**
+  The editor committed to whatever row was at its place by then. An edit is
+  now written to the row it was opened on, the editor moves with that row
+  (keeping what was typed, also where the browser blurs a removed input),
+  and an edit whose row has left closes unwritten. A late commit from an
+  editor that had already closed or moved on is dropped.
+
 ## [2.5.0] — 2026-10-24
 
 **Markets beyond the exchange board.** FX conventions (pip sizes, the quote

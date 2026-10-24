@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { Grid, type ColumnDef, type GridRow, type SortState } from '../../lib';
+  import { Grid, type ColumnDef, type GridRow, type Hotkeys, type SortState } from '../../lib';
   import { createLinger } from '../../lib/realtime';
   import { createPositions, unrealizedPnl, type Position } from '../../lib/trading';
   import { ui } from '../theme.svelte';
@@ -13,6 +13,9 @@
   //  - Positions: average cost from the fills (`createPositions`), marked at
   //    the last price as a field of each row, so the unrealized P&L column
   //    and the footer totals follow every tick.
+  //  - Hotkeys: C or Delete cancels the focused order, Shift+C all of them.
+  //    New orders arrive above the focused one all the time; the focus stays
+  //    on its order, so the key cancels the order you are looking at.
   interface Order extends GridRow {
     id: number;
     time: string;
@@ -92,6 +95,15 @@
     markPositions();
   }
 
+  const open = (o: Order) => o.status === 'Working' || o.status === 'Partial';
+  function cancel(ids: ReadonlySet<number> | null): void {
+    orders = orders.map((o) => (open(o) && (ids === null || ids.has(o.id)) ? { ...o, status: 'Cancelled' } : o));
+  }
+  const cancelFocused = ({ row }: { row: GridRow | null }) => {
+    if (row) cancel(new Set([(row as Order).id]));
+  };
+  const hotkeys: Hotkeys = { c: cancelFocused, Delete: cancelFocused, 'Shift+C': () => cancel(null) };
+
   let live = $state(true);
   $effect(() => {
     if (!live) return;
@@ -126,12 +138,13 @@
     <span class="dot"></span>{live ? 'Live' : 'Paused'}
   </button>
   <span class="stat"><strong>{orders.length}</strong> working · <strong>{linger.size}</strong> leaving · <strong>{positions.length}</strong> positions</span>
+  <span class="keys"><kbd>C</kbd> cancels the focused order · <kbd>Shift</kbd>+<kbd>C</kbd> all</span>
 </div>
 
 <div class="desk">
   <section>
     <h4>Working orders</h4>
-    <Grid rows={shown} columns={orderColumns} {sort} flashNewRows flashMotion="auto" rowClass={orderClass} height={300} rowHeight={30} theme={ui.grid} ariaLabel="Working orders" />
+    <Grid rows={shown} columns={orderColumns} {sort} {hotkeys} flashNewRows flashMotion="auto" rowClass={orderClass} height={300} rowHeight={30} theme={ui.grid} ariaLabel="Working orders" />
   </section>
   <section>
     <h4>Positions</h4>
@@ -151,6 +164,14 @@
   }
   .stat strong {
     color: var(--text);
+  }
+  .keys kbd {
+    padding: 0 4px;
+    font: inherit;
+    font-size: 11px;
+    color: var(--text);
+    border: 0.5px solid var(--border);
+    border-radius: 3px;
   }
   .live {
     display: inline-flex;

@@ -252,6 +252,7 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
           <tr><td>hiddenColumns</td><td><span class="type">string[]</span></td><td>Column keys to hide (controlled). Drive your own column-picker UI. Default <code>[]</code>.</td></tr>
           <tr><td>rowClass</td><td><span class="type">(row: GridRow) =&gt; string</span></td><td>Extra CSS class(es) per data row. Target with <code>:global(.bo-grid .row.your-class)</code>.</td></tr>
           <tr><td>onRowClick</td><td><span class="type">(row, event) =&gt; void</span></td><td>Fired when a data row is activated by click or <kbd>Enter</kbd>.</td></tr>
+          <tr><td>hotkeys</td><td><span class="type">Record&lt;string, ({ row, column, event }) =&gt; void | boolean&gt;</span></td><td>Keys for your app, run before the grid's own, with the focused row and column (null when none): <code>{ b: ({ row }) =&gt; buy(row), 'Shift+C': cancelAll }</code>. A key after any of <code>Shift+</code>, <code>Alt+</code>, <code>Ctrl+</code>, <code>Meta+</code>, <code>Mod+</code> (Ctrl or ⌘); case does not matter; a symbol by its character (<code>'?'</code>). Return <code>false</code> to leave the key to the grid. Not while editing, or in an input, button or menu; a key a binding took runs once when held. An unreadable or repeated binding throws.</td></tr>
           <tr><td>onCellClick</td><td><span class="type">({ row, column, value }, event) =&gt; void</span></td><td>Fired when a cell is clicked (in addition to <code>onRowClick</code>).</td></tr>
           <tr><td>sort</td><td><span class="type">SortState[]</span></td><td>Controlled sort order (multi-key). Omit for uncontrolled sorting.</td></tr>
           <tr><td>onSortChange</td><td><span class="type">(sort: SortState[]) =&gt; void</span></td><td>Called with the new sort order on each header click.</td></tr>
@@ -581,6 +582,7 @@ rows = tape.toArray();</code></pre>
           <tr><td><kbd>Space</kbd></td><td>Toggle row selection for the focused row (with <code>rowSelection</code>).</td></tr>
           <tr><td><kbd>ContextMenu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd></td><td>Open the row context menu (with <code>rowMenu</code>) at the focused cell.</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Clear the selection.</td></tr>
+          <tr><td>Your <code>hotkeys</code></td><td>Run before all of the above, on the focused row. The focus, the selection and an open editor stay on their rows as rows are added, removed or reordered.</td></tr>
         </tbody>
       </table>
 

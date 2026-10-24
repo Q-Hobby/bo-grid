@@ -6,6 +6,7 @@ import type { GridApi, ViewportRange } from './api';
 import type { DefaultColumn } from './celltype';
 import type { CellEditEvent, CellTypeDef, ColumnDef, GridRow, SortState } from './column';
 import type { AnyFilter, FilterTypes } from './filtering';
+import type { Hotkeys } from './hotkeys';
 import type { LazyGroup } from './grouping';
 import type { GridLabels } from './labels';
 import type { RowSource } from './source';
@@ -69,6 +70,18 @@ export interface GridPropsDef {
   /** Called when a data row is activated by click or Enter (open a detail
       view, navigate, …). Edit-input and checkbox clicks are excluded. */
   onRowClick?: (row: GridRow, event: MouseEvent | KeyboardEvent) => void;
+  /** Keys for the app, run before the grid's own: `{ b: ({ row }) => buy(row),
+      'Shift+C': cancelAll, Delete: ({ row }) => cancel(row) }`. A binding is a
+      key (`'b'`, `'Delete'`, `'Space'`; a symbol by the character it types:
+      `'?'`, not `'Shift+/'`), after any of `Shift+`, `Alt+`, `Ctrl+`, `Meta+`
+      and `Mod+` (Ctrl or ⌘, either). Case does not matter. The handler is
+      given the focused row and column (null when there is none) and the
+      event; return false to leave the key to the grid. Keys go to the grid,
+      not to a binding, while a cell is edited or an input, button or menu
+      inside the grid has them, and a key a binding took runs it once when
+      held down. A binding that cannot be read, or binds a key twice,
+      throws. */
+  hotkeys?: Hotkeys;
   /** Controlled sort order (multi-key, primary first). When set, the grid
       reflects this and reports changes via `onSortChange` instead of holding
       its own state. Omit for uncontrolled sorting. */

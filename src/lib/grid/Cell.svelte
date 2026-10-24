@@ -63,6 +63,7 @@
     onCellDblClick,
     onEditCommit,
     onEditCommitValue,
+    onEditDraft,
     onEditCancel,
     onFillStart,
     labels,
@@ -122,6 +123,8 @@
     onEditCommit?: (raw: string) => void;
     /** A custom editor's committed value (typed, not a string to parse). */
     onEditCommitValue?: (value: unknown) => void;
+    /** What has been typed so far in the editor, as it changes. */
+    onEditDraft?: (raw: string) => void;
     onEditCancel?: () => void;
     onFillStart?: () => void;
     labels: GridLabels;
@@ -187,6 +190,12 @@
   }
   function onEditBlur(e: FocusEvent) {
     const v = (e.currentTarget as HTMLInputElement).value;
+    // Being removed (the edit closed, or moved with its row): some browsers
+    // blur a removed input, and that is not the user leaving the editor.
+    if (!editing) {
+      cancelled = false;
+      return;
+    }
     if (cancelled) {
       cancelled = false;
       onEditCancel?.();
@@ -512,6 +521,7 @@
       type={editorType}
       value={seed ?? editorValue}
       use:focusSelect
+      oninput={(e) => onEditDraft?.(e.currentTarget.value)}
       onkeydown={onEditKey}
       onblur={onEditBlur}
       onpointerdown={(e) => e.stopPropagation()}

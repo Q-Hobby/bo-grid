@@ -93,6 +93,11 @@ interface GridProps {
   onRowSelectionChange?: (selectedIds: Array<string | number>) => void;
   selectedRowId?: string | number | null;   // controlled active-row highlight
   onRowClick?: (row: GridRow, event: MouseEvent | KeyboardEvent) => void;
+  hotkeys?: Record<string, (ctx: { row: GridRow | null; column: ColumnDef | null; event: KeyboardEvent }) => void | boolean>;
+                                       // { b: ({ row }) => buy(row), 'Shift+C': cancelAll, 'Mod+K': … }; run before the grid's keys;
+                                       // Mod = Ctrl or ⌘; case-insensitive; symbols by character ('?', not 'Shift+/', which throws);
+                                       // return false to pass the key on; not while editing/in inputs; a held key runs once.
+                                       // The focus/selection/editor follow their rows as rows are added/removed/reordered (in-memory).
   onCellClick?: (info: { row: GridRow; column: ColumnDef; value: unknown }, event: MouseEvent) => void;
   getRowId?: (row: GridRow) => string | number;  // default: row => row.id
 
