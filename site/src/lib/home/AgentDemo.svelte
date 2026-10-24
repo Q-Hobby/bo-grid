@@ -65,18 +65,23 @@
     let alive = true;
     // The playback reads and writes its own counters: untracked, so only
     // `visible` re-runs this effect.
+    // Every write follows a check of `alive`, so a run that was stopped while
+    // waiting never touches the next run's counters.
+    const step = async (ms: number) => {
+      await wait(ms);
+      return alive;
+    };
     untrack(async () => {
       while (alive) {
         typed = reads = lines = 0;
         done = false;
-        for (; typed < PROMPT.length && alive; typed++) await wait(26);
-        await wait(380);
-        for (; reads < READS.length && alive; reads++) await wait(620);
-        await wait(300);
-        for (; lines < LINES.length && alive; lines++) await wait(70);
-        if (!alive) return;
+        while (typed < PROMPT.length) if (await step(26)) typed++; else return;
+        if (!(await step(380))) return;
+        while (reads < READS.length) if (await step(620)) reads++; else return;
+        if (!(await step(300))) return;
+        while (lines < LINES.length) if (await step(70)) lines++; else return;
         done = true;
-        await wait(11000);
+        if (!(await step(11000))) return;
       }
     });
     return () => {

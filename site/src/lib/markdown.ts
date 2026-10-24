@@ -25,7 +25,7 @@ Facts to get right before writing code against bo-grid:
 - Every prop, column option and API method, with types and defaults: ${SITE}/api.json`;
 
 const sources = import.meta.glob<string>('/src/routes/**/+page.md', { query: '?raw', import: 'default', eager: true });
-const examples = import.meta.glob<string>('/src/examples/*.svelte', { query: '?raw', import: 'default', eager: true });
+const examples = import.meta.glob<string>(['/src/examples/*.svelte', '/src/examples/*.ts'], { query: '?raw', import: 'default', eager: true });
 
 export interface DocSource {
   /** The page's path under the site, e.g. `/docs/grouping/`. */
@@ -57,6 +57,13 @@ export const DOCS: Map<string, DocSource> = new Map(
 /** `/docs/grouping/` → `/docs/grouping.md`; `/docs/` → `/docs.md`. */
 export const mdPath = (path: string): string => `${path.replace(/\/$/, '')}.md`;
 
+/** The props reference: a generated page (no +page.md), listed with the rest. */
+export const REFERENCE = {
+  path: '/docs/reference/',
+  title: 'Props reference',
+  description: 'Every Grid prop, column option and grid API method, generated from the TypeScript types.',
+};
+
 const attr = (tag: string, name: string): string | undefined =>
   new RegExp(`\\b${name}="([^"]*)"`).exec(tag)?.[1] ?? new RegExp(`\\b${name}=\\{['"]([^'"]*)['"]\\}`).exec(tag)?.[1];
 
@@ -75,13 +82,28 @@ function propsList(tag: string): string {
     .join('\n');
 }
 
+/** The local modules an example imports (`./data`, `./feed`), and theirs. */
+function helpersOf(src: string, seen: Set<string>): string[] {
+  const out: string[] = [];
+  for (const m of src.matchAll(/from '\.\/([\w-]+)(?:\.ts)?'/g)) {
+    const file = `/src/examples/${m[1]}.ts`;
+    const code = examples[file];
+    if (!code || seen.has(file)) continue;
+    seen.add(file);
+    out.push(`${m[1]}.ts:\n\n\`\`\`ts\n${code.trim()}\n\`\`\``, ...helpersOf(code, seen));
+  }
+  return out;
+}
+
 function exampleText(tag: string): string {
   const id = attr(tag, 'id');
   if (id) return `Live example: ${SITE}/examples/${id}/ (source: ${REPO}/src/demo/examples/)`;
   const name = attr(tag, 'name') ?? '';
   const src = examples[`/src/examples/${name}.svelte`];
   const title = attr(tag, 'title') ?? name;
-  return src ? `Example: ${title} (${name}.svelte)\n\n\`\`\`svelte\n${src.trim()}\n\`\`\`` : `Example: ${title}`;
+  if (!src) return `Example: ${title}`;
+  // The helpers it imports come along, so the example runs as copied.
+  return [`Example: ${title} (${name}.svelte)\n\n\`\`\`svelte\n${src.trim()}\n\`\`\``, ...helpersOf(src, new Set())].join('\n\n');
 }
 
 function frameworkText(tag: string): string {
@@ -96,13 +118,21 @@ function frameworkText(tag: string): string {
 
 /** A docs page as self-contained Markdown. */
 export function toMarkdown(doc: DocSource): string {
+  // Code fences pass through untouched (their <script> blocks, components and
+  // links are examples); everything else has its components turned into text.
+  const prose = (text: string) =>
+    text
+      .replace(/<Props\b[^>]*\/>/g, propsList)
+      .replace(/<Example\b[^>]*\/>/g, exampleText)
+      .replace(/<FrameworkTabs\b[^>]*\/>/g, frameworkText)
+      // Relative links resolve against the page, as they do on the site.
+      .replace(/\]\((?!https?:|#|mailto:)([^)\s]+)\)/g, (_, url: string) => `](${new URL(url, SITE + doc.path).href})`);
   const body = doc.body
-    .replace(/<script[\s\S]*?<\/script>\s*/g, '')
-    .replace(/<Props\b[^>]*\/>/g, propsList)
-    .replace(/<Example\b[^>]*\/>/g, exampleText)
-    .replace(/<FrameworkTabs\b[^>]*\/>/g, frameworkText)
-    // Relative links resolve against the page, as they do on the site.
-    .replace(/\]\((?!https?:|#|mailto:)([^)\s]+)\)/g, (_, url: string) => `](${new URL(url, SITE + doc.path).href})`)
+    // The page's own <script> (its imports) leads the body; only it goes.
+    .replace(/^\s*<script\b[^>]*>[\s\S]*?<\/script>\s*/, '')
+    .split(/(^```[\s\S]*?^```[^\n]*$)/m)
+    .map((part, i) => (i % 2 ? part : prose(part)))
+    .join('')
     .trim();
   return `# ${doc.title}\n\n> ${doc.description}\n\n${body}\n\n---\nPage: ${SITE}${doc.path} · All pages: ${SITE}/llms.txt\n`;
 }
@@ -140,6 +170,7 @@ export function searchIndex(): SearchEntry[] {
   for (const g of DOCS_NAV) {
     for (const item of g.items) {
       const doc = DOCS.get(item.href);
+      if (item.href === REFERENCE.path) out.push({ title: REFERENCE.title, href: item.href, group: g.title, text: REFERENCE.description });
       if (!doc) continue;
       out.push({ title: doc.title, href: item.href, group: g.title, text: doc.description });
       const seen = new Map<string, number>();

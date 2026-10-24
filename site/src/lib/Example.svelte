@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, type Component } from 'svelte';
+  import type { Component } from 'svelte';
   import { base } from '$app/paths';
   import { themeVars } from 'bo-grid';
   import { ui } from '$demo/theme.svelte';
@@ -8,7 +8,9 @@
 
   // A live example in a frame: Preview runs it, Code shows its source. `id`
   // names a gallery example, `name` a docs example in site/src/examples. It
-  // mounts only in the browser, so pages pre-render without running demos.
+  // mounts only in the browser, so pages pre-render without running demos,
+  // and only while it is near the screen: a live feed scrolled far away stops
+  // (it starts again, fresh, on the way back).
   // The frame carries the site's grid theme as CSS variables: an example that
   // sets no theme follows the light / dark switch with no code for it.
   let {
@@ -27,7 +29,27 @@
   let code = $state<string | null>(null);
   let copied = $state(false);
 
-  onMount(() => {
+  let frame = $state<HTMLElement>();
+  let near = $state(false);
+  // The height it had while running, kept while it is away, so the page
+  // does not jump when it stops.
+  let held = $state(0);
+  $effect(() => {
+    if (!frame) return;
+    const el = frame;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        if (!entry.isIntersecting && near) held = el.querySelector('.preview')?.clientHeight ?? 0;
+        near = entry.isIntersecting;
+      },
+      { rootMargin: '400px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  });
+  $effect(() => {
+    if (!near || Live || failed) return;
     ex.load().then(
       (m) => (Live = m.default),
       () => (failed = true),
@@ -47,7 +69,7 @@
   }
 </script>
 
-<figure class="ex">
+<figure class="ex" bind:this={frame}>
   <div class="bar">
     <div class="tabs" role="tablist" aria-label="{ex.title}: views">
       <button role="tab" aria-selected={view === 'preview'} onclick={() => (view = 'preview')}>Preview</button>
@@ -60,8 +82,8 @@
     {#if link && ex.page}<a class="act" href="{base}{ex.page}">Open</a>{/if}
     <a class="act" href={ex.github} target="_blank" rel="external noopener">GitHub ↗</a>
   </div>
-  <div class="preview" hidden={view !== 'preview'} data-ex={id ?? name} style="{themeVars(ui.grid)}{minHeight ? `min-height:${minHeight}px` : ''}">
-    {#if Live}
+  <div class="preview" hidden={view !== 'preview'} data-ex={id ?? name} style="{themeVars(ui.grid)}{minHeight || held ? `min-height:${Math.max(minHeight ?? 0, held)}px` : ''}">
+    {#if Live && near}
       <Live />
     {:else if failed}
       <p class="msg">The example could not be loaded.</p>

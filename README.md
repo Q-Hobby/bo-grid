@@ -28,8 +28,8 @@ element for every other framework.
 ## Why bo-grid
 
 - **Fast under load.** A 1,000-symbol price board at 30,000 ticks a second
-  stays at about 12 ms of main-thread work per frame, with every changed cell
-  flashing. [How it's measured](./BENCHMARKS.md)
+  takes about 4.5 ms of main-thread work a frame (about 11 ms at p95), with
+  every changed cell flashing. [How it's measured](./BENCHMARKS.md)
 - **Built for trading.** Tick flashes, price-limit colours, tick-aware
   formatting, a depth ladder with click-to-trade, and order book and
   time-and-sales helpers.

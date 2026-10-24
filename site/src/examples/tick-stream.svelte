@@ -27,7 +27,7 @@
     const stop = simulateFeed(quotes(), (id, tick) => {
       received++;
       stream.push(id, tick); // cheap: merges into the row's pending patch
-    }, rate);
+    }, () => rate); // read on each beat: a new rate keeps the same feed
     const show = setInterval(() => (stats = { received, applied: stream.applied, pending: stream.pending }), 250);
     return () => {
       stop();

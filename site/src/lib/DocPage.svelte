@@ -16,16 +16,30 @@
   /** @type {'idle' | 'copied' | 'failed'} */
   let copyState = $state('idle');
 
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let resetTimer;
+  $effect(() => () => clearTimeout(resetTimer));
+
   async function copyPage() {
-    try {
-      const res = await fetch(md);
+    const text = fetch(md).then((res) => {
       if (!res.ok) throw new Error(String(res.status));
-      await navigator.clipboard.writeText(await res.text());
+      return res.text();
+    });
+    try {
+      // The write starts inside the click, with the text still on its way:
+      // Safari only allows a clipboard write during the user's gesture.
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) })]);
       copyState = 'copied';
     } catch {
-      copyState = 'failed';
+      try {
+        await navigator.clipboard.writeText(await text);
+        copyState = 'copied';
+      } catch {
+        copyState = 'failed';
+      }
     }
-    setTimeout(() => (copyState = 'idle'), 1800);
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => (copyState = 'idle'), 1800);
   }
 </script>
 

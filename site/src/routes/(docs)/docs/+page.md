@@ -5,10 +5,10 @@ description: bo-grid is a fast, lightweight data grid for trading screens. It is
 
 ## Why bo-grid
 
-- **Fast under load.** A 1,000-symbol price board at 30,000 ticks a second stays at about 12 ms of main-thread work per frame, with every changed cell flashing ([how it's measured](https://github.com/bonguynvan/bo-grid/blob/main/BENCHMARKS.md)).
+- **Fast under load.** A 1,000-symbol price board at 30,000 ticks a second takes about 4.5 ms of main-thread work a frame (about 11 ms at p95), with every changed cell flashing ([how it's measured](https://github.com/bonguynvan/bo-grid/blob/main/BENCHMARKS.md)).
 - **Built for trading.** Tick flashes, price-limit colours, tick-aware formatting, a depth ladder with click-to-trade, order books, alerts, and a feed read in a worker.
 - **Complete.** Sorting, filtering, grouping, pivot, tree data, editing, clipboard and Excel export, all in one MIT package.
-- **Small and SSR-safe.** About 49 KB gzip for the grid, no runtime dependencies, and clean server rendering in SvelteKit.
+- **Small and SSR-safe.** About 46 KB gzip for the grid, no runtime dependencies, and clean server rendering in SvelteKit.
 - **Accessible.** A full keyboard model with grid and treegrid semantics.
 
 ## What is in the package

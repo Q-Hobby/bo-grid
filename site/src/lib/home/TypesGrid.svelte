@@ -4,10 +4,10 @@
 
   // Built-in cell types, side by side, for the features grid.
   const columns: ColumnDef[] = [
-    { type: 'text', key: 'desk', header: 'Desk', width: 84 },
-    { type: 'badge', key: 'status', header: 'Status', width: 92, tones: { Live: 'up', Halted: 'down', Auction: 'amber' } },
-    { type: 'progress', key: 'fill', header: 'Filled', flex: 1, width: 90, min: 0, max: 100 },
-    { type: 'heatmap', key: 'pnl', header: 'P&L %', width: 72, min: -3, max: 3, decimals: 1 },
+    { type: 'text', key: 'desk', header: 'Desk', width: 78 },
+    { type: 'badge', key: 'status', header: 'Status', width: 84, tones: { Live: 'up', Halted: 'down', Auction: 'amber' } },
+    { type: 'progress', key: 'fill', header: 'Filled', flex: 1, width: 64, min: 0, max: 100 },
+    { type: 'heatmap', key: 'pnl', header: 'P&L %', width: 64, min: -3, max: 3, decimals: 1 },
   ];
   const rows = [
     { id: 1, desk: 'Rates', status: 'Live', fill: 82, pnl: 1.8 },

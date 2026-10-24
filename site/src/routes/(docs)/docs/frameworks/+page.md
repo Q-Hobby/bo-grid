@@ -91,7 +91,7 @@ export class BoardComponent {
 - Setting `config` after the element is attached is safe too: it renders an empty grid until the config arrives.
 - The grid's API arrives through `onReady` in the config, once the grid is ready.
 - The element renders to the light DOM, so your `--bo-grid-*` CSS variables and page styles apply, and it injects its own styles: there is no stylesheet to add.
-- It carries the Svelte runtime, so it is larger: about 87 KB gzip, against about 49 KB for the grid imported in Svelte.
+- It carries the Svelte runtime, so it is larger: about 87 KB gzip, against about 46 KB for the grid imported in Svelte.
 - It needs the DOM: in a server-rendered app, import it on the client.
 
 ## Custom cells outside Svelte

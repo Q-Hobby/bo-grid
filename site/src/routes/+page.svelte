@@ -86,9 +86,15 @@
     { title: 'A million rows', body: 'A windowed source loads rows on demand and sorts and filters on the server; wide grids virtualize their columns too.', href: '/docs/server-data/', link: 'Server-side data' },
   ];
 
-  // The measured frame: main-thread work for a 1,000-symbol board at
-  // 30,000 ticks a second (BENCHMARKS.md), against the 16.7 ms a 60 Hz frame has.
-  const frameBars = [11.2, 12.4, 11.8, 12.9, 12.1, 11.6, 12.7, 12.2, 11.9, 12.5, 12.0, 11.7, 12.6, 12.3];
+  // Measured frame costs for the 1,000-symbol price board (BENCHMARKS.md:
+  // production build, Chrome, one frame's ticks rendered synchronously),
+  // against the 16.7 ms a 60 Hz frame has.
+  const BUDGET = 16.7;
+  const frames = [
+    { label: '10,000 ticks/s', p50: 1.9, p95: 4.8 },
+    { label: '30,000 ticks/s', p50: 4.5, p95: 11 },
+    { label: 'Scroll 3 rows a frame', p50: 2.5, p95: 5.7 },
+  ];
 </script>
 
 <svelte:head>
@@ -131,7 +137,7 @@
         </div>
       </div>
       <span class="callout c1" aria-hidden="true"><b>flash</b>: 'auto'</span>
-      <span class="callout c2" aria-hidden="true">~12 ms a frame</span>
+      <span class="callout c2" aria-hidden="true">~4.5 ms a frame</span>
       <span class="callout c3" aria-hidden="true">30,000 ticks/s</span>
     </div>
   </section>
@@ -139,8 +145,8 @@
   <Ticker />
 
   <section class="figures" aria-label="In figures" use:reveal>
-    <div class="fig"><strong>~<CountUp to={12} /> ms</strong><span>main-thread work a frame for 1,000 symbols at 30,000 ticks a second</span></div>
-    <div class="fig"><strong><CountUp to={49} /> KB</strong><span>gzip for the grid, with no runtime dependencies</span></div>
+    <div class="fig"><strong>~<CountUp to={4.5} format={(n) => n.toFixed(1)} /> ms</strong><span>main-thread work a frame (median) for 1,000 symbols at 30,000 ticks a second</span></div>
+    <div class="fig"><strong><CountUp to={46} /> KB</strong><span>gzip for the grid, with no runtime dependencies</span></div>
     <div class="fig"><strong><CountUp to={1} />M rows</strong><span>windowed from a source on demand, sorted and filtered there</span></div>
     <div class="fig"><strong><CountUp to={24} /></strong><span>live examples, each with its source a tab away</span></div>
   </section>
@@ -193,13 +199,20 @@
             {@const Live = f.live === 'types' ? Types : Groups}
             <div class="tile-live mini">{#if Live}<Live />{:else}<div class="placeholder mini" aria-hidden="true"></div>{/if}</div>
           {:else if f.live === 'frame'}
-            <div class="tile-live frame" role="img" aria-label="Frame cost: about 12 ms of the 16.7 ms a 60 Hz frame allows">
-              <div class="budget"><span>16.7 ms · one frame at 60 Hz</span></div>
-              <div class="bars">
-                {#each frameBars as ms, j (j)}<span style="--h:{(ms / 16.7) * 100}%; --j:{j}"></span>{/each}
-              </div>
-              <div class="frame-legend"><code>api.patchRows(batch)</code><span>~12 ms of main-thread work a frame</span></div>
-            </div>
+            <figure class="tile-live frame">
+              <figcaption class="frame-head"><span>Frame cost, 1,000 symbols · <code>api.patchRows</code></span><span class="key"><i class="k50"></i>p50 <i class="k95"></i>p95</span></figcaption>
+              {#each frames as f, j (f.label)}
+                <div class="frow" style="--j:{j}">
+                  <span class="flabel">{f.label}</span>
+                  <span class="track" role="img" aria-label="{f.label}: {f.p50} ms median, {f.p95} ms at p95, of a {BUDGET} ms frame">
+                    <span class="p95" style="--w:{(f.p95 / BUDGET) * 100}%"></span>
+                    <span class="p50" style="--w:{(f.p50 / BUDGET) * 100}%"></span>
+                  </span>
+                  <span class="fval">{f.p50} / {f.p95} ms</span>
+                </div>
+              {/each}
+              <div class="frame-foot"><span>0</span><span class="budget-label">16.7 ms · one frame at 60 Hz</span></div>
+            </figure>
           {/if}
           <div class="tile-text">
             <h3>{f.title}</h3>
@@ -737,6 +750,7 @@
   }
   .tile {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-content: space-between;
     gap: 18px;
     overflow: hidden;
@@ -783,50 +797,15 @@
     font-family: var(--font-mono);
   }
   .frame {
-    position: relative;
     display: grid;
-    gap: 10px;
-    padding: 16px 14px 12px;
+    gap: 14px;
+    margin: -6px -6px 0;
+    padding: 16px 16px 12px;
     background: var(--cell);
     border: 1px solid var(--line-soft);
     border-radius: 8px;
   }
-  .budget {
-    position: absolute;
-    inset: 16px 14px auto;
-    height: 1px;
-    border-top: 1px dashed color-mix(in srgb, var(--down) 70%, transparent);
-  }
-  .budget span {
-    position: absolute;
-    top: -9px;
-    right: 0;
-    padding-left: 8px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--down);
-    background: var(--cell);
-  }
-  .bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    height: 150px;
-  }
-  .bars span {
-    flex: 1;
-    height: var(--h);
-    background: linear-gradient(to top, color-mix(in srgb, var(--up) 35%, transparent), var(--up));
-    border-radius: 3px 3px 0 0;
-    transform-origin: bottom;
-    animation: grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: calc(var(--j) * 40ms);
-    animation-play-state: paused;
-  }
-  :global([data-in]) .bars span {
-    animation-play-state: running;
-  }
-  .frame-legend {
+  .frame-head {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -835,8 +814,78 @@
     font-size: 12px;
     color: var(--text-3);
   }
-  .frame-legend code {
+  .frame-head code {
     color: var(--accent);
+  }
+  .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .key i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+  .k50 {
+    background: var(--up);
+  }
+  .k95 {
+    margin-left: 6px;
+    background: color-mix(in srgb, var(--up) 30%, transparent);
+  }
+  .frow {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr) 96px;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .flabel {
+    color: var(--text-2);
+  }
+  .fval {
+    text-align: right;
+    color: var(--text);
+  }
+  .track {
+    position: relative;
+    height: 22px;
+    background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line-soft) calc(25% - 1px) 25%);
+    border-right: 1px dashed color-mix(in srgb, var(--down) 70%, transparent);
+    border-radius: 3px;
+  }
+  .track span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--w);
+    border-radius: 3px;
+    transform-origin: left;
+    animation: grow-x 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--j) * 90ms);
+    animation-play-state: paused;
+  }
+  :global([data-in]) .track span {
+    animation-play-state: running;
+  }
+  .p95 {
+    background: color-mix(in srgb, var(--up) 30%, transparent);
+  }
+  .p50 {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--up) 55%, transparent), var(--up));
+  }
+  .frame-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-left: 162px;
+    margin-right: 108px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .budget-label {
+    color: var(--down);
   }
 
   /* ---- Start ------------------------------------------------------------ */
@@ -954,9 +1003,9 @@
       opacity: 0.45;
     }
   }
-  @keyframes grow {
+  @keyframes grow-x {
     from {
-      transform: scaleY(0);
+      transform: scaleX(0);
     }
   }
 
@@ -997,6 +1046,16 @@
     }
   }
   @media (max-width: 599px) {
+    .frow {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .frow .track {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+    .frame-foot {
+      margin: 0;
+    }
     .agent-cards {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -1017,7 +1076,7 @@
     .stage,
     .callout,
     .dot,
-    .bars span {
+    .track span {
       animation: none;
     }
     .board {
