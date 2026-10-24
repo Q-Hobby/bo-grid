@@ -68,17 +68,30 @@ export const REFERENCE = {
 const attr = (tag: string, name: string): string | undefined =>
   new RegExp(`\\b${name}="([^"]*)"`).exec(tag)?.[1] ?? new RegExp(`\\b${name}=\\{['"]([^'"]*)['"]\\}`).exec(tag)?.[1];
 
+type ApiEntry = { name: string; type?: string; signature?: string; default?: string; example?: string; doc: string };
+
+/** One prop, option or method as a Markdown list item: signature, default,
+    doc, and its example as a fenced block under it. */
+function entryMarkdown(p: ApiEntry): string {
+  const head = p.signature ? `\`${p.signature}\`` : `\`${p.name}\`: \`${p.type}\``;
+  const line = `- ${head}${p.default ? ` (default \`${p.default}\`)` : ''}${p.doc ? ` — ${p.doc}` : ''}`;
+  if (!p.example) return line;
+  const lang = p.example.trimStart().startsWith('<') ? 'svelte' : 'ts';
+  const code = p.example
+    .split('\n')
+    .map((l) => `  ${l}`.trimEnd())
+    .join('\n');
+  return `${line}\n\n  \`\`\`${lang}\n${code}\n  \`\`\`\n`;
+}
+
 function propsList(tag: string): string {
   const of = (attr(tag, 'of') ?? 'grid') as 'grid' | 'column' | 'api';
   const names = [...(/names=\{\[([^\]]*)\]\}/.exec(tag)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  const pool: { name: string; type?: string; signature?: string; default?: string; doc: string }[] =
-    of === 'grid' ? api.grid.props : of === 'column' ? api.column.props : api.api.methods;
+  const pool: ApiEntry[] = of === 'grid' ? api.grid.props : of === 'column' ? api.column.props : api.api.methods;
   return names
     .map((n) => {
       const p = pool.find((e) => e.name === n);
-      if (!p) return `- \`${n}\``;
-      const head = p.signature ? `\`${p.signature}\`` : `\`${p.name}\`: \`${p.type}\``;
-      return `- ${head}${p.default ? ` (default \`${p.default}\`)` : ''}${p.doc ? ` — ${p.doc}` : ''}`;
+      return p ? entryMarkdown(p) : `- \`${n}\``;
     })
     .join('\n');
 }
@@ -145,10 +158,7 @@ export function docsInOrder(): DocSource[] {
 
 /** The whole API manifest as Markdown: the reference page's .md. */
 export function referenceMarkdown(): string {
-  const list = (items: { name: string; type?: string; signature?: string; default?: string; doc: string }[]) =>
-    items
-      .map((p) => `- ${p.signature ? `\`${p.signature}\`` : `\`${p.name}\`: \`${p.type}\``}${p.default ? ` (default \`${p.default}\`)` : ''}${p.doc ? ` — ${p.doc}` : ''}`)
-      .join('\n');
+  const list = (items: ApiEntry[]) => items.map(entryMarkdown).join('\n');
   const types = api.column.types.map((t) => `- \`${t.type}\`${t.options.length ? `: ${t.options.map((o) => `\`${o.name}\``).join(', ')}` : ''}`).join('\n');
   return `# Props reference\n\n> Every Grid prop, column option and grid API method, generated from the TypeScript types (bo-grid ${api.version}). As JSON: ${SITE}/api.json\n\n## Grid props\n\n${list(api.grid.props)}\n\n## Column options\n\n${list(api.column.props)}\n\n## Column types\n\n${types}\n\n## Grid API\n\n${list(api.api.methods)}\n`;
 }

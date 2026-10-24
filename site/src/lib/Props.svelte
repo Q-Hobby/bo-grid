@@ -3,7 +3,7 @@
 
   // A reference table read from the API manifest (scripts/api-manifest.mjs),
   // so the docs never drift from the types. An unknown name fails the build.
-  type Entry = { name: string; type?: string; signature?: string; required?: boolean; default?: string; doc: string };
+  type Entry = { name: string; type?: string; signature?: string; required?: boolean; default?: string; example?: string; doc: string };
 
   let {
     of = 'grid',
@@ -43,6 +43,12 @@
         {#if p.default}<span class="def">Default <code>{p.default}</code></span>{/if}
       </div>
       {#if p.doc}<p class="doc">{@html inline(p.doc)}</p>{/if}
+      {#if p.example}
+        <details class="ex">
+          <summary>Example</summary>
+          <pre><code>{p.example}</code></pre>
+        </details>
+      {/if}
     </div>
   {/each}
 </section>
@@ -126,5 +132,41 @@
     font-size: 14px;
     line-height: 1.6;
     color: var(--text-2);
+  }
+  .ex {
+    margin-top: 6px;
+  }
+  .ex summary {
+    width: max-content;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-3);
+    cursor: pointer;
+  }
+  .ex summary:hover,
+  .ex[open] summary {
+    color: var(--accent);
+  }
+  .ex summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  .ex pre {
+    margin: 6px 0 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    background: var(--panel-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-md);
+  }
+  .ex code {
+    padding: 0;
+    color: var(--text);
+    white-space: pre;
+    background: none;
+    border: 0;
   }
 </style>

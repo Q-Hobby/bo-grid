@@ -35,29 +35,29 @@ The **Copy page** button at the top of every page copies that Markdown, ready to
 ```json
 {
   "package": "bo-grid",
-  "version": "2.8.0",
   "grid": {
     "props": [
       {
         "name": "rowHeight",
         "type": "number | ((row: GridRow, index: number) => number)",
         "required": false,
-        "doc": "Row height in px (uniform), or a function for variable heights (in-memory mode only). Default 36.",
-        "default": "36"
+        "doc": "Row height in px (uniform), or a function for variable heights (in-memory mode only).",
+        "default": "36",
+        "example": "<Grid {rows} {columns} height={480} rowHeight={(row) => (row.note ? 56 : 36)} />"
       }
     ]
   }
 }
 ```
 
-The props tables in these docs, such as the one on the [Props reference](../reference/), are drawn from the same file. A docs page that names a prop which does not exist fails the site's build, so the docs cannot describe an API the types don't have.
+Every optional prop and option states its `default`, and every one whose type is more than a plain value has an `example`, as does every API method. The build fails when one is missing, so the file is complete for each release. The props tables in these docs, such as the one on the [Props reference](../reference/), are drawn from the same file. A docs page that names a prop which does not exist fails the site's build, so the docs cannot describe an API the types don't have.
 
 ## Types are the first docs
 
 An agent working in your project can read the package's type definitions in `node_modules`, and those always match the installed version, whatever the agent remembers. bo-grid's types are written to be read:
 
 - `ColumnDef` is a union on `type`, so an option on the wrong column type (`decimals` on a `badge`, say) is a type error, not a silent no-op.
-- Props and column options carry doc comments that state defaults and limits, the same text as in `api.json`.
+- Props, column options and API methods carry doc comments with `@default` and `@example` tags, the same text as in `api.json`. An editor shows them on hover, and an agent reading the `.d.ts` files finds a default and a working example beside each declaration.
 - Values are narrow where they can be: `flash` is `boolean | 'auto' | 'up-down' | 'change'`, not `string`.
 
 So the most useful habit to give an agent is to run the type check after each change (`svelte-check` in a Svelte project, `tsc` elsewhere) and fix what it reports.

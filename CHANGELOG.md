@@ -22,6 +22,17 @@ All notable changes to this project are documented here. Format follows
   the fix as written.
 - `parseJSON` on text that is not JSON throws BG1103, a `SyntaxError` as
   before, now with the fix and link.
+- **Defaults and examples in the types.** Every optional `<Grid>` prop and
+  column option now states its default in an `@default` tag, and every one
+  whose type is more than a plain value (a callback, an object, a union with
+  one), plus every grid API method, has an `@example`, so an editor's hover
+  and the `.d.ts` files in `node_modules` show both beside each declaration.
+  The 18 type options that had no doc have one. `/api.json` reads the tags
+  (`default`, and a new `example` field) instead of guessing defaults from
+  the prose, the props tables on the docs site show each example under an
+  "Example" toggle, and the Markdown pages and llms-full.txt include them.
+  Generating the manifest fails when a doc, a default or an example is
+  missing.
 
 ## [2.10.0] — 2026-10-25
 
