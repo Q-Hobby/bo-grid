@@ -162,3 +162,37 @@ pre.code .n {
     white-space: nowrap;
   }
 }
+
+/* Keys named in the prose. */
+.prose kbd {
+  padding: 0.05em 0.4em;
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* Form controls an example draws itself (not the grid's own), on the site's
+   tokens. Zero specificity: an example's own styles always win. */
+:where(.ex .preview) :where(button, select, input:not([type='checkbox'], [type='radio'], [type='range'])):where(:not(.bo-grid *)) {
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+}
+:where(.ex .preview) :where(button):where(:not(.bo-grid *)) {
+  cursor: pointer;
+}
+:where(.ex .preview) :where(button:hover):where(:not(.bo-grid *)) {
+  border-color: var(--accent);
+}
+:where(.ex .preview) :where(input, select):where(:not(.bo-grid *)):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

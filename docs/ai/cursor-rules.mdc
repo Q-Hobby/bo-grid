@@ -10,25 +10,31 @@ This project depends on `bo-grid` (a Svelte 5 data grid; peer `svelte@^5`).
 Before writing or editing code that uses it, follow these rules exactly — do
 not invent props or import paths that aren't listed here.
 
-**Full API reference**: fetch and read
-`https://bonguynvan.github.io/bo-grid/llms-full.txt` before generating
-non-trivial grid code (new column types, realtime feeds, or the web
-component) — it lists every `ColumnDef`/`<Grid>` prop and every subpath
-export with runnable snippets. Don't guess a prop name; check it there.
+**Docs for agents**: read `https://bonguynvan.github.io/bo-grid/llms.txt`
+(the facts to get right, and every docs page as Markdown) before generating
+non-trivial grid code, and look props up in
+`https://bonguynvan.github.io/bo-grid/api.json` (generated from the types).
+Don't guess a prop name; check it there.
 
 ## The one rule that matters most
 
-bo-grid ships **four entry points (main + three subpaths)**. Importing one adds
-nothing to the others — never import a realtime/trading export from the main
-`'bo-grid'` entry, it isn't there. bo-grid has no charts entry; it is a
-grid-only library:
+bo-grid ships **seven entry points**. Importing one adds nothing to the
+others — never import a realtime, trading or ladder export from the main
+`'bo-grid'` entry, it isn't there:
 
 ```
-bo-grid            Grid component + core types/helpers
-bo-grid/realtime    createTickStream, TradeTape, centeredWindow, applyPatches
-bo-grid/trading     resolveTone, vnBands, fmtTradingPrice, sessionStateAt (VN/APAC market conventions)
-bo-grid/element     <bo-grid> web component (React/Vue/Angular/vanilla)
+bo-grid             Grid component, column types, core types and helpers
+bo-grid/realtime    createTickStream, serveFeed/connectFeed, createOrderBook, createAlerts, createLinger, TradeTape
+bo-grid/trading     resolveTone, vnBands, fmtTradingPrice, sessionStateAt, FX pips, crypto prices, createPositions
+bo-grid/ladder      DepthLadder (price ladder with click-to-trade)
+bo-grid/react       BoGrid React component (ref = grid API)
+bo-grid/vue         BoGrid Vue component (template ref .api = grid API)
+bo-grid/element     <bo-grid> custom element (Angular, plain JS)
 ```
+
+Svelte 5 only: runes, snippets and callback props — never `export let`,
+`on:click` or `<slot>`. The grid API comes from `onReady`; there is no
+`bind:api`.
 
 ## Minimal usage
 

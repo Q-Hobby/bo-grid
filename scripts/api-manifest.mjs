@@ -81,7 +81,7 @@ const manifest = {
     props: membersOf('src/lib/grid/column.ts', 'ColBase'),
     types: columnTypes(),
   },
-  api: { description: 'Methods of the grid handle (GridApi), from bind:api or onReady.', methods: membersOf('src/lib/grid/api.ts', 'GridApi') },
+  api: { description: 'Methods of the grid handle (GridApi): from onReady in Svelte, the ref in React and Vue, onReady in the element config.', methods: membersOf('src/lib/grid/api.ts', 'GridApi') },
 };
 
 mkdirSync(dirname(out), { recursive: true });

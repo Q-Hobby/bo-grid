@@ -46,7 +46,7 @@
   </table>
 
   <h2 id="grid-api">Grid API</h2>
-  <p>Methods of the grid handle, from <code>bind:api</code>, <code>onReady</code>, or a React or Vue ref.</p>
+  <p>Methods of the grid handle: from <code>onReady</code> in Svelte, the ref in React and Vue, or <code>onReady</code> in the element's config.</p>
   {#if methods.length}<Props of="api" names={methods} anchors />{:else}<p class="none">No API method matches.</p>{/if}
 </DocPage>
 

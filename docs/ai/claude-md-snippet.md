@@ -7,17 +7,25 @@
 ## bo-grid (Svelte 5 data grid)
 
 This project depends on `bo-grid` (peer `svelte@^5`). Before writing or
-editing bo-grid code, fetch and read
-`https://bonguynvan.github.io/bo-grid/llms-full.txt` for the complete,
-accurate API (every `ColumnDef`/`<Grid>` prop, every subpath export) — do not
-guess a prop name or invent a plausible-sounding one.
+editing bo-grid code, read `https://bonguynvan.github.io/bo-grid/llms.txt`
+(the facts to get right, and every docs page as Markdown), and look props up
+in `https://bonguynvan.github.io/bo-grid/api.json` (every prop, column option
+and API method, generated from the types) — do not guess a prop name or
+invent a plausible-sounding one. The installed types in
+`node_modules/bo-grid/dist` carry the same docs for your version.
 
-**Four entry points (main + three subpaths)** — importing one adds nothing to the others,
-and each export lives in exactly one place:
-- `bo-grid` — the `Grid` component + core types/helpers.
-- `bo-grid/realtime` — `createTickStream`, `TradeTape`, `centeredWindow`, `applyPatches` (feed pipeline).
-- `bo-grid/trading` — `resolveTone`, `vnBands`, `fmtTradingPrice`, `sessionStateAt` (VN/APAC market conventions).
-- `bo-grid/element` — the `<bo-grid>` web component (React/Vue/Angular/vanilla).
+**Seven entry points** — importing one adds nothing to the others, and each
+export lives in exactly one place:
+- `bo-grid` — the `Grid` component, its column types, core types and helpers.
+- `bo-grid/realtime` — `createTickStream`, `serveFeed` / `connectFeed`, `createOrderBook`, `createAlerts`, `createLinger`, `TradeTape`.
+- `bo-grid/trading` — market conventions: `resolveTone`, `vnBands`, `fmtTradingPrice`, `sessionStateAt`, FX pips, crypto prices, `createPositions`.
+- `bo-grid/ladder` — `DepthLadder`, a price ladder with click-to-trade.
+- `bo-grid/react`, `bo-grid/vue` — `BoGrid` as a React or Vue component.
+- `bo-grid/element` — the `<bo-grid>` custom element (Angular, plain JS).
+
+**Svelte 5 only:** runes (`$state`, `$props`), snippets and callback props;
+never `export let`, `on:click` or `<slot>`. The grid API comes from
+`onReady={(api) => ...}` (a ref in React and Vue); there is no `bind:api`.
 
 **Minimal usage**:
 ```svelte
@@ -46,6 +54,9 @@ optional and unnecessary otherwise.
 `render(ctx) => Node | string` function from React/Vue/vanilla/`<bo-grid>`
 (snippets don't exist outside Svelte).
 
+**Busy feeds:** keep rows as plain objects and write ticks with
+`api.patchRows(patches)`, fed by `createTickStream` from `bo-grid/realtime`.
+
 **Before generating non-trivial code** (new column types, a realtime feed, the
-web component), check `llms-full.txt` above rather than
-extrapolating from this summary — it has the full, current prop lists.
+web component), read the matching docs page (`/docs/<topic>.md`, listed in
+`llms.txt`) rather than extrapolating from this summary.
