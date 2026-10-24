@@ -22,8 +22,13 @@
     <div class="cards">
       {#each group.items as item (item.href)}
         <a class="card" href="{base}{item.href}">
-          <span class="title">{item.title}</span>
-          <span class="blurb">{blurb.get(item.href)}</span>
+          <span class="thumb">
+            <img src="{base}/media/examples/{item.href.split('/')[2]}.webp" alt="" width="640" height="397" loading="lazy" decoding="async" />
+          </span>
+          <span class="text">
+            <span class="title">{item.title}</span>
+            <span class="blurb">{blurb.get(item.href)}</span>
+          </span>
           <span class="go" aria-hidden="true">→</span>
         </a>
       {/each}
@@ -46,25 +51,49 @@
   }
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
   }
   .card {
     position: relative;
     display: grid;
     align-content: start;
-    gap: 6px;
-    padding: 16px 18px 18px;
+    overflow: hidden;
     background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border-radius: 10px;
     transition:
-      border-color 0.12s ease,
-      transform 0.12s ease;
+      border-color 0.15s ease,
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
   }
   .card:hover {
-    border-color: var(--accent);
-    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+    transform: translateY(-3px);
+    box-shadow: 0 20px 44px -26px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .thumb {
+    display: block;
+    aspect-ratio: 640 / 397;
+    overflow: hidden;
+    background: var(--cell);
+    border-bottom: 1px solid var(--line);
+  }
+  .thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top left;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card:hover .thumb img {
+    transform: scale(1.04);
+  }
+  .text {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px 16px;
   }
   .title {
     font-weight: 600;
@@ -77,8 +106,8 @@
   }
   .go {
     position: absolute;
-    top: 14px;
-    right: 16px;
+    right: 14px;
+    bottom: 14px;
     color: var(--text-3);
   }
   .card:hover .go {
@@ -88,7 +117,8 @@
     .card {
       transition: none;
     }
-    .card:hover {
+    .card:hover,
+    .card:hover .thumb img {
       transform: none;
     }
   }
