@@ -4,6 +4,7 @@
 // before its own keys.
 
 import type { ColumnDef, GridRow } from './column';
+import { boError } from '../errors';
 
 /** What a hotkey's handler is given. */
 export interface HotkeyContext {
@@ -70,23 +71,23 @@ export function compileHotkeys<H>(map: Readonly<Record<string, H>>): Map<string,
       rawKey = binding.slice(i + 1).trim();
       rest = i < 0 ? '' : binding.slice(0, i);
     }
-    if (!rawKey) throw new Error(`bo-grid hotkeys: no key in "${binding}"`);
+    if (!rawKey) throw boError(Error, 'BG1001', `hotkeys: no key in "${binding}".`, `End the binding with a key, e.g. 'Ctrl+B', 'Delete' or '+'.`);
     const mods = new Set<string>();
     for (const p of rest ? rest.split('+') : []) {
       const m = MODIFIERS[p.trim().toLowerCase()];
-      if (!m) throw new Error(`bo-grid hotkeys: unknown modifier "${p.trim()}" in "${binding}"`);
+      if (!m) throw boError(Error, 'BG1002', `hotkeys: unknown modifier "${p.trim()}" in "${binding}".`, 'Use Shift, Alt, Ctrl, Meta or Mod (Ctrl or ⌘), joined with +.');
       mods.add(m);
     }
     const lower = rawKey.toLowerCase();
     const key = ALIASES[lower] ?? lower;
     if (mods.has('shift') && !shiftCounts(key)) {
-      throw new Error(`bo-grid hotkeys: "${binding}" cannot fire; bind the character Shift types instead (e.g. '?' or '!')`);
+      throw boError(Error, 'BG1003', `hotkeys: "${binding}" cannot fire: a key event reports the character Shift types, not the key under it.`, `Bind that character instead, e.g. '?' for Shift+/ or '!' for Shift+1.`);
     }
     const combos = mods.has('mod')
       ? [canonical(new Set([...mods, 'ctrl']), key), canonical(new Set([...mods, 'meta']), key)]
       : [canonical(mods, key)];
     for (const combo of combos) {
-      if (out.has(combo)) throw new Error(`bo-grid hotkeys: "${binding}" binds a key already bound`);
+      if (out.has(combo)) throw boError(Error, 'BG1004', `hotkeys: "${binding}" binds a key already bound (Mod+K also binds Ctrl+K and Meta+K).`, 'Give each key one binding; remove the duplicate.');
       out.set(combo, handler);
     }
   }

@@ -4,6 +4,7 @@
 // flat opens the rest on the other side at the fill price. Unrealized P&L is
 // the position marked at a price you supply (`unrealizedPnl`), so a positions
 // grid can keep the last price as a field of the row and compute it per row.
+import { boError } from '../errors';
 
 /** One execution. */
 export interface PositionFill {
@@ -53,11 +54,11 @@ export function createPositions(): PositionBook {
   const book = new Map<string, Position>();
   return {
     fill(f) {
-      if (typeof f.symbol !== 'string' || f.symbol === '') throw new TypeError(`fill symbol must be a non-empty string, got ${String(f.symbol)}`);
-      if (f.side !== 'buy' && f.side !== 'sell') throw new TypeError(`fill side must be 'buy' or 'sell', got ${String(f.side)}`);
-      if (!(f.qty > 0) || !Number.isFinite(f.qty)) throw new RangeError(`fill qty must be a number above 0, got ${f.qty}`);
-      if (!Number.isFinite(f.price)) throw new RangeError(`fill price must be a finite number, got ${f.price}`);
-      if (f.fee !== undefined && !Number.isFinite(f.fee)) throw new RangeError(`fill fee must be a finite number, got ${f.fee}`);
+      if (typeof f.symbol !== 'string' || f.symbol === '') throw boError(TypeError, 'BG3001', `createPositions: a fill's symbol must be a non-empty string, got ${String(f.symbol)}.`, "Pass the instrument's symbol, e.g. { symbol: 'VNM', side: 'buy', qty: 100, price: 68.5 }.");
+      if (f.side !== 'buy' && f.side !== 'sell') throw boError(TypeError, 'BG3002', `createPositions: a fill's side must be 'buy' or 'sell', got ${String(f.side)}.`, "Pass side: 'buy' or side: 'sell' (lower case).");
+      if (!(f.qty > 0) || !Number.isFinite(f.qty)) throw boError(RangeError, 'BG3003', `createPositions: a fill's qty must be a number above 0, got ${f.qty}.`, "Pass the filled quantity as a positive number; the side says which way (side: 'sell', not a negative qty).");
+      if (!Number.isFinite(f.price)) throw boError(RangeError, 'BG3004', `createPositions: a fill's price must be a finite number, got ${f.price}.`, 'Pass the fill price as a number, e.g. price: 68.5 (parse strings first).');
+      if (f.fee !== undefined && !Number.isFinite(f.fee)) throw boError(RangeError, 'BG3005', `createPositions: a fill's fee must be a finite number, got ${f.fee}.`, 'Pass the fee as a number, e.g. fee: 1.2, or leave it out.');
       const p = book.get(f.symbol) ?? { symbol: f.symbol, qty: 0, avgPrice: 0, realized: 0, bought: 0, sold: 0 };
       const signed = f.side === 'buy' ? f.qty : -f.qty;
       if (f.side === 'buy') p.bought += f.qty;

@@ -28,3 +28,6 @@ export { fxPipSize, fxQuoteParts, fxQuoteHtml, pipsBetween, fxMarketOpen, fxCent
 export type { FxQuoteParts, FxCentre, PipOf } from './fx';
 
 export { CRYPTO_SCHEDULE, fmtSigPrice } from './crypto';
+
+// The errors this entry throws carry a stable `code` (BG3001…), the fix and a docs link.
+export type { BoGridError, BoGridErrorCode } from '../errors';

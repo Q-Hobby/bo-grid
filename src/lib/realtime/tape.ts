@@ -5,6 +5,7 @@
 // show, so there's nothing to coalesce). What a tape needs instead is a
 // bounded ring buffer: append forever, keep only the newest N, O(1) per push
 // regardless of how long the session runs.
+import { boError } from '../errors';
 
 const DEFAULT_CAPACITY = 500;
 
@@ -30,7 +31,7 @@ export class TradeTape<T> {
     // failing loudly" class of bug that's easy to miss in review. Reject it
     // up front instead.
     if (!Number.isFinite(capacity) || capacity < 1) {
-      throw new RangeError(`TradeTape capacity must be a positive integer, got ${capacity}`);
+      throw boError(RangeError, 'BG2004', `TradeTape: capacity must be a number of 1 or more, got ${capacity}.`, 'Pass how many trades to keep, e.g. new TradeTape(500).');
     }
     this.capacity = Math.floor(capacity);
     this.buf = new Array(this.capacity);

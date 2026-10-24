@@ -1,5 +1,6 @@
 import type { ColumnDef, GridRow } from './column';
 import { formatCell, isNumeric, cellValue } from './column';
+import { boError } from '../errors';
 
 export interface ExportOptions {
   /** Use formatted display strings instead of raw values. Default false. */
@@ -197,8 +198,13 @@ export function rowsFromObjects(objects: readonly Record<string, unknown>[]): Gr
 /** Parse a JSON array of objects into grid rows (`JSON.parse` + `rowsFromObjects`).
     Throws on invalid JSON or a non-array top level. */
 export function parseJSON(text: string): GridRow[] {
-  const data = JSON.parse(text);
-  if (!Array.isArray(data)) throw new Error('parseJSON: expected a JSON array of objects');
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw boError(SyntaxError, 'BG1103', `parseJSON: the text is not valid JSON (${(e as Error).message}).`, 'Pass the JSON text as received; for CSV or TSV text use parseCSV or parseTSV, or parseRows to detect the format.');
+  }
+  if (!Array.isArray(data)) throw boError(Error, 'BG1101', 'parseJSON: expected a JSON array of objects.', 'Pass text like [{"id":1,"sym":"AAA"}]; wrap a single object in [ ].');
   return rowsFromObjects(data);
 }
 

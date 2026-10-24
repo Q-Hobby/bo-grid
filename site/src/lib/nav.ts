@@ -106,7 +106,7 @@ export const DOCS_NAV: NavGroup[] = [
   },
   {
     title: 'Export & API',
-    items: [doc('Export & import', 'export'), doc('Grid API', 'grid-api'), doc('Props reference', 'reference'), { title: 'All exports', href: '/api.html', reload: true }],
+    items: [doc('Export & import', 'export'), doc('Grid API', 'grid-api'), doc('Props reference', 'reference'), doc('Error codes', 'errors'), { title: 'All exports', href: '/api.html', reload: true }],
   },
 ];
 

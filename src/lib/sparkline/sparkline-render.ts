@@ -1,4 +1,5 @@
 import type { Candle } from '../types';
+import { boError } from '../errors';
 
 const UP = '#34d399';
 const DOWN = '#f87171';
@@ -19,7 +20,7 @@ export function setupHiDpiCanvas(
   canvas.style.width = `${cssW}px`;
   canvas.style.height = `${cssH}px`;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('2d context unavailable');
+  if (!ctx) throw boError(Error, 'BG1201', 'sparkline: a 2d canvas context is not available here.', 'Draw sparklines in a browser; in a test environment, stub HTMLCanvasElement.prototype.getContext.');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return ctx;
 }

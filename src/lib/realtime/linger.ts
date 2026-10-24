@@ -24,6 +24,7 @@
 // again. Keys must be unique within a list. `leaving` compares the row
 // object itself, as `update` returned it. Rows still on their way out count
 // in footer totals like any other.
+import { boError } from '../errors';
 
 export interface LingerOptions<R, K> {
   /** How long a row that left stays, in ms. */
@@ -50,7 +51,7 @@ const FIRST = Symbol('first');
 
 export function createLinger<R, K>(opts: LingerOptions<R, K>): Linger<R> {
   const { ms, key, onExpire } = opts;
-  if (!(ms >= 0) || !Number.isFinite(ms)) throw new RangeError(`linger ms must be a finite number of 0 or more, got ${ms}`);
+  if (!(ms >= 0) || !Number.isFinite(ms)) throw boError(RangeError, 'BG2003', `createLinger: ms must be a finite number of 0 or more, got ${ms}.`, 'Pass how long a row lingers in milliseconds, e.g. ms: 3000 (0 removes it at once).');
   // Rows on their way out, and when they left.
   const gone = new Map<K, { row: R; at: number }>();
   let shown: readonly R[] = [];

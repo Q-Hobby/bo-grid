@@ -121,3 +121,5 @@ export type {
 
 // Shared types
 export type { Candle } from './types';
+// Errors bo-grid throws carry a stable `code` (BG1001…), the fix and a docs link.
+export type { BoGridError, BoGridErrorCode } from './errors';
