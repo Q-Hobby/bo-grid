@@ -1,7 +1,8 @@
 // Public API for `bo-grid/realtime` — everything between a market-data feed
 // and the grid: coalesced price updates, an order book kept from a depth
 // feed, a capped trade tape, rows that stay a moment after they leave a list,
-// and the windowing math for a centered/scroll-locked price ladder.
+// alerts that stay lit until acknowledged, and the windowing math for a
+// centered/scroll-locked price ladder.
 //
 // A separate entry: it adds nothing to the grid core unless you import it,
 // and it keeps its own size budget.
@@ -30,6 +31,9 @@ export type { ViewportSubscriptions, ViewportSubscriptionsOptions } from './view
 
 export { createLinger } from './linger';
 export type { Linger, LingerOptions } from './linger';
+
+export { createAlerts } from './alerts';
+export type { Alerts, AlertsOptions, Alert, CheckOptions } from './alerts';
 
 export { centeredWindow } from './ladder';
 export type { LadderWindow } from './ladder';
