@@ -151,7 +151,8 @@
   const sorts = $derived(sort ?? internalSorts);
   function setSorts(next: SortState[]): void {
     if (sort === undefined) internalSorts = next; // uncontrolled: own the state
-    onSortChange?.(next); // always notify (lets consumers observe/persist)
+    // A plain copy: state proxies cannot be cloned (posted to a worker, stored).
+    onSortChange?.($state.snapshot(next) as SortState[]); // always notify (lets consumers observe/persist)
   }
   let gridEl: HTMLDivElement;
   let viewportEl: HTMLDivElement;
@@ -227,6 +228,19 @@
     if (history.redo((e) => onCellEdit?.({ row: e.row, column: e.col, value: e.value }))) closeEdit();
   }
 
+  // A key ended the edit: the grid takes the keyboard back (the editor is
+  // gone, and the focus would fall to the page), and Tab moves along the row.
+  function afterKeyEdit(move: number): void {
+    gridEl?.focus({ preventScroll: true });
+    const f = sel.focus;
+    if (!move || !f) return;
+    const c = f.c + move;
+    const last = cols.length - 1;
+    // Past the end of the row: on to the next (or previous) row.
+    if (c > last && f.r < rowCount - 1) focusTo(f.r + 1, 0, false);
+    else if (c < 0 && f.r > 0) focusTo(f.r - 1, last, false);
+    else focusTo(f.r, Math.max(0, Math.min(last, c)), false);
+  }
   function commitEdit(r: number, c: number, rowId: string | number, raw: string) {
     if (!isOpenEdit(rowId, c)) return;
     closeEdit();
@@ -259,7 +273,18 @@
   const activeColumnFilters = $derived(columnFilters ?? internalColumnFilters);
   function setColumnFilters(next: Record<string, AnyFilter>): void {
     if (columnFilters === undefined) internalColumnFilters = next; // uncontrolled: own it
-    onFilterChange?.(next); // always notify
+    // One filter per column: a menu filter replaces the filter row's text there.
+    const typed = Object.keys(colFilters).filter((k) => k in next && colFilters[k]);
+    if (typed.length) colFilters = Object.fromEntries(Object.entries(colFilters).filter(([k]) => !typed.includes(k)));
+    onFilterChange?.($state.snapshot(next) as Record<string, AnyFilter>); // always notify, a plain copy
+  }
+  // The filter row's text for a column, which replaces a menu filter there.
+  function setRowFilter(key: string, text: string): void {
+    colFilters = { ...colFilters, [key]: text };
+    if (text && activeColumnFilters[key]) {
+      const { [key]: _gone, ...rest } = activeColumnFilters;
+      setColumnFilters(rest);
+    }
   }
 
   // Built-in quick-filter text (global, matches across all columns).
@@ -354,6 +379,9 @@
   // Pin-arrangement: pinned columns move to the edges and get sticky offsets.
   // When nothing is pinned this is a no-op and the grid stays fit-to-width.
   let viewW = $state(0);
+  // The viewport's outer width: less its client width, the vertical
+  // scrollbar's gutter (scrollbar-gutter: stable).
+  let viewOW = $state(0);
   // In fixed-width mode (pinned columns or column virtualization) flex columns
   // grow to fill the viewport, so the grid never stops short of its right edge.
   // Columns that cannot fit the viewport switch the grid to horizontal scroll
@@ -465,9 +493,6 @@
     !theme || theme === 'dark' ? '' : themeVars(theme === 'light' ? lightTheme : theme),
   );
 
-  // Screen readers track the active cell via aria-activedescendant (the focus
-  // cell is always scrolled into view, so its element exists in the DOM).
-  const activeId = $derived(sel.focus ? `${gid}-r${sel.focus.r}-c${sel.focus.c}` : undefined);
 
   // Pinned columns sit to the right of the (also-sticky) checkbox column, so
   // their sticky-left offsets shift by SEL_W when row selection is on.
@@ -1182,6 +1207,14 @@
     return untrack(() => buildFlatRows(v, gb, rowState.collapsed));
   });
 
+  // Screen readers track the active cell via aria-activedescendant (the focus
+  // cell is always scrolled into view, so its element exists in the DOM).
+  // A focus on a group header points at the group's own cell (it has no
+  // per-column cells).
+  const activeId = $derived(
+    sel.focus ? (flat[sel.focus.r]?.kind === 'group' && !source ? `${gid}-r${sel.focus.r}-g` : `${gid}-r${sel.focus.r}-c${sel.focus.c}`) : undefined,
+  );
+
   // ---- Rows that move (follow.ts) --------------------------------------------
   // The selection and an open editor belong to their rows. When the view
   // changes under them (a new `rows` array, a row added or removed above, a
@@ -1191,10 +1224,16 @@
   // sort does; an open edit whose row has left closes unwritten. A focus on a
   // group header stays where it is. In-memory mode only.
   let focusMark: { ref: unknown; focus: string | number; anchor: string | number | undefined } | null = null;
+  // A group header the focus is on, by its path, so the focus follows it too.
+  let groupMark: { ref: unknown; path: string } | null = null;
   function idAt(items: readonly VisualRow[], r: number): string | number | undefined {
     const item = items[r];
     return item?.kind === 'data' ? getRowId(item.row) : undefined;
   }
+  const pathAt = (items: readonly VisualRow[], r: number): string | undefined => {
+    const item = items[r];
+    return item?.kind === 'group' ? item.group.path : undefined;
+  };
   $effect.pre(() => {
     const items = flat;
     const f = sel.focus;
@@ -1210,6 +1249,28 @@
         }
       }
       const a = sel.anchor;
+      // A focused group header: follow it to where it is now, or clear.
+      const gm = groupMark;
+      if (f && gm && gm.ref === f) {
+        if (pathAt(items, f.r) === gm.path) return;
+        const to = items.findIndex((it) => it.kind === 'group' && it.group.path === gm.path);
+        groupMark = null;
+        if (to < 0) return sel.clear();
+        sel.anchor = { r: to, c: f.c };
+        sel.focus = { r: to, c: f.c };
+        return; // runs again for the new focus, which marks it
+      }
+      groupMark = null;
+      if (f && pathAt(items, f.r) !== undefined) {
+        groupMark = { ref: f, path: pathAt(items, f.r) as string };
+        focusMark = null;
+        return;
+      }
+      // A focus past the rows (they shrank under it) has nothing to follow.
+      if (f && f.r >= items.length && items.length > 0) {
+        focusMark = null;
+        return sel.clear();
+      }
       const mark = focusMark;
       if (f && a && mark && mark.ref === f) {
         const moved = idAt(items, f.r) !== mark.focus || (mark.anchor !== undefined && idAt(items, a.r) !== mark.anchor);
@@ -1558,7 +1619,8 @@
     const f = filter;
     const cf = activeColumnFilters;
     const q = quickText;
-    void ctrl.fetch(range, s, f, cf, q);
+    // Plain copies: a source may post them to a worker or store them.
+    void ctrl.fetch(range, $state.snapshot(s) as SortState[], f, $state.snapshot(cf) as Record<string, AnyFilter>, q);
   });
 
   function dataAt(r: number): GridRow | null {
@@ -1661,6 +1723,15 @@
   function toggleGroup(path: string) {
     rowState.toggleCollapsed(path);
     sel.clear();
+  }
+  // A click on a group header toggles it and puts the keyboard focus there,
+  // so the arrows go on from the group the user just used.
+  function clickGroup(vr: number, path: string): void {
+    const c = sel.focus?.c ?? 0;
+    if (lazyGrouped) toggleLazyGroup(path);
+    else rowState.toggleCollapsed(path);
+    focusTo(vr, c, false);
+    gridEl?.focus({ preventScroll: true });
   }
   // The sticky copy shows a group whose header row has scrolled above the
   // view: toggled from there, the view moves to that header row, so the group
@@ -2304,6 +2375,10 @@
         if (item?.kind !== 'data' || !item.hasChildren) return null;
         return rowState.isExpanded(getRowId(item.row)) ? 'open' : 'closed';
       },
+      groupNode: (r) => {
+        const item = source ? undefined : flat[r];
+        return item?.kind === 'group' ? (item.group.collapsed ? 'closed' : 'open') : null;
+      },
     };
   }
   /** Where the focused cell is on screen, for a menu opened from the keyboard. */
@@ -2397,6 +2472,16 @@
         if (item?.kind === 'data') toggleTreeNode(item.row);
         return;
       }
+      case 'toggleGroup': {
+        const item = flat[a.r];
+        if (item?.kind !== 'group') return;
+        // The group header keeps the focus: it stays at its index.
+        const f = sel.focus;
+        if (lazyGrouped) toggleLazyGroup(item.group.path);
+        else rowState.toggleCollapsed(item.group.path);
+        if (f) focusTo(a.r, f.c, false);
+        return;
+      }
       case 'focus':
         return focusTo(a.r, a.c, a.extend);
       case 'move':
@@ -2414,12 +2499,14 @@
     return () => window.removeEventListener('pointerup', up);
   });
 
-  // Positional selection: clear it whenever the row order/contents shift.
+  // A new data source clears the selection and closes the editor. A sort, a
+  // filter or a collapse does not: the focus, the range and the editor follow
+  // their rows, and clear when their row leaves (see "Rows that move" above).
   $effect(() => {
-    filter;
-    sorts;
-    rowState.collapseVersion;
     source;
+    // A source reloads its rows on a new sort or filter, and nothing follows
+    // rows there (the rows on screen are just an index window): clear.
+    if (source) void [sorts, filter, activeColumnFilters, quickText];
     untrack(() => {
       sel.clear();
       closeEdit();
@@ -2591,7 +2678,7 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <span
             class="funnel"
-            class:on={isFilterActive(activeColumnFilters[col.key], filterTypes)}
+            class:on={isFilterActive(activeColumnFilters[col.key], filterTypes) || !!colFilters[col.key]?.trim()}
             role="button"
             tabindex="-1"
             aria-label={L.filterFor(col.header)}
@@ -2649,10 +2736,10 @@
             <input
               class="fr-input"
               type="search"
-              placeholder="filter…"
+              placeholder={L.filterPlaceholder}
               aria-label={L.filterFor(col.header)}
               value={colFilters[col.key] ?? ''}
-              oninput={(e) => (colFilters = { ...colFilters, [col.key]: e.currentTarget.value })}
+              oninput={(e) => setRowFilter(col.key, e.currentTarget.value)}
             />
           {/if}
         </span>
@@ -2668,6 +2755,7 @@
     style="{heightIsPx ? `height:${height}px` : 'flex:1 1 auto;min-height:0'};{hScroll ? 'overflow-x:auto;' : ''}--bo-view-w:{viewW}px;--bo-view-h:{viewH}px;"
     bind:this={viewportEl}
     bind:clientWidth={viewW}
+    bind:offsetWidth={viewOW}
     bind:clientHeight={viewH}
     onscroll={onScroll}
     onpointerover={hasTooltips || columnHover ? onViewportOver : undefined}
@@ -2733,7 +2821,10 @@
         {/each}
       </div>
     {/if}
-    <div class="spacer" bind:this={spacerEl} style="height:{total}px;{hScroll ? `width:${layout.totalWidth + leadPx}px;` : ''}">
+    <!-- Sideways, the content runs a scrollbar gutter past the last column:
+         Chrome counts the gutter against the scroll range, which would leave
+         the last column's edge under the scrollbar (or a right-pinned one). -->
+    <div class="spacer" bind:this={spacerEl} style="height:{total}px;{hScroll ? `width:${layout.totalWidth + leadPx + Math.max(0, viewOW - viewW)}px;` : ''}">
       {#if hoverBox}<div class="colwash" class:pin={hoverBox.pinned} aria-hidden="true" style="left:{hoverBox.left}px;width:{hoverBox.width}px"></div>{/if}
       {#each renderItems as item (rowSlots ? item.vr % rowSlots : item.vr)}
         {#if item.kind === 'group'}
@@ -2741,7 +2832,7 @@
             {#if rowNumbers}<span class="numcell" aria-hidden="true" style={numCellStyle(false)}></span>{/if}
             {#if expandable}<span class="expandcell" aria-hidden="true" style={expandCellStyle(false)}></span>{/if}
             {#if rowSelection}<span class="selcell" aria-hidden="true" style={selCellStyle(false)}></span>{/if}
-            <GroupRow version={live.dataVersion} group={item.group} columns={cols} onToggle={lazyGrouped ? toggleLazyGroup : toggleGroup} rowIndex={item.vr + 2} colStart={1 + leadCols} cellStyle={groupCellStyle} />
+            <GroupRow version={live.dataVersion} group={item.group} columns={cols} onToggle={(path) => clickGroup(item.vr, path)} rowIndex={item.vr + 2} colStart={1 + leadCols} cellStyle={groupCellStyle} cellId="{gid}-r{item.vr}-g" focused={sel.focus?.r === item.vr} />
           </div>
         {:else if item.kind === 'skeleton'}
           <div class="row skeleton" role="row" aria-rowindex={item.vr + 2} aria-hidden="true" style="top:{hm.offsetOf(item.vr)}px;height:{hm.heightOf(item.vr)}px;{rowWidthStyle}">
@@ -2860,6 +2951,7 @@
                     if (editing?.r !== item.vr || editing?.c !== ci) return;
                     closeEdit();
                   }}
+                  onEditKeyDone={afterKeyEdit}
                 />
                 {/if}
               {:else}

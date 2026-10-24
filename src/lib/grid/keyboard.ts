@@ -21,6 +21,7 @@ export type KeyAction =
   | { kind: 'rowMenu'; items: MenuItem[] }
   | { kind: 'columnMenu'; c: number }
   | { kind: 'toggleTree'; r: number }
+  | { kind: 'toggleGroup'; r: number }
   | { kind: 'focus'; r: number; c: number; extend: boolean }
   | { kind: 'move'; dr: number; dc: number; extend: boolean };
 
@@ -48,6 +49,8 @@ export interface KeyState {
   rowMenuItems(r: number): MenuItem[];
   /** A tree row with children: whether it is open; null otherwise. */
   treeNode(r: number): 'open' | 'closed' | null;
+  /** A group header row: whether it is open; null otherwise. */
+  groupNode(r: number): 'open' | 'closed' | null;
 }
 
 type Keys = Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>;
@@ -65,10 +68,21 @@ export function keyAction(e: Keys, s: KeyState): KeyAction | null {
   const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
   const f = s.focus;
+  // A group header: Enter / Space toggle it, ArrowRight opens and ArrowLeft
+  // closes it (as a tree node); the other keys move on as usual.
+  const group = f && !s.editing && !e.shiftKey && !mod && !e.altKey ? s.groupNode(f.r) : null;
+  if (f && group) {
+    const open = group === 'open';
+    if (e.key === 'Enter' || e.key === ' ' || (e.key === 'ArrowRight' && !open) || (e.key === 'ArrowLeft' && open)) {
+      return { kind: 'toggleGroup', r: f.r };
+    }
+  }
   if (e.key === 'Enter' && f && !s.editing) {
     if (s.canEdit(f.c)) return { kind: 'edit', r: f.r, c: f.c, seed: null };
     if (s.rowClick && s.hasRow(f.r)) return { kind: 'rowClick', r: f.r };
   }
+  // F2 edits the focused cell, as in a spreadsheet.
+  if (e.key === 'F2' && f && !s.editing && s.canEdit(f.c)) return { kind: 'edit', r: f.r, c: f.c, seed: null };
   // Space ticks the focused row when the checkbox column is on.
   if (e.key === ' ' && s.rowSelection && f && !s.editing && s.hasRow(f.r)) return { kind: 'toggleRow', r: f.r };
   // Type-to-edit, as in a spreadsheet.

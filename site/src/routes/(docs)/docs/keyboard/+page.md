@@ -23,6 +23,7 @@ Click a row, then press <kbd>B</kbd>, <kbd>S</kbd> or <kbd>Delete</kbd>; <kbd>Sh
 | <kbd>Home</kbd> / <kbd>End</kbd> | First / last column; with <kbd>Ctrl/⌘</kbd>, the first / last cell |
 | <kbd>PageUp</kbd> / <kbd>PageDown</kbd> | Move by a page of rows |
 | <kbd>Enter</kbd> | Edit the focused cell, or run `onRowClick` on a read-only one |
+| <kbd>F2</kbd> | Edit the focused cell |
 | A printable key | Start editing the focused cell with that character |
 | <kbd>Space</kbd> | Tick the focused row (with `rowSelection`) |
 | <kbd>Ctrl/⌘</kbd>+<kbd>A</kbd> / <kbd>C</kbd> / <kbd>V</kbd> | Select all / copy / paste |
@@ -31,9 +32,10 @@ Click a row, then press <kbd>B</kbd>, <kbd>S</kbd> or <kbd>Delete</kbd>; <kbd>Sh
 | <kbd>Alt</kbd>+<kbd>↓</kbd> | Open the column menu (with `columnMenu`) |
 | <kbd>ContextMenu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the row menu (with `rowMenu` or `rowPinning`) |
 | <kbd>→</kbd> / <kbd>←</kbd> on a tree row | Expand / collapse it |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> / <kbd>→</kbd> / <kbd>←</kbd> on a group header | Toggle / expand / collapse the group |
 | <kbd>Escape</kbd> | Clear the selection, or close a menu |
 
-While a cell is being edited, keys belong to the editor: <kbd>Enter</kbd> saves and <kbd>Escape</kbd> cancels. Headers are focusable too: <kbd>Enter</kbd> or <kbd>Space</kbd> sorts, with <kbd>Shift</kbd> to add a sort key. Menus follow the usual menu pattern (arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes and returns focus). Screen-reader semantics are in [Accessibility](../accessibility/).
+While a cell is being edited, keys belong to the editor: <kbd>Enter</kbd> saves, <kbd>Tab</kbd> saves and moves to the next cell (<kbd>Shift</kbd>+<kbd>Tab</kbd>: the previous one), and <kbd>Escape</kbd> cancels. Each of them gives the keyboard back to the grid. Headers are focusable too: <kbd>Enter</kbd> or <kbd>Space</kbd> sorts, with <kbd>Shift</kbd> to add a sort key. Menus follow the usual menu pattern (arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes and returns focus). Screen-reader semantics are in [Accessibility](../accessibility/).
 
 ## Hotkeys
 

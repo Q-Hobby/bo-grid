@@ -35,9 +35,11 @@ Keep the rows in `$state` so the cell shows the new value once you write it. The
 
 ## Opening and closing the editor
 
-- Double-click a cell, or press <kbd>Enter</kbd> on the focused cell.
+- Double-click a cell, or press <kbd>Enter</kbd> or <kbd>F2</kbd> on the focused cell.
 - Start typing on a focused cell: the editor opens with that character, as in a spreadsheet. (Date and dropdown editors open with <kbd>Enter</kbd> or a double-click.)
-- <kbd>Enter</kbd> or leaving the cell saves; <kbd>Escape</kbd> cancels.
+- <kbd>Enter</kbd> or leaving the cell saves; <kbd>Tab</kbd> saves and moves to the next cell (on to the next row at the end of one); <kbd>Escape</kbd> cancels. The grid keeps the keyboard afterwards.
+- Picking an option in a dropdown with the pointer saves at once; with the arrow keys, <kbd>Enter</kbd> saves.
+- What you type is yours until you save: a live update to the cell does not overwrite it.
 
 ## The editor for each type
 
@@ -45,7 +47,7 @@ The editor matches the column:
 
 | Column | Editor | `e.value` |
 | --- | --- | --- |
-| Number types (`number`, `price`, `percent`, `volume`, `currency`, `heatmap`) | number input | a number; text that is not a number is refused |
+| Number types (`number`, `price`, `percent`, `volume`, `currency`, `heatmap`) | a text input with a numeric keypad, so `-` and `.` type as expected | a number; a blank, or text that is not a number, is refused |
 | `date` | the browser's date picker | epoch milliseconds |
 | Any column with `options` | a dropdown | the chosen string |
 | Everything else | text input | the typed string |

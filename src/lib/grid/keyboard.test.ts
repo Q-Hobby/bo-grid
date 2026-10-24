@@ -22,6 +22,7 @@ function state(over: Partial<KeyState> = {}): KeyState {
     hasRow: () => true,
     rowMenuItems: () => [],
     treeNode: () => null,
+    groupNode: () => null,
     ...over,
   };
 }
@@ -105,6 +106,17 @@ describe('keyAction: menus and trees', () => {
     expect(keyAction(press('ArrowLeft'), state({ treeNode: () => 'open' }))).toEqual({ kind: 'toggleTree', r: 2 });
     expect(keyAction(press('ArrowRight'), state({ treeNode: () => 'open' }))).toEqual({ kind: 'move', dr: 0, dc: 1, extend: false });
     expect(keyAction(press('ArrowLeft'), state({ treeNode: () => 'closed' }))).toEqual({ kind: 'move', dr: 0, dc: -1, extend: false });
+  });
+
+  it('a group header: Enter / Space toggle it, ArrowRight opens and ArrowLeft closes it', () => {
+    const open = state({ groupNode: () => 'open', canEdit: () => true });
+    const closed = state({ groupNode: () => 'closed' });
+    expect(keyAction(press('Enter'), open)).toEqual({ kind: 'toggleGroup', r: 2 });
+    expect(keyAction(press(' '), closed)).toEqual({ kind: 'toggleGroup', r: 2 });
+    expect(keyAction(press('ArrowLeft'), open)).toEqual({ kind: 'toggleGroup', r: 2 });
+    expect(keyAction(press('ArrowRight'), closed)).toEqual({ kind: 'toggleGroup', r: 2 });
+    expect(keyAction(press('ArrowRight'), open)).toEqual({ kind: 'move', dr: 0, dc: 1, extend: false });
+    expect(keyAction(press('ArrowDown'), open)).toEqual({ kind: 'move', dr: 1, dc: 0, extend: false });
   });
 });
 
