@@ -5,6 +5,33 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-10-24
+
+**New docs, and a search box that works with a server.** The docs are now
+a site with a page per feature, each with a live example, its code and a
+props table generated from the types, and every page is also published as
+Markdown for AI coding agents. The quick-filter box now reaches a server
+source. A minor release: nothing was removed or renamed.
+
+### Added
+
+- **Docs site** at [bonguynvan.github.io/bo-grid](https://bonguynvan.github.io/bo-grid/):
+  47 topic pages (columns, rows, filtering, editing, grouping, realtime,
+  trading, large data, styling, export) with live examples, a props
+  reference generated from the types, search, and every example on a page
+  of its own.
+- **Docs for coding agents:** a `.md` twin of every page and a Copy page
+  button; `llms.txt` and `llms-full.txt` generated from the pages;
+  `/api.json`, every prop, column option and API method with its type,
+  default and docs; an "AI coding agents" page; and current editor rules in
+  `docs/ai`.
+- **TSDoc on every `<Grid>` prop and column option**, including `rows`,
+  `columns`, `cellTypes`, `filter`, `groupBy`, `aggregations`,
+  `persistKey`, `header` and `maxWidth`, which had none. Editors and agents
+  read it from the installed types.
+- **`labels.quickFilterPlaceholder`**: the quick-filter box's placeholder,
+  until now a fixed "Search…", can be translated.
+
 ### Fixed
 
 - **The quick-filter box works with a server source.** With `source`, the
@@ -13,12 +40,6 @@ All notable changes to this project are documented here. Format follows
   `quickFilter`, next to `filter` (the `filter` prop's text): a row should
   match both. `createArraySource` applies both. A source that builds its
   query from `filter` alone should read `quickFilter` too.
-
-### Added
-
-- **`labels.quickFilterPlaceholder`**: the quick-filter box's placeholder,
-  until now a fixed "Search…", can be translated.
-- **Docs: a Pinned rows page** (`pinnedRows`, `rowPinning`, `api.pinRow`).
 
 ## [2.8.0] — 2026-10-24
 
