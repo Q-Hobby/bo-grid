@@ -201,7 +201,7 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
           <tr><td>filter</td><td><span class="type">string</span></td><td>Quick-filter; matches across column values. Default <code>''</code>.</td></tr>
           <tr><td>filterRow</td><td><span class="type">boolean</span></td><td>Per-column filter input row under the header (AND across columns). In-memory mode only.</td></tr>
           <tr><td>filterMenu</td><td><span class="type">boolean</span></td><td>Header filter menu (funnel per column) with type-aware controls (text/number/date) + set filter (<code>col.filter: 'set'</code>). Lazy-loaded on first open. In-memory mode only.</td></tr>
-          <tr><td>quickFilter</td><td><span class="type">boolean</span></td><td>Built-in search box above the grid; matches across all columns (ANDed with <code>filter</code>). In-memory mode only.</td></tr>
+          <tr><td>quickFilter</td><td><span class="type">boolean</span></td><td>Built-in search box above the grid; matches across all columns (ANDed with <code>filter</code>). With a <code>source</code>, its text reaches <code>getRows</code> as <code>quickFilter</code>.</td></tr>
           <tr><td>fillHandle</td><td><span class="type">boolean</span></td><td>Excel-style fill handle at the selection's corner; drag to copy the selected value(s) across (editable columns). In-memory mode only.</td></tr>
           <tr><td>columnMenu</td><td><span class="type">boolean</span></td><td>Per-column header menu (⋮ or <kbd>Alt</kbd>+<kbd>↓</kbd>): sort, pin, autosize, hide (all runtime).</td></tr>
           <tr><td>columnsPanel</td><td><span class="type">boolean</span></td><td>A "Columns" button opening a checklist panel to toggle column visibility (restore hidden columns). Lazy-loaded.</td></tr>
@@ -603,12 +603,14 @@ rows = tape.toArray();</code></pre>
     range: { start: number; end: number };  <span class="tok-com">// half-open window</span>
     sort: SortState | <span class="tok-key">null</span>;       <span class="tok-com">// primary key (= sorts[0])</span>
     sorts?: SortState[];           <span class="tok-com">// full multi-column order</span>
-    filter: string;
+    filter: string;                <span class="tok-com">// the filter prop's text</span>
+    quickFilter?: string;          <span class="tok-com">// the built-in search box's text; match both</span>
+    columnFilters?: Record&lt;string, AnyFilter&gt;; <span class="tok-com">// filter menu, by column key</span>
   }): RowSourceResult | Promise&lt;RowSourceResult&gt;;
 }
 <span class="tok-key">interface</span> RowSourceResult { rows: GridRow[]; total: number; }</code></pre>
       <pre><code><span class="tok-key">const</span> source: RowSource = {
-  <span class="tok-key">async</span> getRows({ range, sort, filter }) {
+  <span class="tok-key">async</span> getRows({ range, sort, filter, quickFilter }) {
     <span class="tok-key">const</span> r = <span class="tok-key">await</span> fetch(<span class="tok-str">`/api/rows?offset=${range.start}&limit=${range.end - range.start}`</span>);
     <span class="tok-key">return</span> r.json(); <span class="tok-com">// { rows, total }</span>
   },

@@ -1490,7 +1490,8 @@
     const s = sorts;
     const f = filter;
     const cf = activeColumnFilters;
-    void ctrl.fetch(range, s, f, cf);
+    const q = quickText;
+    void ctrl.fetch(range, s, f, cf, q);
   });
 
   function dataAt(r: number): GridRow | null {
@@ -2346,7 +2347,7 @@
         <input
           class="bo-quickfilter"
           type="search"
-          placeholder="Search…"
+          placeholder={L.quickFilterPlaceholder}
           aria-label={L.quickFilter}
           bind:value={quickText}
         />

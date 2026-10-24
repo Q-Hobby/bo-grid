@@ -23,11 +23,11 @@ Instead of an array of rows, a grid can read from a **row source**: an object wi
   import { Grid, type RowSource } from 'bo-grid';
 
   const source: RowSource = {
-    async getRows({ range, sorts, filter, columnFilters }) {
+    async getRows({ range, sorts, filter, quickFilter, columnFilters }) {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ offset: range.start, limit: range.end - range.start, sorts, filter, columnFilters }),
+        body: JSON.stringify({ offset: range.start, limit: range.end - range.start, sorts, filter, quickFilter, columnFilters }),
       });
       return res.json(); // { rows, total }
     },
@@ -45,13 +45,14 @@ Instead of an array of rows, a grid can read from a **row source**: an object wi
 | `sorts` | The full sort order, primary first (may be empty) |
 | `sort` | The primary sort, or `null`, for sources that sort by one column |
 | `filter` | The grid's `filter` text |
+| `quickFilter` | The text in the built-in search box (`quickFilter`); a row should match both |
 | `columnFilters` | The column filters from the filter menu, by column key |
 
-When the sort or a filter changes, the grid drops what it has loaded and asks again. A slow answer to an old request is ignored once a newer one is out.
+When the sort or a filter changes, the grid drops what it has loaded and asks again, on every change of the search text too: debounce in your source if your server needs fewer requests. A slow answer to an old request is ignored once a newer one is out.
 
 ## What runs where
 
-- **Sorting and filtering** belong to the source: header sorts and the text, number and date filter menus are sent to `getRows`. The quick search box and the filter row are for in-memory data; to search a source, pass `filter` from your own input, as the example does. A set filter needs the column's values, so it is for in-memory data too.
+- **Sorting and filtering** belong to the source: header sorts and the text, number and date filter menus are sent to `getRows`. The built-in search box sends its text as `quickFilter`, and your own search input can pass `filter`, as the example does. The filter row is for in-memory data. A set filter needs the column's values, so it is for in-memory data too.
 - **Grouping, tree data, the totals row, the fill handle and find** work on in-memory rows and are not applied in source mode.
 - `api.scrollToRow` and `api.focusCell` look rows up by id among in-memory rows, so in source mode they return `false`.
 
@@ -68,7 +69,7 @@ const source = createArraySource(allRows, {
 });
 ```
 
-It applies the sorts and column filters, searches `filterKeys` for the `filter` text (no `filterKeys`: no text search), and slices the range. Pass `filterTypes` to apply [custom filters](../custom-filters/) too.
+It applies the sorts and column filters, searches `filterKeys` for the `filter` and `quickFilter` text (no `filterKeys`: no text search), and slices the range. Pass `filterTypes` to apply [custom filters](../custom-filters/) too.
 
 ## A million rows
 

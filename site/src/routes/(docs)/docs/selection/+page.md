@@ -82,25 +82,11 @@ For a list beside a detail view, drive `selectedRowId` (by `getRowId`) to highli
 
 ## Pinned rows
 
-`pinnedRows` keeps rows of your own above the scroll, always visible: a benchmark, a summary, "your position". They use the grid's columns and `rowClass` but are display-only, and their ids must not collide with ids in `rows`.
-
-```svelte
-<Grid {rows} {columns} height={480} pinnedRows={[benchmark]} />
-```
-
-`rowPinning` lets readers pin rows themselves, such as the symbols they watch on a long board: right-clicking a row offers **Pin to top**, and **Unpin** on a pinned row, ahead of any `rowMenu` items.
-
-- A pinned row shows above the scroll and also stays in its place in the body; it keeps updating, `api.patchRows` included.
-- Pins are remembered with `persistKey` and carried by `getState()` and `applyState()`.
-- `onRowPinChange(ids)` reports changes; `api.pinRow(id, pinned?)` and `api.getPinnedRowIds()` do the same from code.
-
-```svelte
-<Grid {rows} {columns} height={480} rowPinning persistKey="watchlist" onRowPinChange={(ids) => save(ids)} />
-```
+Rows can stay above the scroll, whether rows of your own (`pinnedRows`) or rows readers pin from the row menu (`rowPinning`): see [Pinned rows](../pinned-rows/).
 
 ## Reference
 
-<Props names={['cellSelection', 'fillHandle', 'aggregations', 'footer', 'selectedRowId', 'onRowClick', 'onCellClick', 'pinnedRows', 'rowPinning', 'onRowPinChange', 'onCellEdit']} />
+<Props names={['cellSelection', 'fillHandle', 'aggregations', 'footer', 'selectedRowId', 'onRowClick', 'onCellClick', 'onCellEdit']} />
 
 <Props of="column" names={['groupAgg', 'editable']} />
 

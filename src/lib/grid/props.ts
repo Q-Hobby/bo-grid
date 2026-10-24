@@ -125,8 +125,8 @@ export interface GridPropsDef {
       filters need in-memory data. Default false. */
   filterMenu?: boolean;
   /** Show a built-in quick-filter search box above the grid that matches across
-      all column values (ANDed with the `filter` prop). In-memory mode only.
-      Default false. */
+      all column values (ANDed with the `filter` prop). With a `source`, its
+      text is sent to `getRows` as `quickFilter`. Default false. */
   quickFilter?: boolean;
   /** Show an Excel-style fill handle at the selection's bottom-right corner;
       drag it to copy the selected value(s) across the extended range (editable

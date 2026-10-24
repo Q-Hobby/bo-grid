@@ -29,10 +29,11 @@ export class RowSourceController {
   private keyOf(
     sorts: readonly SortState[],
     filter: string,
-    columnFilters?: Record<string, AnyFilter>,
+    columnFilters: Record<string, AnyFilter> | undefined,
+    quickFilter: string,
   ): string {
     const cf = columnFilters ? JSON.stringify(columnFilters) : '';
-    return `${sorts.map((s) => `${s.key}:${s.dir}`).join(',')}|${filter}|${cf}`;
+    return JSON.stringify([sorts.map((s) => `${s.key}:${s.dir}`), filter, quickFilter, cf]);
   }
 
   async fetch(
@@ -40,8 +41,9 @@ export class RowSourceController {
     sorts: SortState[],
     filter: string,
     columnFilters?: Record<string, AnyFilter>,
+    quickFilter = '',
   ): Promise<void> {
-    const key = this.keyOf(sorts, filter, columnFilters);
+    const key = this.keyOf(sorts, filter, columnFilters, quickFilter);
     if (key !== this.key) {
       this.key = key;
       this.cache.clear();
@@ -60,7 +62,7 @@ export class RowSourceController {
 
     const id = ++this.reqId;
     this.loading = true;
-    const res = await this.source.getRows({ range, sort: sorts[0] ?? null, sorts, filter, columnFilters });
+    const res = await this.source.getRows({ range, sort: sorts[0] ?? null, sorts, filter, quickFilter, columnFilters });
     if (id !== this.reqId) return; // a newer request superseded this one
 
     this.total = res.total;
