@@ -15,29 +15,55 @@ const checker = program.getTypeChecker();
 
 const flat = (s) => s.replace(/\s+/g, ' ').trim();
 
-/** The text after "Default"/"Defaults to" in a doc, when it is short enough to be a value. */
-function defaultOf(doc) {
-  const m = /\bDefaults? (?:to |is )?(.+?)(?:\.(?:\s|$)|;|$)/.exec(doc);
-  return m && m[1].length <= 32 ? m[1].trim() : undefined;
+// Every member is documented, every optional value states its `@default`,
+// and every member whose type is more than a plain value has an `@example`,
+// so the types alone are enough to use the API. A gap fails the build.
+const gaps = [];
+
+/** A type a value is written as directly: boolean, number, string, a literal, or a union of them. */
+function isPlain(type) {
+  if (!type) return false;
+  if (ts.isUnionTypeNode(type)) return type.types.every(isPlain);
+  if (ts.isLiteralTypeNode(type)) return true;
+  return [ts.SyntaxKind.BooleanKeyword, ts.SyntaxKind.NumberKeyword, ts.SyntaxKind.StringKeyword].includes(type.kind);
 }
 
-function docOf(node) {
+/** A callback, snippet or component: nothing to default to. */
+function isCallable(node) {
+  if (ts.isMethodSignature(node)) return true;
+  const t = node.type;
+  return !!t && (ts.isFunctionTypeNode(t) || (ts.isTypeReferenceNode(t) && ['Snippet', 'Component'].includes(t.typeName.getText())));
+}
+
+function commentOf(node) {
   const sym = node.name && checker.getSymbolAtLocation(node.name);
-  if (!sym) return '';
-  return flat(ts.displayPartsToString(sym.getDocumentationComment(checker)));
+  if (!sym) return { doc: '', tags: {} };
+  const tags = Object.fromEntries(sym.getJsDocTags(checker).map((t) => [t.name, ts.displayPartsToString(t.text).trim()]));
+  return { doc: flat(ts.displayPartsToString(sym.getDocumentationComment(checker))), tags };
 }
 
-function memberOf(node, sf) {
+function memberOf(node, sf, where) {
   const name = node.name.getText(sf);
-  const doc = docOf(node);
-  if (ts.isMethodSignature(node)) {
+  const { doc, tags } = commentOf(node);
+  const at = `${where}.${name}`;
+  if (!doc) gaps.push(`${at}: no doc comment`);
+  if (ts.isMethodSignature(node) && where === 'GridApi') {
+    if (!tags.example) gaps.push(`${at}: no @example`);
     const params = node.parameters.map((p) => flat(p.getText(sf))).join(', ');
     const ret = node.type ? flat(node.type.getText(sf)) : 'void';
-    return { name, signature: `${name}(${params}): ${ret}`, doc };
+    return { name, signature: `${name}(${params}): ${ret}`, doc, ...(tags.example && { example: tags.example }) };
   }
-  const entry = { name, type: node.type ? flat(node.type.getText(sf)) : 'unknown', required: !node.questionToken, doc };
-  const def = defaultOf(doc);
-  if (def) entry.default = def;
+  const required = !node.questionToken;
+  if (!required && !isCallable(node) && !tags.default) gaps.push(`${at}: optional, but no @default`);
+  if (!isPlain(node.type) && !tags.example) gaps.push(`${at}: no @example (its type is not a plain value)`);
+  const type = ts.isMethodSignature(node)
+    ? `(${node.parameters.map((p) => flat(p.getText(sf))).join(', ')}) => ${node.type ? flat(node.type.getText(sf)) : 'void'}`
+    : node.type
+      ? flat(node.type.getText(sf))
+      : 'unknown';
+  const entry = { name, type, required, doc };
+  if (tags.default) entry.default = tags.default;
+  if (tags.example) entry.example = tags.example;
   return entry;
 }
 
@@ -52,7 +78,7 @@ function findDecl(sf, name) {
 
 function membersOf(file, name) {
   const sf = program.getSourceFile(file);
-  return findDecl(sf, name).members.filter((m) => m.name).map((m) => memberOf(m, sf));
+  return findDecl(sf, name).members.filter((m) => m.name).map((m) => memberOf(m, sf, name));
 }
 
 /** Each column `type` with the options it adds to the shared column props. */
@@ -65,7 +91,9 @@ function columnTypes() {
     if (!lit) continue;
     const typeMember = lit.members.find((m) => m.name?.getText(sf) === 'type');
     const literal = typeMember?.type && ts.isLiteralTypeNode(typeMember.type) ? typeMember.type.literal.text : undefined;
-    const options = lit.members.filter((m) => m !== typeMember && m.name && !ts.isIndexSignatureDeclaration(m)).map((m) => memberOf(m, sf));
+    const options = lit.members
+      .filter((m) => m !== typeMember && m.name && !ts.isIndexSignatureDeclaration(m))
+      .map((m) => memberOf(m, sf, `ColumnDef[type: '${literal ?? 'cellType'}']`));
     types.push({ type: literal ?? '(cellType)', options });
   }
   return types;
@@ -83,6 +111,11 @@ const manifest = {
   },
   api: { description: 'Methods of the grid handle (GridApi): from onReady in Svelte, the ref in React and Vue, onReady in the element config.', methods: membersOf('src/lib/grid/api.ts', 'GridApi') },
 };
+
+if (gaps.length) {
+  console.error(`api-manifest: ${gaps.length} gap(s) in the TSDoc of the public API:\n  ${gaps.join('\n  ')}`);
+  process.exit(1);
+}
 
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`);

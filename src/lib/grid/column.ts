@@ -15,55 +15,90 @@ export interface ShowChangeOptions {
   ms?: number;
 }
 
+// Each option's TSDoc is its reference (the docs site and /api.json are built
+// from it): `@default` on every optional value, `@example` on every option
+// whose type is more than a plain value. scripts/api-manifest.mjs fails the
+// build on a gap.
 export interface ColBase {
-  /** Field on the row to read for this column's value. */
+  /** Field on the row to read for this column's value. Also the column's id:
+      sort, filter, width and hidden state are keyed by it. */
   key: string;
   /** The column's title in the header row. */
   header: string;
   /** BCP 47 locale for this column's built-in formatting (`price`, `date`,
-      `currency`, `relative`). Defaults to the grid's `locale`, then `en-US`. */
+      `currency`, `relative`). Unset, the grid's `locale`, then `en-US`.
+      @default undefined */
   locale?: string;
   /** Computed value: derive this cell's value from the whole row instead of
       reading `row[key]` (KPIs, ratios, deltas). Flows through display, sort,
       filter, aggregation, export and conditional formatting. `key` still names
       the column (and is the sort/filter key) but need not be a real row field.
       Keep it cheap and pure — it's called during sort/filter. Computed columns
-      aren't editable. In-memory mode (a server source owns its own derivations). */
+      aren't editable. In-memory mode (a server source owns its own derivations).
+      @example
+      { type: 'percent', key: 'chg', header: 'Chg %', value: (row) => ((Number(row.last) - Number(row.ref)) / Number(row.ref)) * 100 } */
   value?: (row: GridRow) => unknown;
   /** Merge this column's cell down over adjacent rows. `true` joins rows with
       equal (non-blank) values; a function decides for each adjacent pair.
       Hierarchical: a run also breaks wherever a spanning column to its left
       breaks, and at group headers. A drawing rule only — sort, filter, copy and
-      export still see every row's own value. In-memory mode only. */
+      export still see every row's own value. In-memory mode only.
+      @default false
+      @example
+      { type: 'text', key: 'account', header: 'Account', spanRows: true } */
   spanRows?: boolean | ((a: GridRow, b: GridRow) => boolean);
-  /** How many columns this cell covers for a given row (default 1). Covered
-      cells are not drawn. Clamped at a pinned/scrolling boundary and the last
-      column; the leftmost claim wins. Ignored under `virtualizeColumns`. */
+  /** How many columns this cell covers for a given row (1 when unset).
+      Covered cells are not drawn. Clamped at a pinned/scrolling boundary and
+      the last column; the leftmost claim wins. Ignored under
+      `virtualizeColumns`.
+      @example
+      { type: 'text', key: 'sym', header: 'Symbol', colSpan: (row) => (row.kind === 'note' ? 4 : 1) } */
   colSpan?: (row: GridRow) => number;
-  /** Fixed width in px. Ignored when `flex` is set. */
+  /** Width in px. A `flex` column starts from it where columns have fixed
+      widths (pinned columns, `virtualizeColumns`), and `fitColumns` scales
+      columns in proportion to it.
+      @default 96 */
   width?: number;
-  /** Smallest width (px) a drag-resize can give this column. */
+  /** Smallest width (px) a drag-resize or autosize can give this column;
+      never less than 48. Under `fitColumns`, also the narrowest the column
+      gets before the grid scrolls sideways (64 px without one, or the
+      column's `width` if smaller).
+      @default 48 */
   minWidth?: number;
-  /** Largest width (px) a drag-resize can give this column. */
+  /** Largest width (px) a drag-resize, an autosize, `autoWidth` or
+      `fitColumns` can give this column.
+      @default Infinity */
   maxWidth?: number;
-  /** flex-grow weight; column stretches to fill remaining space. */
+  /** flex-grow weight: the column stretches to fill the space the fixed-width
+      columns leave, shared by weight. When the columns no longer fit, the
+      grid scrolls sideways, counting a flex column as its `width`, else its
+      `minWidth`, else 64 px. Unset, the column keeps its `width`.
+      @default undefined */
   flex?: number;
-  /** Which side the header, cells and footer sit on. Defaults to right for
-      number types and left for the rest; set it to line a custom column's
-      values up under its title. */
+  /** Which side the header, cells and footer sit on. Set it to line a custom
+      column's values up under its title.
+      @default 'right' for number types, 'left' for the rest
+      @example
+      { type: 'custom', key: 'pnl', header: 'P&L', align: 'right' } */
   align?: Align;
   /** Extra class(es) for this column's data cells — a static string, or a
       function of the cell value/row for conditional styling. Target via
-      `:global(.bo-grid .c.your-class)`. */
+      `:global(.bo-grid .c.your-class)`.
+      @default undefined
+      @example
+      { type: 'price', key: 'last', header: 'Last', cellClass: (v, row) => (Number(v) >= Number(row.ceiling) ? 'at-ceiling' : undefined) } */
   cellClass?: string | ((value: unknown, row: GridRow) => string | undefined);
-  /** Extra class(es) for this column's header. Target via `:global`. */
+  /** Extra class(es) for this column's header. Target via `:global`.
+      @default undefined */
   headerClass?: string;
   /** Show a styled tooltip on the column header (the same themed bubble as cell
       `tooltip`) — describe what the column means, units, caveats. Hovering
-      anywhere on the header reveals it. */
+      anywhere on the header reveals it.
+      @default undefined */
   headerTooltip?: string;
   /** Render a small ⓘ info icon in the header as a visible cue that a
-      `headerTooltip` is available. Ignored without `headerTooltip`. */
+      `headerTooltip` is available. Ignored without `headerTooltip`.
+      @default false */
   headerInfo?: boolean;
   /** Flash the cell when its value changes.
       - `'auto'` (alias `'up-down'`) — the grid derives it: green on a rise, red
@@ -73,27 +108,32 @@ export interface ColBase {
       - `true` — legacy row-driven mode: the flash follows the row's own
         `flashSeq`/`flashDir`, so every `flash: true` column in a row flashes
         together, in one direction, and you bump the counter yourself.
-      Derived modes never flash on first paint or when a row scrolls into view. */
+      Derived modes never flash on first paint or when a row scrolls into view.
+      @default false */
   flash?: boolean | 'auto' | 'up-down' | 'change';
   /** Flash duration in ms — **derived modes only** (`'auto'`/`'up-down'`/
       `'change'`); has no effect on legacy `flash: true`, which flashes for the
-      CSS animation's fixed duration regardless. Default 300. Raise it for a
-      slow feed, lower it for a fast one so flashes don't smear together. */
+      CSS animation's fixed duration regardless. Raise it for a slow feed,
+      lower it for a fast one so flashes don't smear together.
+      @default 300 */
   flashMs?: number;
-  /** Tint the text in the tick's direction while flashing (default true). Set
-      false when the column colours its own text — e.g. price-limit tones on a
-      VN board (ceiling / floor / reference) — so the flash only lights the
-      background. */
+  /** Tint the text in the tick's direction while flashing. Set false when the
+      column colours its own text — e.g. price-limit tones on a VN board
+      (ceiling / floor / reference) — so the flash only lights the background.
+      @default true */
   flashColor?: boolean;
   /** Show the size of each change beside the value for a moment — `▲0.15` in
       the up colour, `▼` down — held, then faded. The delta is the last change,
       written in the column's own format. Numeric values only; first paint and
       rows scrolling into view show nothing. `{ format, ms }` sets the text
       (`format(delta, row)` gets the signed change) and how long it shows
-      (default 1000 ms). In a narrow column the delta gives way first: the
+      (1000 ms unless set). In a narrow column the delta gives way first: the
       value itself is never cut for it. Meant for one or two key columns (the
       match price): each change runs a short animation, so a busy board with
-      it on every column pays real frame time. */
+      it on every column pays real frame time.
+      @default false
+      @example
+      { type: 'price', key: 'last', header: 'Last', flash: 'auto', showChange: { ms: 1500, format: (d) => `${d > 0 ? '+' : ''}${d.toFixed(2)}` } } */
   showChange?: boolean | ShowChangeOptions;
   /** Repaint this column at most every this many ms under `api.patchRows`.
       Each tick is still written into the row at once (sort, filters, totals
@@ -103,91 +143,139 @@ export interface ColBase {
       first change after a quiet spell shows at once. A flash or `showChange`
       plays on the repaint, against the value shown before. For the field the
       column shows (`key`), not a `value` column; when several columns show a
-      field, it waits only if they all set this. */
+      field, it waits only if they all set this. Unset, the cell repaints on
+      every tick.
+      @default undefined */
   updateMs?: number;
-  /** Set false to disable header-click sorting on this column. */
+  /** Set false to disable header-click sorting on this column.
+      @default true */
   sortable?: boolean;
   /** Custom ascending comparator for this column's values (e.g. enum priority or
-      natural sort). Direction is applied by the grid. In-memory mode only. */
+      natural sort). Direction is applied by the grid. In-memory mode only.
+      @example
+      { type: 'badge', key: 'status', header: 'Status', compare: (a, b) => RANK[String(a)] - RANK[String(b)] } */
   compare?: (a: unknown, b: unknown) => number;
-  /** When grouping is active, show this aggregate of the column on group headers. */
+  /** When grouping is active (or with `footer`), show this aggregate of the
+      column on group headers and the totals row.
+      @default undefined
+      @example
+      { type: 'volume', key: 'qty', header: 'Qty', groupAgg: 'sum' } */
   groupAgg?: AggKind;
   /** Pin this column so it stays visible during horizontal scroll. `true` /
-      `'left'` pins to the left edge, `'right'` to the right. */
+      `'left'` pins to the left edge, `'right'` to the right.
+      @default false */
   pinned?: boolean | 'left' | 'right';
-  /** Allow inline editing (double-click or Enter on the focused cell). */
+  /** Allow inline editing (double-click, Enter or F2 on the focused cell, or
+      type to replace). Number types edit as numbers, `date` as a date.
+      Display types (`badge`, `boolean`, `rating`, `progress`, `tags`, `link`,
+      `avatar`, `relative`, `sparkline`, `custom`) edit only with an
+      `editor`; a computed (`value`) column never does.
+      @default false */
   editable?: boolean;
   /** Validate an edited value before it commits (inline edit, custom editor,
       paste, fill). Return false to reject and keep the old value. Receives the
-      parsed value. */
+      parsed value.
+      @example
+      { type: 'number', key: 'qty', header: 'Qty', editable: true, decimals: 0, validate: (v) => Number(v) > 0 && Number(v) % 100 === 0 } */
   validate?(value: unknown, row: GridRow): boolean;
   /** Turn typed or pasted text into the stored value (runs before the built-in
       number/date coercion, which it replaces). Return `undefined` or a
-      non-finite number to reject the input. */
+      non-finite number to reject the input.
+      @example
+      { type: 'number', key: 'qty', header: 'Qty', editable: true, parse: (raw) => Number(raw.replace(/[,\s]/g, '')) } */
   parse?: (raw: string, row: GridRow) => unknown;
   /** Svelte component that edits this cell in place of the built-in input.
       Makes any column type editable (with `editable: true`), including display
       widgets like `rating` or `tags`. It calls `commit(value)` to save — any
-      value, no parsing — or `cancel()`; Escape cancels. */
+      value, no parsing — or `cancel()`; Escape cancels.
+      @example
+      { type: 'rating', key: 'score', header: 'Score', editable: true, editor: StarPicker } */
   editor?: Component<CellEditorProps>;
   /** Editable choices: when set, editing renders a `<select>` of these options
-      instead of a text input (enum/status columns). */
+      instead of a text input (enum/status columns).
+      @default undefined
+      @example
+      { type: 'text', key: 'side', header: 'Side', editable: true, options: ['Buy', 'Sell'] } */
   options?: string[];
   /** Show a styled floating tooltip on each cell (themed, instant — replaces the
       native `title`). `true` shows the full formatted value (handy when content
       truncates); a function returns custom text per value/row (any column type,
-      including `custom`). Return '' to suppress for a given cell. */
+      including `custom`). Return '' to suppress for a given cell.
+      @default false
+      @example
+      { type: 'text', key: 'sym', header: 'Symbol', tooltip: (_, row) => String(row.name ?? '') } */
   tooltip?: boolean | ((value: unknown, row: GridRow) => string);
   /** Let long content wrap to multiple lines instead of truncating with an
-      ellipsis. Pair with a taller `rowHeight`. Default false (single-line +
-      ellipsis). */
+      ellipsis. Pair with a taller `rowHeight`.
+      @default false */
   wrap?: boolean;
   /** Custom display formatter, overriding the built-in type formatter. Applies
       to display, tooltip, copy and (formatted) export. `row` is absent for
-      aggregate cells. */
+      aggregate cells.
+      @example
+      { type: 'number', key: 'qty', header: 'Qty', format: (v) => Number(v).toLocaleString('vi-VN') } */
   format?: (value: unknown, row?: GridRow) => string;
   /** JS cell renderer — the framework-agnostic alternative to the `cell`
       snippet, for React/Vue/vanilla (and the `<bo-grid>` web component). Return
       an `HTMLElement`/`Node` (safe — appended as-is) or an HTML **string**
       (inserted as innerHTML — YOU must sanitize any untrusted data; prefer
       returning a Node for that). Overrides the cell's display only — sort,
-      filter, tooltip, copy and export still use the value/`format`. */
+      filter, tooltip, copy and export still use the value/`format`.
+      @example
+      { type: 'text', key: 'sym', header: 'Symbol', render: ({ value }) => Object.assign(document.createElement('b'), { textContent: String(value) }) } */
   render?: (ctx: CellRenderContext) => string | Node | null | undefined;
   /** Svelte component that draws this cell (receives `value`, `row`, `column`
       and the formatted `text`). Display only, like `render`. Usually supplied by
       a registered `cellTypes` entry, but any column can set it. It updates in
       place as its props change; under `api.patchRows`, `row` is a fresh view of
       the patched row on each patch (same fields, new identity), so read it
-      reactively (`$derived`, markup) rather than once at mount. */
+      reactively (`$derived`, markup) rather than once at mount.
+      @example
+      { type: 'text', key: 'country', header: 'Country', component: CountryCell } */
   component?: Component<CellTypeProps>;
-  /** Set false to disable drag-to-resize on this column (default on). */
+  /** Set false to disable drag-to-resize on this column.
+      @default true */
   resizable?: boolean;
   /** Widen the column when a value on screen no longer fits (a price gaining a
       digit, a running total), checked at most every 500 ms. It only grows, so
       values flickering wider and narrower don't make it jump; `maxWidth` caps
-      it, and a width the user dragged or autosized takes over. */
+      it, and a width the user dragged or autosized takes over.
+      @default false */
   autoWidth?: boolean;
   /** Parent header label. Consecutive columns sharing a `group` render under a
-      spanning header, which keeps the width of its columns (flex ones too). */
+      spanning header, which keeps the width of its columns (flex ones too).
+      @default undefined */
   group?: string;
   /** Header filter-menu control for this column (requires `filterMenu` on
-      <Grid>). Defaults to the column's type; `'set'` shows a value checklist;
-      `false` disables filtering for this column. */
+      <Grid>). `'set'` shows a value checklist, a registered `filterTypes`
+      name draws that filter, and `false` disables filtering for this column.
+      @default 'date' for date columns, 'number' for number types, else 'text'
+      @example
+      { type: 'badge', key: 'status', header: 'Status', filter: 'set' } */
   filter?: false | FilterKind | (string & {});
   /** Conditional formatting — a horizontal bar painted behind the cell value,
       scaled across the column's value range. The range is auto-computed over the
       current view (in-memory) unless `min`/`max` are given; pass `min: 0` for
       absolute proportional bars. Bars cross a zero baseline when the range spans
-      negatives. Numeric columns only. */
+      negatives. Numeric columns only.
+      @default undefined
+      @example
+      { type: 'volume', key: 'vol', header: 'Volume', dataBar: { min: 0 } } */
   dataBar?: DataBarConfig;
   /** Conditional formatting — show an icon beside the value, chosen by the
       highest threshold `at` that is ≤ the cell value (e.g. ▲ ● ▼ by sign or band).
-      Numeric columns only. */
+      Numeric columns only.
+      @default undefined
+      @example
+      { type: 'percent', key: 'chg', header: 'Chg %', icons: [{ at: -Infinity, icon: '▼', tone: 'down' }, { at: 0, icon: '●' }, { at: 0.01, icon: '▲', tone: 'up' }] } */
   icons?: IconRule[];
   /** Conditional formatting — tint the cell background across the column's value
       range (a soft heat ramp). Auto-ranged over the current view unless `min`/
       `max` are given; pass `mid` for a 3-stop diverging scale (e.g. `mid: 0`).
-      Numeric columns only. */
+      Numeric columns only.
+      @default undefined
+      @example
+      { type: 'percent', key: 'chg', header: 'Chg %', colorScale: { mid: 0 } } */
   colorScale?: ColorScaleConfig;
 }
 
@@ -263,33 +351,126 @@ export interface CellEditorProps {
 }
 
 /**
- * Discriminated column config — the public Phase 0 "columns + rows" surface,
- * extended with the Phase 1 sparkline + heatmap cell types.
+ * A column definition: the options every column shares (`ColBase`), plus the
+ * options its `type` adds. The union keeps an option on the wrong type (say
+ * `decimals` on a `badge`) a type error.
  */
 export type ColumnDef =
-  | (ColBase & { type: 'text'; sub?: string })
+  | (ColBase & {
+      type: 'text';
+      /** Row field shown under the value, smaller (a company name under its
+          symbol).
+          @default undefined */
+      sub?: string;
+    })
   | (ColBase & { type: 'price' })
-  | (ColBase & { type: 'percent' })
+  | (ColBase & { type: 'percent' }) // value in percent: 1.25 → "+1.25%"
   | (ColBase & { type: 'volume' })
-  | (ColBase & { type: 'number'; decimals?: number })
-  | (ColBase & { type: 'date'; dateStyle?: DateStyle })
-  | (ColBase & { type: 'currency'; currency?: string; decimals?: number })
+  | (ColBase & {
+      type: 'number';
+      /** Digits after the decimal point.
+          @default 2 */
+      decimals?: number;
+    })
+  | (ColBase & {
+      type: 'date'; // value: epoch ms
+      /** `'short'` (4/7/26) or `'medium'` (Apr 7, 2026), in the column's locale.
+          @default 'medium'
+          @example
+          { type: 'date', key: 'settled', header: 'Settled', dateStyle: 'short' } */
+      dateStyle?: DateStyle;
+    })
+  | (ColBase & {
+      type: 'currency';
+      /** ISO 4217 currency code.
+          @default 'USD' */
+      currency?: string;
+      /** Digits after the decimal point. Unset, the currency's own (2 for
+          USD, 0 for VND).
+          @default undefined */
+      decimals?: number;
+    })
   | (ColBase & { type: 'relative' }) // value: epoch ms → "3 hours ago"
-  | (ColBase & { type: 'heatmap'; min: number; max: number; decimals?: number })
-  | (ColBase & { type: 'sparkline'; sparkKey: string })
+  | (ColBase & {
+      type: 'heatmap';
+      /** The value at the cold end of the colour ramp. */
+      min: number;
+      /** The value at the hot end of the colour ramp. */
+      max: number;
+      /** Digits after the decimal point.
+          @default 2 */
+      decimals?: number;
+    })
+  | (ColBase & {
+      type: 'sparkline';
+      /** Row field holding the series: an array of candles
+          (`{ open, high, low, close, volume }`), oldest first. */
+      sparkKey: string;
+    })
   // Rich cell types (any business domain) — value renders as the named widget.
-  | (ColBase & { type: 'progress'; min?: number; max?: number })
-  | (ColBase & { type: 'rating'; max?: number })
+  | (ColBase & {
+      type: 'progress';
+      /** The value at an empty bar.
+          @default 0 */
+      min?: number;
+      /** The value at a full bar.
+          @default 100 */
+      max?: number;
+    })
+  | (ColBase & {
+      type: 'rating';
+      /** Stars drawn; the value fills that many.
+          @default 5 */
+      max?: number;
+    })
   | (ColBase & { type: 'tags' }) // value: string[] (or comma-separated string)
-  | (ColBase & { type: 'badge'; tones?: Record<string, BadgeTone> })
-  | (ColBase & { type: 'boolean'; trueLabel?: string; falseLabel?: string })
-  | (ColBase & { type: 'avatar'; sub?: string }) // value: display name
-  | (ColBase & { type: 'link'; href?: (row: GridRow) => string; newTab?: boolean }) // value: text
+  | (ColBase & {
+      type: 'badge';
+      /** A tone for each value; a value without one is neutral.
+          @default undefined
+          @example
+          { type: 'badge', key: 'status', header: 'Status', tones: { Filled: 'up', Rejected: 'down', Working: 'amber' } } */
+      tones?: Record<string, BadgeTone>;
+    })
+  | (ColBase & {
+      type: 'boolean';
+      /** Text beside the ✓. Copy, tooltips and a `formatted` export write
+          it, or `Yes` without one (a plain export writes `true`).
+          @default undefined */
+      trueLabel?: string;
+      /** Text beside the ✕. Copy, tooltips and a `formatted` export write
+          it, or `No` without one (a plain export writes `false`).
+          @default undefined */
+      falseLabel?: string;
+    })
+  | (ColBase & {
+      type: 'avatar'; // value: display name
+      /** Row field shown under the name, smaller (a role, an email).
+          @default undefined */
+      sub?: string;
+    })
+  | (ColBase & {
+      type: 'link'; // value: the link's text
+      /** The link's URL for a row. Unset, the value itself is the URL.
+          `javascript:`, `data:` and `vbscript:` URLs are dropped (the text
+          shows unlinked).
+          @example
+          { type: 'link', key: 'sym', header: 'Symbol', href: (row) => `/symbols/${row.sym}` } */
+      href?: (row: GridRow) => string;
+      /** Open the link in a new tab (with `rel="noopener noreferrer"`).
+          @default false */
+      newTab?: boolean;
+    })
   // Rendered by the consumer's `cell` snippet on <Grid>.
   | (ColBase & { type: 'custom' })
   // A type registered through <Grid cellTypes>; resolved to a built-in type
   // (its `extends`) before the grid reads it. Extra keys are type options.
-  | (ColBase & { type?: undefined; cellType: string; [option: string]: unknown });
+  | (ColBase & {
+      type?: undefined;
+      /** The name of a type registered in `<Grid cellTypes>`. */
+      cellType: string;
+      [option: string]: unknown;
+    });
 
 /** Props a `component` cell renderer receives. */
 export interface CellTypeProps {
