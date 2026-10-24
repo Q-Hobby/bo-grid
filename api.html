@@ -340,7 +340,7 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
           <tr><td>'text'</td><td><span class="type">sub?: string</span></td><td>Bold value + optional dim sub-line (second field).</td></tr>
           <tr><td>'price'</td><td>—</td><td>2-decimal number, monospace.</td></tr>
           <tr><td>'percent'</td><td>—</td><td>Signed %, green/red.</td></tr>
-          <tr><td>'volume'</td><td>—</td><td>K/M/B suffix.</td></tr>
+          <tr><td>'volume'</td><td>—</td><td>K/M/B/T suffix, negatives too.</td></tr>
           <tr><td>'number'</td><td><span class="type">decimals?: number</span></td><td>Fixed-decimal number.</td></tr>
           <tr><td>'date'</td><td><span class="type">dateStyle?: 'short'|'medium'</span></td><td>Formatted date (value is epoch ms).</td></tr>
           <tr><td>'currency'</td><td><span class="type">currency?; locale?; decimals?</span></td><td>Localized currency via <code>Intl.NumberFormat</code> (default USD/en-US).</td></tr>
@@ -486,6 +486,9 @@ rows = tape.toArray();</code></pre>
         <tbody>
           <tr><td>fmtTradingPrice</td><td><span class="type">(value, tick, locale?) =&gt; string</span></td><td>Formats at the precision the tick implies — 0 decimals for a whole-VND tick, 4 for an FX pip — instead of the built-in <code>price</code> type's fixed 2.</td></tr>
           <tr><td>decimalsForTick</td><td><span class="type">(tick) =&gt; number</span></td><td>The decimal count a tick size implies, on its own.</td></tr>
+          <tr><td>fmtBps</td><td><span class="type">(fraction, { decimals?, sign?, unit?, locale? }?) =&gt; string</span></td><td>A fraction in basis points: <code>0.00125</code> → <code>'12.5 bp'</code>. <code>sign: true</code> puts <code>+</code> on a rise; <code>unit: ''</code> leaves the number bare.</td></tr>
+          <tr><td>fmtFraction</td><td><span class="type">(price, { denominator?, sub?, style?, separator? }?) =&gt; string</span></td><td>A whole number and parts, as Treasuries are quoted: <code>99-16+</code> is 99 and 16½ 32nds. <code>sub</code> 2, 4 or 8 splits each part, shown as one last character: eighths for <code>style: 'cash'</code> (<code>+</code> a half; <code>2</code>, <code>6</code> the quarters), the first decimal digit for <code>'futures'</code> (<code>"99'165"</code>; quarters <code>2</code>, <code>5</code>, <code>7</code>). <code>denominator: 8</code> and <code>separator: "'"</code> for grains.</td></tr>
+          <tr><td>parseFraction</td><td><span class="type">(text, { denominator?, style? }?) =&gt; number</span></td><td>Reads what <code>fmtFraction</code> writes, or a plain decimal, for a column's <code>parse</code>; pass the options the column formats with. NaN (a refused edit) for anything else.</td></tr>
         </tbody>
       </table>
       <h3>Session state</h3>
@@ -658,7 +661,7 @@ rows = tape.toArray();</code></pre>
           <h3 style="font-size:14px">Trading <span style="font-weight:400;color:var(--dim)">(bo-grid/trading)</span></h3>
           <span class="pill">resolveTone</span><span class="pill">toneColor</span><span class="pill">vnBands</span><span class="pill">vnFuturesBands</span><span class="pill">vnTickSize</span>
           <span class="pill">roundToTick</span><span class="pill">fmtTradingPrice</span><span class="pill">sessionStateAt</span><span class="pill">sessionLabel</span>
-          <span class="pill">createPositions</span><span class="pill">unrealizedPnl</span><span class="pill">fxQuoteHtml</span><span class="pill">pipsBetween</span><span class="pill">fxCentresOpen</span><span class="pill">fmtSigPrice</span>
+          <span class="pill">createPositions</span><span class="pill">unrealizedPnl</span><span class="pill">fxQuoteHtml</span><span class="pill">pipsBetween</span><span class="pill">fxCentresOpen</span><span class="pill">fmtSigPrice</span><span class="pill">fmtBps</span><span class="pill">fmtFraction</span>
           <h3 style="font-size:14px">Ladder <span style="font-weight:400;color:var(--dim)">(bo-grid/ladder)</span></h3>
           <span class="pill">DepthLadder</span><span class="pill">ladderPrices</span><span class="pill">ladderRows</span><span class="pill">midPrice</span><span class="pill">stepPrice</span><span class="pill">LadderAction</span>
           <h3 style="font-size:14px">Web component <span style="font-weight:400;color:var(--dim)">(bo-grid/element)</span></h3>

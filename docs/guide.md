@@ -447,6 +447,35 @@ large price's integer part). Where you know a symbol's tick, `fmtTradingPrice`
 shows it exactly, and `roundToTick(qty, step, 'down')` rounds a size to its
 lot step. See the **FX & crypto** demo.
 
+**Basis points and fractional prices.** `fmtBps(fraction)` shows a fraction in
+basis points: pass `(ask - bid) / mid` for a spread, or `(y1 - y0) / 100` for a
+move in a yield quoted in percent. Treasuries are quoted as a whole number and
+32nds: `fmtFraction` writes them and `parseFraction` reads them back, so a
+price column can be edited the way it is quoted:
+
+```ts
+import { fmtBps, fmtFraction, parseFraction } from 'bo-grid/trading';
+
+fmtBps(0.00125);                       // '12.5 bp'
+fmtBps(-0.0005, { sign: true });       // '-5.0 bp'; unit: '' when the header says bp
+fmtFraction(99.515625, { sub: 2 });    // '99-16+': 99 and 16½ 32nds
+fmtFraction(99.5078125, { sub: 4 });   // '99-162': quarters as 2, + and 6
+fmtFraction(99.5078125, { sub: 4, style: 'futures' }); // "99'162": quarters as 2, 5 and 7
+fmtFraction(450.25, { denominator: 8, separator: "'" }); // "450'2", a grain price in eighths
+const quote = { sub: 2 } as const;
+const px: ColumnDef = {
+  type: 'number', key: 'px', header: 'Price', editable: true,
+  format: (v) => fmtFraction(Number(v), quote),
+  parse: (raw) => parseFraction(raw, quote),  // '99-16+' or 99.515625; anything else is refused
+};
+```
+
+Cash Treasuries write the last character in eighths of a 32nd (`+` for the
+half), while futures screens write its first decimal digit (`5` for the
+half), so `'99-165'` and `"99'165"` are different prices. Give `parseFraction`
+the same options the column formats with, so an order is never entered at the
+other one.
+
 #### Depth ladder — `bo-grid/ladder`
 
 `DepthLadder` is a price ladder (depth of market) built on the grid: one row

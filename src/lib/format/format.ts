@@ -14,11 +14,28 @@ export function fmtPercent(v: number): string {
   return `${sign}${v.toFixed(2)}%`;
 }
 
+// [size, suffix, decimals], smallest first.
+const VOLUME_UNITS: [number, string, number][] = [
+  [1e3, 'K', 1],
+  [1e6, 'M', 2],
+  [1e9, 'B', 2],
+  [1e12, 'T', 2],
+];
+
 export function fmtVolume(v: number): string {
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B`;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
-  return `${v}`;
+  if (!Number.isFinite(v)) return `${v}`;
+  const abs = Math.abs(v);
+  let unit = -1;
+  while (unit + 1 < VOLUME_UNITS.length && abs >= VOLUME_UNITS[unit + 1][0]) unit++;
+  if (unit < 0) return `${v}`;
+  let [size, suffix, decimals] = VOLUME_UNITS[unit];
+  let text = (abs / size).toFixed(decimals);
+  // 999,999 rounds to 1000.0K: show it as 1.00M instead.
+  if (Number(text) >= 1000 && unit + 1 < VOLUME_UNITS.length) {
+    [size, suffix, decimals] = VOLUME_UNITS[unit + 1];
+    text = (abs / size).toFixed(decimals);
+  }
+  return `${v < 0 ? '-' : ''}${text}${suffix}`;
 }
 
 export type DateStyle = 'short' | 'medium';

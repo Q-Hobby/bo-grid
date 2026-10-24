@@ -34,6 +34,28 @@ describe('fmtVolume', () => {
     expect(fmtVolume(1_000_000)).toBe('1.00M');
     expect(fmtVolume(2_500_000)).toBe('2.50M');
     expect(fmtVolume(1_000_000_000)).toBe('1.00B');
+    expect(fmtVolume(1_000_000_000_000)).toBe('1.00T');
+    expect(fmtVolume(25_000_000_000_000)).toBe('25.00T');
+  });
+
+  it('moves up a unit when rounding would show 1000 of the one below', () => {
+    expect(fmtVolume(999_949)).toBe('999.9K');
+    expect(fmtVolume(999_950)).toBe('1.00M');
+    expect(fmtVolume(999_999)).toBe('1.00M');
+    expect(fmtVolume(999_995_000)).toBe('1.00B');
+  });
+
+  it('abbreviates a negative volume (a net flow) the same way', () => {
+    expect(fmtVolume(-999)).toBe('-999');
+    expect(fmtVolume(-1_500)).toBe('-1.5K');
+    expect(fmtVolume(-2_500_000)).toBe('-2.50M');
+    expect(fmtVolume(-999_999)).toBe('-1.00M');
+  });
+
+  it('passes a value that is not finite through as before', () => {
+    expect(fmtVolume(Number.POSITIVE_INFINITY)).toBe('Infinity');
+    expect(fmtVolume(Number.NEGATIVE_INFINITY)).toBe('-Infinity');
+    expect(fmtVolume(Number.NaN)).toBe('NaN');
   });
 });
 
