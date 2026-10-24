@@ -3,6 +3,7 @@
   // stays out of the core bundle until a filter is opened. Presentation-only:
   // the parent owns open/close + position and applies the resulting filter.
   import { untrack } from 'svelte';
+  import { fitView } from './fit-view';
   import type { GridLabels } from './labels';
   import type { ColumnDef } from './column';
   import { fromDateInput, toDateInput } from './date';
@@ -133,7 +134,7 @@
   role="dialog"
   tabindex="-1"
   aria-label={L.filterFor(header)}
-  style="left:{x}px;top:{y}px;"
+  use:fitView={{ x, y }}
   onpointerdown={(e) => e.stopPropagation()}
   onkeydown={onKey}
 >
@@ -191,6 +192,9 @@
 <style>
   .bo-filtermenu {
     position: fixed;
+    /* Never taller than the window: it scrolls instead. */
+    max-height: calc(100vh - 8px);
+    overflow: auto;
     z-index: 30;
     display: flex;
     flex-direction: column;

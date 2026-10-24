@@ -2,7 +2,10 @@
   // Floating action menu (row context menu + column header menu). Presentation +
   // its own keyboard semantics (APG menu pattern): focus moves into the menu on
   // open, Arrow/Home/End move between items, Enter/Space activate, Esc/Tab close.
-  // The parent owns open/close state and positions it via x/y.
+  // The parent owns open/close state and positions it via x/y; it stays
+  // inside the window (fitView).
+  import { fitView } from './fit-view';
+
   let {
     x,
     y,
@@ -74,7 +77,7 @@
   role="menu"
   tabindex="-1"
   bind:this={menuEl}
-  style="left:{x}px;top:{y}px;"
+  use:fitView={{ x, y }}
   onpointerdown={(e) => e.stopPropagation()}
   onkeydown={onKeydown}
 >
@@ -96,6 +99,9 @@
 <style>
   .rowmenu {
     position: fixed;
+    /* Never taller than the window: it scrolls instead. */
+    max-height: calc(100vh - 8px);
+    overflow: auto;
     z-index: 20;
     min-width: 150px;
     padding: 4px;

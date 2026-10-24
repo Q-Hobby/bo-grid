@@ -13,6 +13,8 @@
     colStart = 1,
     focusable = true,
     cellStyle,
+    cellId,
+    focused = false,
   }: {
     group: GroupNode;
     columns: ColumnDef[];
@@ -22,13 +24,18 @@
     version?: number;
     /** aria-colindex of the first column (after the grid's leading columns). */
     colStart?: number;
-    /** False for the sticky copy shown at the top while scrolling: it is
-        aria-hidden, so its toggle must stay out of the tab order. */
+    /** Unused: the toggle is always out of the tab order (the keyboard works
+        through the grid's focus on the group header). Kept for callers. */
     focusable?: boolean;
     /** The style of the cell under column `ci`, from the grid's layout, so the
         group row lines up with the headers (and a pinned column's cell stays
         put). Without it, each cell is sized from its column definition. */
     cellStyle?: (ci: number) => string;
+    /** The id of the group's own cell: the grid's aria-activedescendant when
+        the keyboard focus is on this row. */
+    cellId?: string;
+    /** The keyboard focus is on this row. */
+    focused?: boolean;
   } = $props();
 
   const styleOf = (ci: number): string => (cellStyle ? cellStyle(ci) : colStyle(columns[ci]));
@@ -53,13 +60,12 @@
   }
 </script>
 
-<div class="group" role="row" aria-rowindex={rowIndex}>
-  <span class="gcell" role="gridcell" aria-colindex={colStart} style={styleOf(0)}>
+<div class="group" class:focused role="row" aria-rowindex={rowIndex}>
+  <span class="gcell" id={cellId} role="gridcell" aria-colindex={colStart} aria-expanded={!group.collapsed} style={styleOf(0)}>
     <button
       class="toggle"
       type="button"
-      tabindex={focusable ? undefined : -1}
-      aria-expanded={!group.collapsed}
+      tabindex="-1"
       onclick={() => onToggle(group.path)}
     >
       <span class="chev" style="margin-left:{group.depth * 12}px">{group.collapsed ? '▸' : '▾'}</span>
@@ -86,6 +92,10 @@
     height: 100%;
     background: var(--bo-group-bg);
     border-bottom: 0.5px solid var(--bo-border);
+  }
+  /* The keyboard focus on a group header, like a focused cell's ring. */
+  .group.focused {
+    box-shadow: inset 0 0 0 1.5px var(--bo-sel-border, #6366f1);
   }
   /* The first column's cell: sized like the column, filled by the toggle. */
   .gcell {

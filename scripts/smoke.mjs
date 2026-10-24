@@ -766,14 +766,15 @@ await wait(40);
 const roleAfter = document.querySelectorAll('.bo-grid .row')[0].querySelectorAll('.c')[1].textContent.trim();
 if (roleAfter !== 'Designer') fail(`select edit did not commit (cell shows "${roleAfter}")`);
 
-// Typed inline editors (v0.5): numeric columns use a number input; date columns a
-// date picker. Double-click Bonus (col 4) → number input; Start date (col 6) → date.
+// Typed inline editors: numeric columns use a text input with a numeric keypad
+// (a number input empties itself on "-" or "."); date columns a date picker.
+// Double-click Bonus (col 4) → numeric input; Start date (col 6) → date.
 document.querySelectorAll('.bo-grid .row')[0].querySelectorAll('.c')[4].dispatchEvent(
   new window.MouseEvent('dblclick', { bubbles: true }),
 );
 await wait(40);
-if (!document.querySelector('.bo-grid input.bo-edit[type="number"]'))
-  fail('numeric column did not use a number input editor');
+if (!document.querySelector('.bo-grid input.bo-edit[type="text"][inputmode="decimal"]'))
+  fail('numeric column did not use a numeric (inputmode=decimal) editor');
 document
   .querySelector('.bo-grid input.bo-edit')
   .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

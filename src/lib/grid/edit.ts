@@ -22,6 +22,8 @@ export function parseCellInput(col: ColumnDef, raw: string, row: GridRow): Parse
     return Number.isFinite(ms) ? { ok: true, value: ms } : { ok: false };
   }
   if (isNumeric(col)) {
+    // A blank is not a number (Number('') is 0): it is refused, not written as 0.
+    if (raw.trim() === '') return { ok: false };
     const n = Number(raw);
     return Number.isFinite(n) ? { ok: true, value: n } : { ok: false };
   }

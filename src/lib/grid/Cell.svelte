@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import type { ColumnDef, GridRow } from './column';
   import type { GridLabels } from './labels';
   import {
@@ -66,6 +66,7 @@
     onEditCommitValue,
     onEditDraft,
     onEditCancel,
+    onEditKeyDone,
     onFillStart,
     labels,
     span,
@@ -130,6 +131,10 @@
     /** What has been typed so far in the editor, as it changes. */
     onEditDraft?: (raw: string) => void;
     onEditCancel?: () => void;
+    /** A key ended the edit (Enter, Tab, Escape, or a pick in a select):
+        the grid takes the keyboard back, and `move` (Tab: 1, Shift+Tab: -1)
+        moves its focus along the row. */
+    onEditKeyDone?: (move: number) => void;
     onFillStart?: () => void;
     labels: GridLabels;
     /** Row-span geometry when this cell draws a merged run: `up` px above this
@@ -153,6 +158,9 @@
   }
 
   let cancelled = false;
+  // A select editor saves as soon as the pointer picks an option; changes made
+  // with the arrow keys wait for Enter (a closed select changes on each arrow).
+  let pickedByPointer = false;
   function focusSelect(node: HTMLInputElement) {
     node.focus();
     // Only text/search inputs support text selection; number/date inputs throw.
@@ -167,18 +175,29 @@
   }
   function onEditKey(e: KeyboardEvent) {
     e.stopPropagation(); // keep arrows/Enter in the input, not the grid
-    if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
-    else if (e.key === 'Escape') {
-      cancelled = true;
-      (e.currentTarget as HTMLInputElement).blur();
-    }
+    if (e.key !== 'Enter' && e.key !== 'Escape' && e.key !== 'Tab') return;
+    e.preventDefault(); // Tab: the grid moves the focus, not the browser
+    if (e.key === 'Escape') cancelled = true;
+    // Blurring commits (or cancels) the edit; then the grid takes the focus.
+    (e.currentTarget as HTMLElement).blur();
+    onEditKeyDone?.(e.key === 'Tab' ? (e.shiftKey ? -1 : 1) : 0);
   }
   // Custom editors: keys stay inside the editor (no grid navigation), Escape
   // cancels, and focus leaving the editor altogether cancels — an editor saves
   // by calling commit() itself.
   function onCustomEditKey(e: KeyboardEvent) {
     e.stopPropagation();
-    if (e.key === 'Escape') onEditCancel?.();
+    if (e.key === 'Escape') {
+      onEditCancel?.();
+      onEditKeyDone?.(0);
+    } else if (e.key === 'Enter') {
+      // A custom editor commits on Enter itself; once it has closed, the grid
+      // takes the keyboard back.
+      const host = e.currentTarget as HTMLElement;
+      setTimeout(() => {
+        if (!host.isConnected) onEditKeyDone?.(0);
+      }, 0);
+    }
   }
   function onCustomEditFocusOut(e: FocusEvent) {
     const host = e.currentTarget as HTMLElement;
@@ -507,12 +526,19 @@
       />
     </span>
   {:else if editing && col.options && col.options.length > 0}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <select
       class="bo-edit"
-      value={String(value ?? '')}
+      value={untrack(() => String(value ?? ''))}
       use:focusEl
       onkeydown={onEditKey}
       onblur={onEditBlur}
+      onpointerup={() => (pickedByPointer = true)}
+      onchange={(e) => {
+        if (!pickedByPointer) return;
+        e.currentTarget.blur();
+        onEditKeyDone?.(0);
+      }}
       onpointerdown={(e) => e.stopPropagation()}
       onclick={(e) => e.stopPropagation()}
     >
@@ -523,8 +549,9 @@
   {:else if editing}
     <input
       class="bo-edit"
-      type={editorType}
-      value={seed ?? editorValue}
+      type={editorType === 'number' ? 'text' : editorType}
+      inputmode={editorType === 'number' ? 'decimal' : undefined}
+      value={untrack(() => seed ?? editorValue)}
       use:focusSelect
       oninput={(e) => onEditDraft?.(e.currentTarget.value)}
       onkeydown={onEditKey}
