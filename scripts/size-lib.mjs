@@ -19,7 +19,10 @@ const DIR = 'lib-dist';
 // `realtime`, `trading` and `ladder` are separate entries: a consumer pays for
 // them only when importing them, and they never add to the core number. The
 // ladder builds on the grid: it counts only the code it adds.
-const CEILING_KB = { js: 80, css: 12, realtime: 6, trading: 6, ladder: 8 }; // gzipped, Svelte excluded
+// realtime went from 6 to 8 KB with the order book, alerts and the worker
+// feed (2.7.0 onward); its modules tree-shake, so an app pays for what it
+// imports.
+const CEILING_KB = { js: 80, css: 12, realtime: 8, trading: 6, ladder: 8 }; // gzipped, Svelte excluded
 
 const gzipKb = (path) => gzipSync(readFileSync(path)).length / 1024;
 const jsFiles = readdirSync(DIR).filter((f) => f.endsWith('.js'));

@@ -94,6 +94,38 @@ Svelte to update the cells, and 1.8 ms of browser style + layout. Rows off scree
 cost nothing beyond the write. Numbers move with the machine — compare runs on
 the same machine, in the same session.
 
+### Feed ingestion: main thread vs worker
+
+`pnpm bench:feed` runs the same feed (1,600 symbols, JSON messages) into the
+same rows two ways in headless Chrome, with `bo-grid/realtime` as built. Read
+on the main thread: a worker stands in for the socket and posts every message
+to the page, one task each, as a WebSocket's messages are; the page parses
+each and pushes it into `createTickStream`. Read in a worker: the stand-in
+posts every message to a second worker (one task each there), which parses it
+and pushes it into `serveFeed`, while the page's `connectFeed` takes a batch a
+frame. Main thread busy is CDP `TaskDuration`, as the perf gate records it;
+frame times are measured as the gate's live workloads measure them; latency
+runs from a message's time stamp to its patch applied. One run, 5 s a mode,
+on a laptop:
+
+| Feed | Reading it on | Main thread busy | of it, parse + merge | Frame p95 | Latency p50 | Patches applied |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 10,000/s | the main thread | 11.2% | 2.8% | 1.27 ms | 10 ms | 42,291 |
+| 10,000/s | a worker (`serveFeed`) | 3.3% | – | 0.86 ms | 10 ms | 41,987 |
+| 30,000/s | the main thread | 24.5% | 6.9% | 2.03 ms | 15 ms | 95,853 |
+| 30,000/s | a worker (`serveFeed`) | 5.6% | – | 0.78 ms | 16 ms | 104,813 |
+| 100,000/s | the main thread | 62.8% | 19.9% | 9.64 ms | 13 ms | 89,200 |
+| 100,000/s | a worker (`serveFeed`) | 5.1% | – | 0.74 ms | 16 ms | 92,400 |
+
+Runs vary with the machine's load (other runs measured 14–25% at 30,000/s
+and 40–70% at 100,000/s on the main thread), but the worker's share stays at
+3–6% and the ratio holds. Parsing and merging are under a third of the main
+thread's cost: the rest is the dispatch of each message as a task. The
+latency is the same either way. Patches applied are capped at 400 a frame,
+so above ~20,000/s both modes apply about as many. The rows here are plain
+objects, so the grid's own rendering is not in these numbers: it is the same
+in both modes, and what the worker leaves it is the main thread's time.
+
 ### Live frames: where the time goes
 
 The synchronous benches above stop at layout. `window.__priceBoard.benchLive()`

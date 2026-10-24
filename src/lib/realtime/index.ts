@@ -1,6 +1,6 @@
 // Public API for `bo-grid/realtime` — everything between a market-data feed
-// and the grid: coalesced price updates, an order book kept from a depth
-// feed, a capped trade tape, rows that stay a moment after they leave a list,
+// and the grid: coalesced price updates, a feed decoded in a worker and
+// applied a batch a frame, an order book kept from a depth feed, a capped trade tape, rows that stay a moment after they leave a list,
 // alerts that stay lit until acknowledged, and the windowing math for a
 // centered/scroll-locked price ladder.
 //
@@ -20,6 +20,9 @@ export type {
   Scheduler,
   Cancel,
 } from './ticks';
+
+export { serveFeed, connectFeed } from './worker-feed';
+export type { FeedSource, WorkerFeed, ServeFeedOptions, ConnectFeedOptions, FeedWorker, FeedScope } from './worker-feed';
 
 export { createOrderBook } from './book';
 export type { OrderBook, OrderBookOptions, OrderBookUpdate, BookUpdateResult, BookReadOptions, BookTop, BookRow, BookPairRow, BookLevel, BookLevelInput } from './book';

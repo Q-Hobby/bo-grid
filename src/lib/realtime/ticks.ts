@@ -127,7 +127,7 @@ export interface TickStream<K, P> {
   readonly running: boolean;
 }
 
-const defaultScheduler: Scheduler = (fn) => {
+export const defaultScheduler: Scheduler = (fn) => {
   if (typeof requestAnimationFrame === 'function') {
     const id = requestAnimationFrame(() => fn());
     return () => cancelAnimationFrame(id);
@@ -141,7 +141,7 @@ const defaultScheduler: Scheduler = (fn) => {
 // scheduler). Deferred to a microtask so it reports as an unhandled error
 // (visible in the console / error-reporting tools) rather than being silently
 // swallowed by a caller that doesn't check for one.
-function defaultOnError(err: unknown): void {
+export function defaultOnError(err: unknown): void {
   const rethrow = (): void => {
     throw err;
   };

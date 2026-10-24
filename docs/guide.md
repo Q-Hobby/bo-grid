@@ -215,6 +215,50 @@ that don't concern it. Off-screen rows pay nothing reactive and read current
 values when they scroll in. Footer totals, group subtotals and
 selection aggregates stay live.
 
+**A busy feed: read it in a worker.** Every socket message is a task on the
+thread that receives it. Past ~10,000 messages a second, receiving them on the
+main thread costs real time: in headless Chrome, 14–25% of the main thread at
+30,000 a second and 40–70% at 100,000, under a third of it parsing and the rest
+the dispatch of each message. Read the socket in a worker instead, and the main
+thread takes one batch a frame: 3–6% at any of those rates, with the same
+latency (`pnpm bench:feed`; see BENCHMARKS.md).
+
+```ts
+// feed.worker.ts
+import { serveFeed } from 'bo-grid/realtime';
+const feed = serveFeed<string, Partial<Quote>>(); // coalesces per key, like createTickStream
+const socket = new WebSocket(FEED_URL);
+socket.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  feed.push(m.symbol, { last: m.p, volume: m.v });
+};
+```
+
+```ts
+// the page
+import { connectFeed } from 'bo-grid/realtime';
+const worker = new Worker(new URL('./feed.worker.ts', import.meta.url), { type: 'module' });
+const feed = connectFeed<string, Partial<Quote>>(worker, { apply: (batch) => api.patchRows(batch) });
+feed.start(); // one batch a frame (at most `cap`, 400); feed.pending, feed.applied, feed.stop(), feed.close()
+```
+
+- The two ends talk over a `MessagePort` of their own, so the worker can carry
+  other messages too. The page offers its port until `serveFeed` takes it, so
+  the worker may set up its feed after an `await`. A dedicated `Worker` only
+  (not a `SharedWorker`); name each feed (`name`) when one worker serves
+  several.
+- Patches cross by structured clone: keep them plain data. One that cannot be
+  cloned is dropped and reported (`onError` on both ends), and the rest still
+  arrive.
+- `onError` also hears when no `serveFeed` answers within 5 s, and when a
+  connected worker leaves a request unanswered for 1 s (`feed.stalled`); the
+  page then asks again.
+- `stop()` keeps what waits in the worker; a batch already on its way is
+  still applied.
+
+At a few thousand messages a second, `createTickStream` on the main thread is
+just as good.
+
 `component` cells and the `cell` snippet update **in place**. On each patch
 they receive a fresh view of the row: same fields, new identity. Their markup
 and `$derived` values re-run; the component is not rebuilt, so its DOM, focus
