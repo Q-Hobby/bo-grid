@@ -1,0 +1,189 @@
+import type { Component } from 'svelte';
+
+export interface Example {
+  id: string;
+  title: string;
+  /** Shown next to the logo when the example is active. */
+  blurb: string;
+  /** Eagerly bundled component (the default tab). */
+  component?: Component;
+  /** Lazy chunk, imported on first activation — keeps the entry bundle lean so
+      the gallery can grow without inflating the core demo download. */
+  load?: () => Promise<{ default: Component }>;
+  /** The example's file in src/demo/examples (no extension), for its Code view. */
+  file: string;
+}
+
+// Every example as a lazy chunk, so a page can list them all without loading
+// any: the docs site reads this. The one-page demo's registry makes the first
+// one eager.
+export const CATALOG: Example[] = [
+  {
+    id: 'trading',
+    title: 'Trading desk',
+    blurb: 'Sparklines, realtime flash & heatmaps over 1,000 virtualized rows.',
+    load: () => import('./TradingDesk.svelte'),
+    file: 'TradingDesk',
+  },
+  {
+    id: 'portfolio',
+    title: 'Portfolio',
+    blurb: 'Positions grouped by sector with live subtotals, P&L heatmap & pivot.',
+    load: () => import('./Portfolio.svelte'),
+    file: 'Portfolio',
+  },
+  {
+    id: 'sheet',
+    title: 'Spreadsheet',
+    blurb: 'A general-purpose editable grid — inline edit, copy/paste, resize.',
+    load: () => import('./Sheet.svelte'),
+    file: 'Sheet',
+  },
+  {
+    id: 'orderbook',
+    title: 'Order book',
+    blurb: 'A live book from a depth feed (createOrderBook): grouping, stacked or side by side, depth bars, size flashes.',
+    load: () => import('./OrderBook.svelte'),
+    file: 'OrderBook',
+  },
+  {
+    id: 'priceboard',
+    title: 'Price board',
+    blurb: 'A full VN-style bảng giá under a busy-market feed — 1,000+ symbols, every changed cell flashing. Benchmarks itself.',
+    load: () => import('./PriceBoard.svelte'),
+    file: 'PriceBoard',
+  },
+  {
+    id: 'liveblotter',
+    title: 'Live blotter',
+    blurb: '100,000 orders newest first: fills stream in, orders arrive and leave, live totals. Benchmarks itself.',
+    load: () => import('./LiveBlotter.svelte'),
+    file: 'LiveBlotter',
+  },
+  {
+    id: 'orders',
+    title: 'Orders & positions',
+    blurb: 'Working orders with status chips; done orders linger before they go; positions and live P&L from the fills (bo-grid/realtime createLinger, bo-grid/trading createPositions).',
+    load: () => import('./Orders.svelte'),
+    file: 'Orders',
+  },
+  {
+    id: 'blotter',
+    title: 'Blotter',
+    blurb: 'Execution blotter with merged cells — spanRows down repeated fills, colSpan for note rows.',
+    load: () => import('./Blotter.svelte'),
+    file: 'Blotter',
+  },
+  {
+    id: 'ladder',
+    title: 'Price ladder',
+    blurb: 'A depth ladder on a live book: sizes and depth per price, your orders, click or key to trade — bo-grid/ladder DepthLadder.',
+    load: () => import('./PriceLadder.svelte'),
+    file: 'PriceLadder',
+  },
+  {
+    id: 'timesales',
+    title: 'Time & sales',
+    blurb: 'A capped trade tape, newest first, O(1) per trade — bo-grid/realtime TradeTape.',
+    load: () => import('./TimeSales.svelte'),
+    file: 'TimeSales',
+  },
+  {
+    id: 'fxcrypto',
+    title: 'FX & crypto',
+    blurb: 'FX quotes with the big figure and pips, spreads in pips and the FX centres open now; a crypto watchlist in significant digits (bo-grid/trading).',
+    load: () => import('./FxCrypto.svelte'),
+    file: 'FxCrypto',
+  },
+  {
+    id: 'vnboard',
+    title: 'VN board',
+    blurb: 'HOSE-style price-limit colouring (ceiling/floor/reference), tick-aware VND formatting & live session badge — bo-grid/trading.',
+    load: () => import('./VnBoard.svelte'),
+    file: 'VnBoard',
+  },
+  {
+    id: 'correlation',
+    title: 'Correlation',
+    blurb: 'An N×N heatmap matrix with a pinned label column and dynamic columns.',
+    load: () => import('./Correlation.svelte'),
+    file: 'Correlation',
+  },
+  {
+    id: 'leaderboard',
+    title: 'Leaderboard',
+    blurb: 'Rank medals and score bars (custom cells), podium row highlighting.',
+    load: () => import('./Leaderboard.svelte'),
+    file: 'Leaderboard',
+  },
+  {
+    id: 'team',
+    title: 'Team',
+    blurb: 'A people/CRM board — rich cell types, plus styled hover tooltips, ellipsis truncation and a cell-selection toggle.',
+    load: () => import('./Team.svelte'),
+    file: 'Team',
+  },
+  {
+    id: 'wide',
+    title: 'Wide',
+    blurb: '60+ columns with horizontal column virtualization and a pinned label column.',
+    load: () => import('./WideGrid.svelte'),
+    file: 'WideGrid',
+  },
+  {
+    id: 'themes',
+    title: 'Themes',
+    blurb: 'Built-in theme presets — dark, light, high-contrast, midnight, terminal.',
+    load: () => import('./Themes.svelte'),
+    file: 'Themes',
+  },
+  {
+    id: 'csv',
+    title: 'CSV import',
+    blurb: 'Round-trip CSV — parse text into rows (parseCSV) and export rows back (toCSV).',
+    load: () => import('./CsvIO.svelte'),
+    file: 'CsvIO',
+  },
+  {
+    id: 'print',
+    title: 'Print',
+    blurb: 'Print or export ALL rows as a clean HTML table (toHTMLTable / printTable).',
+    load: () => import('./PrintView.svelte'),
+    file: 'PrintView',
+  },
+  {
+    id: 'tree',
+    title: 'Tree',
+    blurb: 'A file-explorer tree — expandable folders, indented rows (tree data).',
+    load: () => import('./Tree.svelte'),
+    file: 'Tree',
+  },
+  {
+    id: 'lazytree',
+    title: 'Lazy tree',
+    blurb: 'A server-backed tree — children load on expand (async) with a loading row.',
+    load: () => import('./LazyTree.svelte'),
+    file: 'LazyTree',
+  },
+  {
+    id: 'servergroups',
+    title: 'Server groups',
+    blurb: 'Server-side grouping — group totals up front, rows load on expand.',
+    load: () => import('./ServerGroups.svelte'),
+    file: 'ServerGroups',
+  },
+  {
+    id: 'tasks',
+    title: 'Tasks',
+    blurb: 'A drag-to-reorder task list (row reordering via a handle).',
+    load: () => import('./Tasks.svelte'),
+    file: 'Tasks',
+  },
+  {
+    id: 'bigdata',
+    title: '1M rows',
+    blurb: 'A million-row trade tape, windowed from a synthetic source on demand.',
+    load: () => import('./BigData.svelte'),
+    file: 'BigData',
+  },
+];

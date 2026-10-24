@@ -30,7 +30,7 @@ jobs:
       - run: pnpm pages:build
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: demo-dist
+          path: site/build
 
   deploy:
     needs: build

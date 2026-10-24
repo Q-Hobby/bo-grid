@@ -4,6 +4,8 @@ demo-dist/
 lib-dist/
 lib-dist-grid/
 .svelte-kit/
+site/build/
+site/src/lib/generated/
 *.tgz
 coverage/
 .DS_Store
