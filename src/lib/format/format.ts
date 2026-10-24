@@ -15,10 +15,17 @@ export function fmtPercent(v: number): string {
 }
 
 export function fmtVolume(v: number): string {
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B`;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
-  return `${v}`;
+  if (!Number.isFinite(v)) return `${v}`;
+  const abs = Math.abs(v);
+  // Each unit starts where the one below would round to 1000: 999,950 is
+  // 1.00M, not 1000.0K. Plain comparisons, as this runs on every tick.
+  let text: string;
+  if (abs >= 999_995_000_000) text = `${(abs / 1e12).toFixed(2)}T`;
+  else if (abs >= 999_995_000) text = `${(abs / 1e9).toFixed(2)}B`;
+  else if (abs >= 999_950) text = `${(abs / 1e6).toFixed(2)}M`;
+  else if (abs >= 1_000) text = `${(abs / 1e3).toFixed(1)}K`;
+  else return `${v}`;
+  return v < 0 ? `-${text}` : text;
 }
 
 export type DateStyle = 'short' | 'medium';

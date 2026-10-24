@@ -22,6 +22,20 @@ All notable changes to this project are documented here. Format follows
   0.0000012 where no fixed decimal count suits every row.
 - **FX & crypto demo**: a dealing-screen FX board with live spreads in pips
   and the open centres, beside a crypto watchlist on significant digits.
+- **Basis points and fractional prices (`bo-grid/trading`).** `fmtBps`
+  shows a fraction in basis points (`'12.5 bp'`, signed on request, for
+  spreads and yield moves). `fmtFraction` writes a price as a whole number
+  and parts, the way Treasuries are quoted (`'99-16+'`, with halves,
+  quarters or eighths of a 32nd, or another denominator such as eighths for
+  grains). `style: 'futures'` writes it as futures screens do (`"99'165"`).
+  `parseFraction` reads either back, for a column's `parse`.
+
+### Fixed
+
+- **`volume` columns near a unit boundary.** A volume that rounds up to the
+  next unit now shows in it: 999,999 reads `1.00M`, not `1000.0K`. Negative
+  volumes (a net flow) are abbreviated too (`-2.50M`, not `-2500000`), and
+  volumes from a trillion up read `T` instead of thousands of `B`.
 
 ## [2.4.0] — 2026-10-24
 

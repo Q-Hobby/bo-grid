@@ -1,8 +1,9 @@
 // Public API for `bo-grid/trading` — market-convention helpers for APAC
 // trading screens: price-limit tone (ceiling/floor/reference colouring),
-// tick-aware price formatting, session state, positions from fills, and the
-// FX and crypto conventions (pips and the FX week; round-the-clock sessions
-// and significant-digit prices).
+// tick-aware price formatting, basis points and fractional prices (32nds),
+// session state, positions from fills, and the FX and crypto conventions
+// (pips and the FX week; round-the-clock sessions and significant-digit
+// prices).
 //
 // A separate entry, like `bo-grid/realtime`: pure
 // functions only, no Grid/Cell changes, so it adds nothing to the grid core
@@ -14,7 +15,8 @@ export type { Exchange, ToneBands } from './bands';
 export { resolveTone, toneColor, defaultToneColors, darkToneColors, lightToneColors } from './tone';
 export type { Tone, ToneColors } from './tone';
 
-export { decimalsForTick, fmtTradingPrice } from './format';
+export { decimalsForTick, fmtTradingPrice, fmtBps, fmtFraction, parseFraction } from './format';
+export type { BpsOptions, FractionOptions, FractionStyle } from './format';
 
 export { sessionStateAt, sessionLabel, VN_HOSE_SCHEDULE } from './session';
 export type { SessionState, SessionWindow, SessionOptions } from './session';
