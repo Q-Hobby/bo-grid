@@ -417,6 +417,36 @@ of this is required to use `resolveTone`/`toneColor` — pass your own
 `{ ref, ceiling, floor }` for any other market's limit-price rule. See the **VN
 board** demo for it composed with `bo-grid/realtime`.
 
+**FX.** A pair's pip is 0.01 when it is quoted in yen and 0.0001 otherwise
+(`fxPipSize`, which reads the pair from its first six letters, so a broker's
+suffix such as `USDJPY.m` is fine); pass a pip size (below 1) instead of a
+pair for metals, currencies with another pip (HUF, KRW) or a broker's own
+convention. A dealing screen shows a quote with the big figure small, the pips
+large and the pipette raised:
+
+```ts
+import { fxQuoteHtml, fxQuoteParts, pipsBetween, fxMarketOpen, fxCentresOpen } from 'bo-grid/trading';
+
+fxQuoteParts(1.08452, 'EUR/USD'); // { big: '1.08', pips: '45', pipette: '2' }
+const bid: ColumnDef = { type: 'custom', key: 'bid', header: 'Bid', render: ({ row }) => fxQuoteHtml(row.bid, row.pair) };
+pipsBetween(ask, bid, 'EUR/USD');  // the spread, in pips, to a tenth
+fxMarketOpen(new Date());          // Sunday 17:00 to Friday 17:00, New York time
+fxCentresOpen(new Date());         // e.g. ['London', 'New York']: the overlap
+```
+
+`fxQuoteHtml` puts each part in a class of its own (`bo-fx-big`, `bo-fx-pips`,
+`bo-fx-pipette`) with inline defaults you can override. The centres are Sydney,
+Tokyo, London and New York in their own business hours, so summer time moves
+them as it does on the street.
+
+**Crypto.** The market never closes: `sessionStateAt(now, CRYPTO_SCHEDULE,
+{ timeZone: 'UTC', skipWeekends: false })` reads `'continuous'`. One watchlist
+runs from 63,250 down to 0.0000012, where no fixed decimal count suits every
+row: `fmtSigPrice(price)` shows five significant digits (and every digit of a
+large price's integer part). Where you know a symbol's tick, `fmtTradingPrice`
+shows it exactly, and `roundToTick(qty, step, 'down')` rounds a size to its
+lot step. See the **FX & crypto** demo.
+
 #### Depth ladder — `bo-grid/ladder`
 
 `DepthLadder` is a price ladder (depth of market) built on the grid: one row

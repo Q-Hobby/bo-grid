@@ -5,6 +5,24 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **FX conventions (`bo-grid/trading`).** `fxPipSize` gives a pair's pip
+  (0.01 for yen pairs, 0.0001 otherwise, however the pair is written and with
+  a broker's suffix); a pip size stands in for a pair wherever one is taken.
+  `fxQuoteParts` and `fxQuoteHtml` cut a quote the way a dealing screen shows
+  it: the big figure small, the pips large, the pipette raised.
+  `pipsBetween` measures a spread or a move in pips. `fxMarketOpen` reads the
+  FX week (Sunday 17:00 to Friday 17:00, New York time) and `fxCentresOpen`
+  names which of Sydney, Tokyo, London and New York are in business hours,
+  summer time included.
+- **Crypto conventions (`bo-grid/trading`).** `CRYPTO_SCHEDULE` is a
+  session schedule that never closes, and `fmtSigPrice` shows a price to
+  significant digits, for a watchlist that runs from 63,250 down to
+  0.0000012 where no fixed decimal count suits every row.
+- **FX & crypto demo**: a dealing-screen FX board with live spreads in pips
+  and the open centres, beside a crypto watchlist on significant digits.
+
 ## [2.4.0] — 2026-10-24
 
 **Built for the live desk.** A sorted, filtered view stays in order under a

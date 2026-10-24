@@ -458,7 +458,7 @@ rows = tape.toArray();</code></pre>
 
       <!-- ============ TRADING ============ -->
       <h2 id="trading">Trading <span class="tag">bo-grid/trading</span></h2>
-      <p>Market-convention helpers for APAC trading screens. Pure functions only — no <code>ColumnDef</code> changes, no Grid/Cell wiring. Wire tone/formatting into a column via the <code>cell</code> snippet or a JS <code>render(ctx)</code> hook you already have. A <strong>separate import</strong> on its own budget (~2&nbsp;KB gzip) — adds nothing to the grid core.</p>
+      <p>Market-convention helpers for APAC trading screens. Pure functions only — no <code>ColumnDef</code> changes, no Grid/Cell wiring. Wire tone/formatting into a column via the <code>cell</code> snippet or a JS <code>render(ctx)</code> hook you already have. A <strong>separate import</strong> on its own budget (~3&nbsp;KB gzip) — adds nothing to the grid core.</p>
       <h3>Price-limit tone</h3>
       <p>The APAC convention: colour by position relative to the daily ceiling/floor/reference, not just up/down — a price pinned at the limit is a different signal from an ordinary move.</p>
       <table>
@@ -506,6 +506,21 @@ rows = tape.toArray();</code></pre>
       <div class="note">
         None of this needs Grid/Cell support — wire it into a <code>type: 'custom'</code> column's <code>cell</code> snippet (or a JS <code>render(ctx)</code> hook) exactly like any other custom cell. See the <strong>VN board</strong> demo, which composes it with <code>bo-grid/realtime</code>.
       </div>
+
+      <h3>FX and crypto</h3>
+      <table>
+        <thead><tr><th>Export</th><th>Signature</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>fxPipSize</td><td><span class="type">(pair) =&gt; number</span></td><td>0.01 when the quote currency is the yen, 0.0001 otherwise; any spelling (<code>'USD/JPY'</code>, <code>'usdjpy'</code>, a broker's <code>'USDJPY.m'</code>). Elsewhere a pip size (below 1) can stand in for a pair: metals, or currencies with another pip such as HUF and KRW.</td></tr>
+          <tr><td>fxQuoteParts</td><td><span class="type">(price, pairOrPip, { pipette? }?) =&gt; { big, pips, pipette }</span></td><td>The quote cut as a dealing screen shows it: <code>1.08452</code> → <code>'1.08'</code>, <code>'45'</code>, <code>'2'</code>. <code>pipette: false</code> stops at the pip.</td></tr>
+          <tr><td>fxQuoteHtml</td><td><span class="type">(price, pairOrPip, { pipette? }?) =&gt; string</span></td><td>The parts as HTML for a column's <code>render</code>: the big figure dimmed, the pips large, the pipette raised, in classes <code>bo-fx-big</code>, <code>bo-fx-pips</code>, <code>bo-fx-pipette</code>.</td></tr>
+          <tr><td>pipsBetween</td><td><span class="type">(a, b, pairOrPip) =&gt; number</span></td><td><code>a - b</code> in pips, to a tenth: a spread or a move.</td></tr>
+          <tr><td>fxMarketOpen</td><td><span class="type">(date) =&gt; boolean</span></td><td>The FX week: Sunday 17:00 to Friday 17:00, New York time.</td></tr>
+          <tr><td>fxCentresOpen</td><td><span class="type">(date) =&gt; FxCentre[]</span></td><td>Which of Sydney, Tokyo, London and New York are in business hours (their own time zones, summer time included) while the week is open. Two at once is an overlap.</td></tr>
+          <tr><td>CRYPTO_SCHEDULE</td><td><span class="type">SessionWindow[]</span></td><td>Continuous round the clock: with <code>{ timeZone: 'UTC', skipWeekends: false }</code>, <code>sessionStateAt</code> reads <code>'continuous'</code> always.</td></tr>
+          <tr><td>fmtSigPrice</td><td><span class="type">(value, digits = 5, locale?) =&gt; string</span></td><td>A price to significant digits, for a watchlist that runs from 63,250 to 0.0000012; every digit of a large price's integer part is kept.</td></tr>
+        </tbody>
+      </table>
 
       <h3>Positions</h3>
       <p>Positions from fills, on average cost: what a blotter's positions view shows.</p>
@@ -643,7 +658,7 @@ rows = tape.toArray();</code></pre>
           <h3 style="font-size:14px">Trading <span style="font-weight:400;color:var(--dim)">(bo-grid/trading)</span></h3>
           <span class="pill">resolveTone</span><span class="pill">toneColor</span><span class="pill">vnBands</span><span class="pill">vnFuturesBands</span><span class="pill">vnTickSize</span>
           <span class="pill">roundToTick</span><span class="pill">fmtTradingPrice</span><span class="pill">sessionStateAt</span><span class="pill">sessionLabel</span>
-          <span class="pill">createPositions</span><span class="pill">unrealizedPnl</span>
+          <span class="pill">createPositions</span><span class="pill">unrealizedPnl</span><span class="pill">fxQuoteHtml</span><span class="pill">pipsBetween</span><span class="pill">fxCentresOpen</span><span class="pill">fmtSigPrice</span>
           <h3 style="font-size:14px">Ladder <span style="font-weight:400;color:var(--dim)">(bo-grid/ladder)</span></h3>
           <span class="pill">DepthLadder</span><span class="pill">ladderPrices</span><span class="pill">ladderRows</span><span class="pill">midPrice</span><span class="pill">stepPrice</span><span class="pill">LadderAction</span>
           <h3 style="font-size:14px">Web component <span style="font-weight:400;color:var(--dim)">(bo-grid/element)</span></h3>

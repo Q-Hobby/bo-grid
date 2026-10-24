@@ -401,7 +401,7 @@ const rowClass = $derived.by(() => { void shown; return (o) => (linger.leaving(o
 // <Grid rows={shown} {rowClass} />; onDestroy(linger.stop). Mark an order Filled, drop it on the next update.
 ```
 
-## 6. `bo-grid/trading` — APAC market conventions and positions (own budget, ~2 KB gzip)
+## 6. `bo-grid/trading` — market conventions (VN, FX, crypto) and positions (own budget, ~3 KB gzip)
 
 Pure functions only — no `ColumnDef`/Grid changes. Wire results into a column
 via `render`/`cell` (§4.3/§4.4).
@@ -409,7 +409,8 @@ via `render`/`cell` (§4.3/§4.4).
 ```ts
 import { resolveTone, toneColor, vnBands, vnTickSize, roundToTick, vnBandPercent, vnFuturesBands, VN_FUTURES_TICK,
          fmtTradingPrice, decimalsForTick, sessionStateAt, sessionLabel, VN_HOSE_SCHEDULE,
-         createPositions, unrealizedPnl } from 'bo-grid/trading';
+         createPositions, unrealizedPnl, fxPipSize, fxQuoteParts, fxQuoteHtml, pipsBetween,
+         fxMarketOpen, fxCentresOpen, CRYPTO_SCHEDULE, fmtSigPrice } from 'bo-grid/trading';
 ```
 
 **Price-limit tone** (the ceiling/floor/reference/up/down colour convention
@@ -445,6 +446,18 @@ book.fill({ symbol: 'FPT', side: 'buy', qty: 400, price: 11.5 }); // returns { s
 book.get('FPT'); book.all(); book.clear();                          // qty > 0 long, < 0 short; bad symbol/side/qty/price/fee throws
 unrealizedPnl(position, last);  // use in a `value` column with groupAgg: 'sum' for a live P&L footer
 ```
+
+**FX** (pip 0.01 for yen pairs, else 0.0001; a pip size can stand in for a pair anywhere):
+```ts
+fxPipSize('USD/JPY');                    // 0.01
+fxQuoteParts(1.08452, 'EUR/USD');        // { big: '1.08', pips: '45', pipette: '2' }
+{ type: 'custom', key: 'bid', header: 'Bid', render: ({ row }) => fxQuoteHtml(row.bid, row.pair) } // big small, pips large, pipette raised
+pipsBetween(ask, bid, pair);             // spread / move in pips, to 0.1
+fxMarketOpen(now); fxCentresOpen(now);   // Sun 17:00–Fri 17:00 NY; ['Sydney'|'Tokyo'|'London'|'New York'] in business hours
+```
+
+**Crypto**: `sessionStateAt(now, CRYPTO_SCHEDULE, { timeZone: 'UTC', skipWeekends: false })` → 'continuous';
+`fmtSigPrice(price, digits = 5)` for a list from 63,250 to 0.0000012; `roundToTick(qty, step, 'down')` for lot steps.
 
 ## 6b. `bo-grid/ladder` — depth ladder (own entry, ~4 KB gzip on top of the grid)
 
