@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ColumnDef, GridRow } from './column';
-import { createArraySource } from './source';
+import { createArraySource, type RowSourceParams } from './source';
 import { RowSourceController } from './source.svelte';
 
 const _cols: ColumnDef[] = [{ type: 'number', key: 'n', header: 'N' }];
@@ -48,6 +48,18 @@ describe('createArraySource', () => {
     }
   });
 
+  it('keeps rows matching both the filter text and the quick-filter box text', async () => {
+    const rows = [
+      { id: 0, name: 'apple pie' },
+      { id: 1, name: 'apple tart' },
+      { id: 2, name: 'banana pie' },
+    ] as unknown as GridRow[];
+    const src = createArraySource(rows, { filterKeys: ['name'] });
+    const res = await src.getRows({ range: { start: 0, end: 10 }, sort: null, filter: 'apple', quickFilter: 'PIE' });
+    expect(res.total).toBe(1);
+    expect(res.rows.map((r) => r.name)).toEqual(['apple pie']);
+  });
+
   it('applies structured columnFilters server-side and adjusts total', () => {
     const rows = [
       { id: 0, flashSeq: 0, flashDir: 'up', px: 5 },
@@ -69,6 +81,23 @@ describe('createArraySource', () => {
 });
 
 describe('RowSourceController', () => {
+  it('sends the quick-filter text and refetches when it changes', async () => {
+    const calls: RowSourceParams[] = [];
+    const inner = createArraySource(makeRows(50));
+    const ctrl = new RowSourceController({ getRows: (p) => (calls.push(p), inner.getRows(p)) });
+    await ctrl.fetch({ start: 0, end: 5 }, [], '', undefined, '');
+    await ctrl.fetch({ start: 0, end: 5 }, [], '', undefined, '');
+    expect(calls).toHaveLength(1); // cached
+    await ctrl.fetch({ start: 0, end: 5 }, [], '', undefined, 'abc');
+    expect(calls).toHaveLength(2);
+    expect(calls[1].quickFilter).toBe('abc');
+    // The filter and the quick filter are separate parts of the key: swapping
+    // their texts is a different query.
+    await ctrl.fetch({ start: 0, end: 5 }, [], 'abc', undefined, '');
+    expect(calls).toHaveLength(3);
+    expect(calls[2]).toMatchObject({ filter: 'abc', quickFilter: '' });
+  });
+
   it('fetches a window, sets total, and caches rows by index', async () => {
     const ctrl = new RowSourceController(createArraySource(makeRows(50)));
     await ctrl.fetch({ start: 5, end: 10 }, [], '');

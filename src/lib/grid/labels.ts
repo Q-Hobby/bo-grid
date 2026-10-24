@@ -43,6 +43,8 @@ export interface GridLabels {
   showAll: string;
   searchColumns: string;
   quickFilter: string;
+  /** Placeholder of the quick-filter box (`quickFilter`). */
+  quickFilterPlaceholder: string;
   selectRow: string;
   selectAllRows: string;
   toggleDetail: string;
@@ -119,6 +121,7 @@ export const DEFAULT_LABELS: GridLabels = {
   showAll: 'Show all',
   searchColumns: 'Search columns',
   quickFilter: 'Quick filter',
+  quickFilterPlaceholder: 'Search…',
   selectRow: 'Select row',
   selectAllRows: 'Select all rows',
   toggleDetail: 'Toggle detail',

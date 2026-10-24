@@ -41,7 +41,7 @@ A sort is a snapshot: when values change in place (a price feed), rows keep thei
 
 ## Quick search
 
-Pass a `filter` string to keep only rows where some column's value contains it, ignoring case. Bind it to your own search input, or set `quickFilter` for a built-in search box above the grid (in-memory data; with a server source, pass `filter`):
+Pass a `filter` string to keep only rows where some column's value contains it, ignoring case. Bind it to your own search input, or set `quickFilter` for a built-in search box above the grid (with a server source, its text reaches `getRows` as `quickFilter`):
 
 ```svelte
 <script lang="ts">

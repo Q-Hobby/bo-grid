@@ -16,7 +16,12 @@ export interface RowSourceParams {
   sort: SortState | null;
   /** Full sort order (primary first) for multi-column sort. May be empty. */
   sorts?: SortState[];
+  /** The `filter` prop's quick-search text (may be empty). Keep rows where
+      any searchable field contains it, case-insensitive. */
   filter: string;
+  /** The text typed in the built-in quick-filter box (`quickFilter` prop);
+      may be empty. It applies like `filter`, and a row must match both. */
+  quickFilter?: string;
   /** Structured per-column filters (header filter menu), keyed by column key. */
   columnFilters?: Record<string, AnyFilter>;
 }
@@ -57,9 +62,11 @@ export function createArraySource(all: readonly GridRow[], opts: ArraySourceOpti
 
   function compute(params: RowSourceParams): RowSourceResult {
     let rows: readonly GridRow[] = all;
-    const f = params.filter.trim().toLowerCase();
-    if (f && filterKeys && filterKeys.length > 0) {
-      rows = rows.filter((r) => filterKeys.some((k) => String(r[k] ?? '').toLowerCase().includes(f)));
+    // The filter text and the quick-filter box's text: a row matches both.
+    const texts = [params.filter, params.quickFilter ?? ''].map((t) => t.trim().toLowerCase()).filter(Boolean);
+    if (texts.length > 0 && filterKeys && filterKeys.length > 0) {
+      const has = (r: GridRow, t: string) => filterKeys.some((k) => String(r[k] ?? '').toLowerCase().includes(t));
+      rows = rows.filter((r) => texts.every((t) => has(r, t)));
     }
     const cf = params.columnFilters;
     if (cf && Object.keys(cf).length > 0) {

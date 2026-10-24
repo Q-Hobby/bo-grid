@@ -1471,6 +1471,9 @@ render as skeletons.
 <Grid {columns} {source} height={640} />
 ```
 
+The built-in search box (`quickFilter`) sends its text as `quickFilter` next to
+`filter`; a row should match both.
+
 `createArraySource(rows, { latency, filterKeys })` adapts an in-memory array to
 the same interface (handy for testing the path or client-side data). Grouping is
 client-only, so it's not applied in source mode.

@@ -5,6 +5,21 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **The quick-filter box works with a server source.** With `source`, the
+  text typed in the built-in search box (`quickFilter`) never reached
+  `getRows`, so it filtered nothing. `RowSourceParams` now carries it as
+  `quickFilter`, next to `filter` (the `filter` prop's text): a row should
+  match both. `createArraySource` applies both. A source that builds its
+  query from `filter` alone should read `quickFilter` too.
+
+### Added
+
+- **`labels.quickFilterPlaceholder`**: the quick-filter box's placeholder,
+  until now a fixed "Search…", can be translated.
+- **Docs: a Pinned rows page** (`pinnedRows`, `rowPinning`, `api.pinRow`).
+
 ## [2.8.0] — 2026-10-24
 
 **A busy feed off the main thread.** `serveFeed` and `connectFeed` read a

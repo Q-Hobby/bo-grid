@@ -53,6 +53,7 @@ export const DOCS_NAV: NavGroup[] = [
       doc('Row numbers', 'row-numbers'),
       doc('Row styles', 'row-styles'),
       doc('Row reordering', 'row-reordering'),
+      doc('Pinned rows', 'pinned-rows'),
       doc('Merged cells', 'merged-cells'),
       doc('Master-detail', 'master-detail'),
       doc('Pagination', 'pagination'),
