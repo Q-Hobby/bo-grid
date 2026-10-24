@@ -5,6 +5,18 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-10-24
+
+**Markets beyond the exchange board.** FX conventions (pip sizes, the quote
+as a dealing screen shows it, the FX week and its trading centres), crypto
+(a market that never closes, prices to significant digits), basis points
+and fractional prices (32nds, in cash and futures styles, read back for
+editing), and an order book kept from a depth feed (`createOrderBook`),
+grouped into price buckets and shown stacked or side by side. Fixes
+`roundToTick` on ticks such as 0.25, which `DepthLadder` steps its prices
+with, and the `volume` format near a unit boundary. A minor release:
+nothing was removed or renamed.
+
 ### Added
 
 - **FX conventions (`bo-grid/trading`).** `fxPipSize` gives a pair's pip
@@ -29,7 +41,6 @@ All notable changes to this project are documented here. Format follows
   quarters or eighths of a 32nd, or another denominator such as eighths for
   grains). `style: 'futures'` writes it as futures screens do (`"99'165"`).
   `parseFraction` reads either back, for a column's `parse`.
-
 - **`createOrderBook` (`bo-grid/realtime`): an order book from a depth
   feed.** A snapshot, then the levels that change (size 0 removes one), as
   numbers or numeric strings. Updates older than the last sequence number
@@ -1459,6 +1470,7 @@ First public release — a tiny, fast Svelte 5 data grid for fintech UIs.
 [0.23.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.23.0
 [0.22.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.22.0
 [0.21.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v0.21.0
+[2.5.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.5.0
 [2.4.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.4.0
 [2.3.0]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.3.0
 [2.2.2]: https://github.com/bonguynvan/bo-grid/releases/tag/v2.2.2
