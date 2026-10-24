@@ -62,6 +62,16 @@ An agent working in your project can read the package's type definitions in `nod
 
 So the most useful habit to give an agent is to run the type check after each change (`svelte-check` in a Svelte project, `tsc` elsewhere) and fix what it reports.
 
+## Errors that say the fix
+
+When the grid is used wrongly at run time, the error it throws is written for whoever reads it next, person or agent. It starts with a stable code, says what happened with the value the grid got, and ends with the fix and a link:
+
+```text
+BG3003: createPositions: a fill's qty must be a number above 0, got -100. Fix: Pass the filled quantity as a positive number; the side says which way (side: 'sell', not a negative qty). See https://bonguynvan.github.io/bo-grid/docs/errors/#bg3003
+```
+
+An agent can apply the fix without reading the library's source, and a test or an error reporter can match on `error.code`. Every code is on the [Error codes](../errors/) page, which a test keeps in step with the source.
+
 ## Add bo-grid to your AGENTS.md
 
 Most coding agents read a project instruction file: `AGENTS.md`, `CLAUDE.md`, or a rules file. Paste this section into yours so every session starts from the right API:
@@ -92,6 +102,8 @@ not in api.json or the types in node_modules/bo-grid, it does not exist.
 - Outside Svelte there are no snippets: draw custom cells with a column's
   `render(ctx)` function.
 - After editing, run the type check (`svelte-check` or `tsc`) and fix errors.
+- A runtime error that starts with a `BG` code ends with `Fix:`; apply it as
+  written.
 ```
 
 The repository's [`docs/ai`](https://github.com/bonguynvan/bo-grid/tree/main/docs/ai) folder has the same guidance as a [Cursor rule](https://github.com/bonguynvan/bo-grid/blob/main/docs/ai/cursor-rules.mdc) (save it as `.cursor/rules/bo-grid.mdc`) and a longer [CLAUDE.md section](https://github.com/bonguynvan/bo-grid/blob/main/docs/ai/claude-md-snippet.md).

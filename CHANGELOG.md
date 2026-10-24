@@ -5,6 +5,24 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Error codes.** Every error bo-grid throws starts with a stable code,
+  says what happened with the value it got, gives the fix and links to it:
+  `BG2004: TradeTape: capacity must be a number of 1 or more, got 0. Fix:
+  Pass how many trades to keep, e.g. new TradeTape(500). See
+  …/docs/errors/#bg2004`. The code is also on the error as `error.code`,
+  typed as the union `BoGridErrorCode` (exported with `BoGridError` from
+  `bo-grid`, `bo-grid/realtime` and `bo-grid/trading`), so a test or an
+  error reporter can match on it and a typo in a code is a type error. The
+  error classes are unchanged, so existing `catch` blocks keep working. The
+  new [Error codes](https://bonguynvan.github.io/bo-grid/docs/errors/) page
+  lists all 17, and a test fails the build if the page, the type and the
+  throw sites disagree. llms.txt and the AI guidance tell agents to apply
+  the fix as written.
+- `parseJSON` on text that is not JSON throws BG1103, a `SyntaxError` as
+  before, now with the fix and link.
+
 ## [2.10.0] — 2026-10-25
 
 **Columns that stay put, and a keyboard that stays in the grid.** Resizing

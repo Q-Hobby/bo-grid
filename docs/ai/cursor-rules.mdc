@@ -84,3 +84,5 @@ row.flashSeq++;
 4. Using `createTickStream` (last-write-wins per key) for a trade tape —
    use `TradeTape` instead, since every trade must show, nothing coalesces.
 5. Inventing a `ColumnDef`/`<Grid>` prop not in the fetched reference above.
+6. Guessing at a runtime error. A bo-grid error starts with a code (`BG2004`)
+   and ends with `Fix:` and a docs link: apply the fix as written.

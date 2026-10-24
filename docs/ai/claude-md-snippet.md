@@ -57,6 +57,9 @@ optional and unnecessary otherwise.
 **Busy feeds:** keep rows as plain objects and write ticks with
 `api.patchRows(patches)`, fed by `createTickStream` from `bo-grid/realtime`.
 
+**Runtime errors:** a bo-grid error starts with a stable code (`BG2004: ...`)
+and ends with `Fix:` and a link to `/docs/errors/`. Apply the fix as written.
+
 **Before generating non-trivial code** (new column types, a realtime feed, the
 web component), read the matching docs page (`/docs/<topic>.md`, listed in
 `llms.txt`) rather than extrapolating from this summary.

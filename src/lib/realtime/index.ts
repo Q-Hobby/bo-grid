@@ -40,3 +40,6 @@ export type { Alerts, AlertsOptions, Alert, CheckOptions } from './alerts';
 
 export { centeredWindow } from './ladder';
 export type { LadderWindow } from './ladder';
+
+// The errors this entry throws carry a stable `code` (BG2001…), the fix and a docs link.
+export type { BoGridError, BoGridErrorCode } from '../errors';

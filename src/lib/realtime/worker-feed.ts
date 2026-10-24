@@ -29,6 +29,7 @@
 // structured clone: keep them plain data. One that cannot be cloned is
 // dropped and reported, and the rest still arrive.
 import { DEFAULT_CAP, TickBuffer, defaultOnError, defaultScheduler, type Cancel, type Scheduler, type TickBufferOptions } from './ticks';
+import { boError } from '../errors';
 
 /** The worker as the main thread sees it: a dedicated `Worker`. */
 export interface FeedWorker {
@@ -141,7 +142,7 @@ export function serveFeed<K, P>(opts: ServeFeedOptions<P> = {}): FeedSource<K, P
   const name = opts.name ?? 'feed';
   const scope = opts.scope ?? (globalThis as unknown as FeedScope);
   const names = served.get(scope) ?? new Set<string>();
-  if (names.has(name)) throw new Error(`bo-grid: serveFeed("${name}") already runs in this worker`);
+  if (names.has(name)) throw boError(Error, 'BG2001', `serveFeed("${name}") already runs in this worker.`, 'Give each feed in a worker its own name (serveFeed({ name })), or close the first one.');
   names.add(name);
   served.set(scope, names);
   const buffer = new TickBuffer<K, P>({ merge: opts.merge });

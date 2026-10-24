@@ -20,6 +20,7 @@
 // is what a frame pays for.
 import type { GridRow } from '../grid/column';
 import type { BookLevel } from '../ladder/types';
+import { boError } from '../errors';
 
 export type { BookLevel };
 
@@ -242,7 +243,7 @@ function totals(levels: readonly BookLevel[]): number[] {
 export function createOrderBook(opts: OrderBookOptions = {}): OrderBook {
   const maxLevels = opts.maxLevels ?? Number.POSITIVE_INFINITY;
   if (!(maxLevels === Number.POSITIVE_INFINITY || (Number.isInteger(maxLevels) && maxLevels > 0))) {
-    throw new RangeError(`order book maxLevels must be a whole number above 0, got ${maxLevels}`);
+    throw boError(RangeError, 'BG2002', `createOrderBook: maxLevels must be a whole number above 0, got ${maxLevels}.`, 'Pass a whole number, e.g. maxLevels: 20, or leave it out to keep every level.');
   }
   // Levels past the cap kept until a batch is dropped: trimming the far end
   // shifts the whole array, so it happens once a quarter of the cap fills.

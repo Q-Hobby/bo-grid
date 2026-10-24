@@ -1,5 +1,6 @@
 import type { ColumnDef, GridRow } from './column';
 import { rowsToMatrix, type ExportOptions } from './export';
+import { boError } from '../errors';
 
 /**
  * Export rows to a .xlsx file. SheetJS is loaded via dynamic import, so it lands
@@ -16,7 +17,7 @@ export async function exportXLSX(
   try {
     XLSX = await import('xlsx');
   } catch {
-    throw new Error("bo-grid: xlsx export requires the optional peer dependency 'xlsx' (npm i xlsx)");
+    throw boError(Error, 'BG1102', "exportXLSX: the optional peer dependency 'xlsx' is not installed.", 'Install it next to bo-grid: npm i xlsx.');
   }
   const ws = XLSX.utils.aoa_to_sheet(rowsToMatrix(rows, columns, opts));
   const wb = XLSX.utils.book_new();
