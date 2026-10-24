@@ -5,6 +5,19 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`createAlerts` (`bo-grid/realtime`): alerts that stay lit until
+  acknowledged.** Named rules on a row (a price at or past a level) fire when
+  they turn true and stay lit, even if the price comes back, until
+  acknowledged; a rule still holding then waits until it stops before it can
+  fire again. `check(rows)` returns the alerts that just fired (`complete:
+  true` also forgets rows that left); `isLit(row)` feeds a `rowClass`;
+  `ack(key)`, `ackAll()`, and `active()` newest first for a panel;
+  `onChange` restyles the rows when the lit alerts change.
+- **FX & crypto demo:** the crypto watchlist lights a row when its price
+  reaches its alert level; A acknowledges the focused row.
+
 ## [2.6.0] — 2026-10-24
 
 **Keys on the row you are looking at.** `hotkeys` binds keys for your app

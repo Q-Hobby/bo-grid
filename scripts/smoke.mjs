@@ -1048,6 +1048,18 @@ const fxPips = document.querySelectorAll('.bo-grid .row .bo-fx-pips').length;
 if (fxPips !== 12) fail(`FX & crypto did not show 12 dealing-screen quotes (got ${fxPips})`);
 const fxStat = document.querySelector('.stat')?.textContent ?? '';
 if (!/crypto Continuous/.test(fxStat)) fail(`FX & crypto did not read the crypto market as continuous ("${fxStat}")`);
+// bo-grid/realtime's createAlerts: DOGE starts past its level, so its row is
+// lit; A on it acknowledges it.
+document.querySelector('button.live')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await wait(30);
+const litRow = document.querySelector('.bo-grid .row.alert-lit');
+if (!litRow || !/DOGE/.test(litRow.textContent ?? '')) fail('FX & crypto did not light the DOGE alert');
+litRow.querySelector('.c').dispatchEvent(new window.MouseEvent('pointerdown', { button: 0, bubbles: true }));
+window.dispatchEvent(new window.Event('pointerup'));
+litRow.closest('.gridmain').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+await wait(30);
+const stillLit = [...document.querySelectorAll('.bo-grid .row.alert-lit')].some((r) => /DOGE/.test(r.textContent ?? ''));
+if (stillLit) fail('FX & crypto: A did not acknowledge the DOGE alert');
 
 // Time & sales: bo-grid/realtime's TradeTape — capped, newest trade first.
 // Starts with zero trades (an empty grid, no `.row` yet), so solo() waits on
@@ -1454,7 +1466,7 @@ console.log(
     `paste + resize committed (+onColumnResize); collapse ${heightBefore}→${heightAfter}px; server loaded ${dataRows} rows; ` +
     `${stickyHeaders} pinned columns (+right); pivot ${pivotHeaders.length} cols; ` +
     `gallery: portfolio ${portfolioRows} rows/${portfolioGroups} groups + header-groups + ctx-menu + ${cfBars} data-bars/${cfIcons} icons/${cfScale} scale + computed-col, sheet ${sheetRows} rows (light) + select-edit + row-select + col-hide + col-filter + empty-msg + master-detail + cell-class + pagination, ` +
-    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes + group/side-by-side ${obPairs} pairs (createOrderBook), vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer + C cancels the focused order, fxcrypto ${fxPips} pip quotes + continuous crypto, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
+    `orderbook ${obAsk}↑/${obBid}↓ + ${obDepth} depth bars + ${obDirected} derived flashes + group/side-by-side ${obPairs} pairs (createOrderBook), vnboard ${vnRows} rows + ${vnSession.textContent?.trim()} session (bo-grid/trading), ladder ${ladderRowsInitial} prices + wheel/follow/click-to-buy ok, orders ${ordersBadges} chips + positions footer + C cancels the focused order, fxcrypto ${fxPips} pip quotes + continuous crypto + alert lit/acknowledged, timesales ${tsRows} trades (capped, newest-first), correlation ${heatCells} heat cells/${corrPinned} pinned, blotter ${blotRuns.length} runs/${blotCovers} covers/${blotColSpans} col-spans, leaderboard ${lbBars} bars/${lbPodium} podium/${lbPinned} pinned, wide ${wideHeaders} cols/${widePinned} pinned (col-virt), themes 8 presets (midnight→terminal), csv ${csvRows}→${csvAfter} rows + json ${csvJson} + auto ${csvAuto} (csv/tsv/json/auto import), print ${printGridRows} virt/${printPreviewRows} all-rows, tree ${treeRootsCount}→${treeAfter} on expand +kbd-collapse, lazytree ${lazyRootsCount}→${lazyAfter} async-load, servergroups ${sgGroups} groups→${sgRowsAfter} rows on expand, tasks row-reorder ok, bigdata ${bigRows} windowed rows over ${bigHeight.toLocaleString()}px; ` +
     `keyboard Home/End/Ctrl+Home ok; loading overlay ok; a11y rowcount/activedescendant ok; code view ok`,
 );
 process.exit(0);

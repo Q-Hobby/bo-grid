@@ -339,7 +339,7 @@ column a `render(ctx)` function instead:
 
 ```ts
 import { createTickStream, createRowIndex, applyPatches, TickBuffer, TradeTape, centeredWindow, createViewportSubscriptions, createLinger,
-         createOrderBook } from 'bo-grid/realtime';
+         createOrderBook, createAlerts } from 'bo-grid/realtime';
 ```
 
 **Price feed** (coalesces per key, drains a bounded slice per animation
@@ -419,6 +419,17 @@ const linger = createLinger({ ms: 1500, key: (o) => o.id, onExpire: () => expire
 const shown = $derived.by(() => { void expired; return linger.update(orders); }); // + rows that left, in place
 const rowClass = $derived.by(() => { void shown; return (o) => (linger.leaving(o) ? 'leaving' : undefined); });
 // <Grid rows={shown} {rowClass} />; onDestroy(linger.stop). Mark an order Filled, drop it on the next update.
+```
+
+**Alerts that stay lit until acknowledged:**
+```ts
+const alerts = createAlerts({ key: (q) => q.symbol, rules: { above: (q) => q.last >= q.alertAbove },
+                              onChange: () => version++ });   // on fire / ack / forget → rebuild rowClass
+const fired = alerts.check(rows);       // all rows or the changed ones; fires when a rule turns true, then stays lit
+alerts.check(allRows, { complete: true }); // also forgets keys not given (rows that left)
+// rowClass: (q) => alerts.isLit(q) ? 'alert-lit' : undefined; keys unique per check
+alerts.ack(symbol, rule?); alerts.ackAll();   // a rule still holding waits until it stops before firing again
+alerts.active();                        // lit alerts newest first { key, rule, row, at }; fireOnFirst: false waits for a crossing
 ```
 
 ## 6. `bo-grid/trading` — market conventions (VN, FX, crypto) and positions (own budget, ~3 KB gzip)

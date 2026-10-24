@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Grid, type ColumnDef, type GridRow } from '../../lib';
+  import { Grid, type ColumnDef, type GridRow, type Hotkeys } from '../../lib';
+  import { createAlerts } from '../../lib/realtime';
   import { CRYPTO_SCHEDULE, fmtSigPrice, fxCentresOpen, fxMarketOpen, fxPipSize, fxQuoteHtml, pipsBetween, sessionLabel, sessionStateAt } from '../../lib/trading';
   import { ui } from '../theme.svelte';
 
@@ -8,7 +9,9 @@
   // spreads and moves count in pips, and the header follows the FX week and
   // its centres. A crypto watchlist runs from tens of thousands down to
   // millionths in one column, so prices show to significant digits, and the
-  // market never closes.
+  // market never closes. Its alerts (bo-grid/realtime's createAlerts) light
+  // a row when the price reaches its level and keep it lit, even if the
+  // price comes back, until A acknowledges it.
   interface Pair extends GridRow {
     pair: string;
     bid: number;
@@ -20,6 +23,9 @@
     last: number;
     open: number;
     volume: number;
+    /** Alert levels: at or above, at or below. */
+    above?: number;
+    below?: number;
   }
 
   let seed = 0xf00d;
@@ -44,15 +50,44 @@
       return { id: i, pair, bid: mid - half, ask: mid + half, open: mid };
     }),
   );
-  const COINS: [string, number][] = [
-    ['BTC', 63250],
-    ['ETH', 3456.78],
-    ['SOL', 142.31],
-    ['DOGE', 0.15234],
+  // [symbol, price, alert at or above, alert at or below]. DOGE starts past
+  // its level, so it is lit from the first look.
+  const COINS: [string, number, number?, number?][] = [
+    ['BTC', 63250, 63400, 63000],
+    ['ETH', 3456.78, undefined, 3445],
+    ['SOL', 142.31, 142.8],
+    ['DOGE', 0.15234, 0.152],
     ['SHIB', 0.0000183],
-    ['PEPE', 0.0000012345],
+    ['PEPE', 0.0000012345, undefined, 0.00000122],
   ];
-  let coins = $state.raw<Coin[]>(COINS.map(([symbol, last], i) => ({ id: i, symbol, last, open: last, volume: 1e6 * (1 + rand() * 50) })));
+  const startCoins: Coin[] = COINS.map(([symbol, last, above, below], i) => ({ id: i, symbol, last, open: last, volume: 1e6 * (1 + rand() * 50), above, below }));
+  let coins = $state.raw<Coin[]>(startCoins);
+
+  // Bumped by the alerts whenever the lit ones change.
+  let alertVersion = $state(0);
+  const alerts = createAlerts<Coin, string>({
+    key: (c) => c.symbol,
+    rules: {
+      above: (c) => c.above !== undefined && c.last >= c.above,
+      below: (c) => c.below !== undefined && c.last <= c.below,
+    },
+    onChange: () => alertVersion++,
+  });
+  alerts.check(startCoins);
+  const litCount = $derived.by(() => {
+    void alertVersion;
+    return alerts.size;
+  });
+  // A new function when an alert fires or is acknowledged, so the rows restyle.
+  const coinClass = $derived.by(() => {
+    void alertVersion;
+    return (r: GridRow) => (alerts.isLit(r as Coin) ? 'alert-lit' : undefined);
+  });
+  const coinKeys: Hotkeys = {
+    a: ({ row }) => {
+      if (row) alerts.ack((row as Coin).symbol);
+    },
+  };
 
   // The clock the session labels read, once a second.
   let now = $state(new Date());
@@ -73,6 +108,7 @@
         return { ...p, bid: mid - spread / 2, ask: mid + spread / 2 };
       });
       coins = coins.map((c) => (rand() < 0.5 ? c : { ...c, last: c.last * (1 + (rand() - 0.5) * 0.002), volume: c.volume + rand() * 1e4 }));
+      alerts.check(coins);
     }, 300);
     const clock = setInterval(() => (now = new Date()), 1000);
     return () => {
@@ -103,6 +139,13 @@
     { type: 'number', key: 'last', header: 'Last', width: 120, format: (v) => fmtSigPrice(Number(v)), flash: 'auto' },
     { type: 'percent', key: 'chg', header: 'Change', width: 90, value: (r) => (100 * (coin(r).last - coin(r).open)) / coin(r).open },
     { type: 'number', key: 'volume', header: 'Volume', width: 120, format: (v) => Math.round(Number(v)).toLocaleString('en-US') },
+    {
+      type: 'text',
+      key: 'alert',
+      header: 'Alert',
+      width: 150,
+      value: (r) => [coin(r).above !== undefined ? `≥ ${fmtSigPrice(coin(r).above!)}` : '', coin(r).below !== undefined ? `≤ ${fmtSigPrice(coin(r).below!)}` : ''].filter(Boolean).join('  '),
+    },
   ];
 </script>
 
@@ -111,6 +154,9 @@
     <span class="dot"></span>{live ? 'Live' : 'Paused'}
   </button>
   <span class="stat">FX <strong>{fxOpen ? 'open' : 'closed'}</strong>{centres.length ? ` · ${centres.join(' + ')}` : ''} · crypto <strong>{crypto}</strong></span>
+  <span class="stat alerts"><strong>{litCount}</strong> lit</span>
+  <button class="ack" onclick={() => alerts.ackAll()} disabled={litCount === 0}>Acknowledge all</button>
+  <span class="keys"><kbd>A</kbd> acknowledges the focused row</span>
 </div>
 
 <div class="desk">
@@ -120,7 +166,7 @@
   </section>
   <section>
     <h4>Crypto</h4>
-    <Grid rows={coins} columns={cryptoColumns} height={6 * 32} rowHeight={32} theme={ui.grid} ariaLabel="Crypto watchlist" />
+    <Grid rows={coins} columns={cryptoColumns} height={6 * 32} rowHeight={32} rowClass={coinClass} hotkeys={coinKeys} theme={ui.grid} ariaLabel="Crypto watchlist" />
   </section>
 </div>
 
@@ -176,5 +222,43 @@
   }
   .desk :global(.fx-down) {
     color: var(--down);
+  }
+  .ack {
+    padding: 4px 10px;
+    font: inherit;
+    color: var(--text);
+    background: transparent;
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .ack:disabled {
+    color: var(--text-dim);
+    cursor: default;
+  }
+  .keys kbd {
+    padding: 0 4px;
+    font: inherit;
+    font-size: 11px;
+    color: var(--text);
+    border: 0.5px solid var(--border);
+    border-radius: 3px;
+  }
+  /* A lit alert: an amber wash that breathes until acknowledged (still, for
+     reduced motion). */
+  .desk :global(.row.alert-lit) {
+    background: color-mix(in srgb, #f5a524 18%, transparent);
+    box-shadow: inset 3px 0 0 #f5a524;
+    animation: alert-breathe 1.6s ease-in-out infinite;
+  }
+  @keyframes alert-breathe {
+    50% {
+      background: color-mix(in srgb, #f5a524 8%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .desk :global(.row.alert-lit) {
+      animation: none;
+    }
   }
 </style>
