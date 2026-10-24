@@ -30,6 +30,6 @@ Each entry is separate: an app pays only for what it imports.
 - [React, Vue & more](frameworks/): the components, the custom element, and server rendering.
 - [Examples](../examples/): every example runs live, with its source a tab away.
 
-## With an AI coding assistant
+## With an AI coding agent
 
-bo-grid is a Svelte 5 library: in Svelte, write runes (`$state`, `$props`), snippets and callback props, never `export let`, `on:click` or `<slot>`. The full API in one file for assistants is at [llms-full.txt](https://bonguynvan.github.io/bo-grid/llms-full.txt), and ready-made rules for Claude Code and Cursor are in [docs/ai](https://github.com/bonguynvan/bo-grid/tree/main/docs/ai).
+bo-grid is a Svelte 5 library: in Svelte, write runes (`$state`, `$props`), snippets and callback props, never `export let`, `on:click` or `<slot>`. For an agent, every page here has a Markdown twin (add `.md` to its URL), [llms.txt](../llms.txt) indexes them all, and [api.json](../api.json) lists every prop with its type and default. [AI coding agents](ai/) has the details and a section to paste into your `AGENTS.md`.

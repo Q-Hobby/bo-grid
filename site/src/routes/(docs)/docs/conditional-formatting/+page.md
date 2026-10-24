@@ -1,49 +1,73 @@
 ---
 title: Conditional formatting
-description: TODO
+description: Paint data bars, icons and colour scales into numeric cells from the values themselves, with no custom cell code.
 ---
 
 <script>
   import Example from '$lib/Example.svelte';
+  import Props from '$lib/Props.svelte';
 </script>
 
-Paint analytics cues straight into numeric cells — no custom snippet needed.
+Conditional formatting draws a cue into a numeric cell from its value: a bar behind it, an icon beside it, or a background tint. It answers "which rows stand out?" at a glance, and needs no custom cell. All three work on any numeric column and can be combined.
 
-**Data bars** (`dataBar`): an in-cell bar behind the value, scaled across the
-column's range. The range auto-computes over the current view, or set `min`/`max`
-(`min: 0` gives absolute proportional bars). When the range spans negatives, bars
-diverge left/right around a zero baseline. `color`/`negative` override the default
-up/down theme colours.
+Sort by Volume and watch the bars line up; the icons and the tint follow the Chg % values:
 
-**Icon sets** (`icons`): an icon beside the value, chosen by the highest threshold
-`at` that is ≤ the value. Each rule carries a semantic `tone` (`up` · `down` ·
-`amber` · `info` · `neutral`) for its colour.
+<Example name="conditional-formatting" title="Icons, a colour scale and data bars" />
 
-**Colour scales** (`colorScale`): tint the cell background across the value range —
-a soft, themed heat ramp. Auto-ranges over the view (or set `min`/`max`); pass
-`mid` for a 3-stop diverging scale; `colors` overrides the stops. Works on any
-numeric column (the fixed `heatmap` type still exists for an absolute ramp).
+## Data bars
+
+`dataBar` paints a horizontal bar behind the value, scaled across the column's range.
+
+- The range is computed over the rows in view, unless you give `min` and `max`. `min: 0` gives bars proportional to the value.
+- When the range spans negative values, bars grow left and right from a zero line.
+- `color` and `negative` override the default up and down colours.
 
 ```ts
-const columns: ColumnDef[] = [
-  // Proportional bar from zero:
-  { type: 'volume', key: 'marketValue', header: 'Mkt Value', dataBar: { min: 0 } },
-  // Diverging bar (auto-ranged) + an icon keyed by sign:
-  { type: 'number', key: 'pnl', header: 'P&L', decimals: 0,
-    dataBar: {},
-    icons: [
-      { at: -Infinity, icon: '▼', tone: 'down' },
-      { at: 0,         icon: '▲', tone: 'up' },
-    ] },
-  // Diverging colour scale around zero (auto-ranged):
-  { type: 'number', key: 'pnlPct', header: 'P&L %', decimals: 1, colorScale: { mid: 0 } },
-];
+{ type: 'volume', key: 'volume', header: 'Volume', dataBar: { min: 0 } }
+{ type: 'number', key: 'pnl', header: 'P&L', decimals: 0, dataBar: {} } // diverging around zero
 ```
 
-All three compose with flashing/live cells and add nothing to the core for grids
-that don't use them. (In-memory auto-ranging; pass explicit `min`/`max` in source
-mode.)
+## Icons
 
-## Live example
+`icons` shows an icon beside the value. Each rule has a threshold `at`, an `icon` and a `tone` (`up`, `down`, `amber`, `info` or `neutral`) for its colour. The rule with the highest `at` that is not above the value wins:
+
+```ts
+{
+  type: 'percent',
+  key: 'change',
+  header: 'Chg %',
+  icons: [
+    { at: -Infinity, icon: '▼', tone: 'down' },
+    { at: -0.25, icon: '●', tone: 'neutral' },
+    { at: 0.25, icon: '▲', tone: 'up' },
+  ],
+}
+```
+
+## Colour scales
+
+`colorScale` tints the cell background across the column's range: a soft ramp in the theme's colours.
+
+- It is computed over the rows in view, unless you give `min` and `max`.
+- `mid` makes a three-stop scale that diverges at that value, such as `mid: 0` for gains and losses.
+- `colors` sets the stops: `[low, high]`, or `[low, mid, high]` with `mid`.
+
+```ts
+{ type: 'number', key: 'pnlPct', header: 'P&L %', decimals: 1, colorScale: { mid: 0 } }
+```
+
+The `heatmap` column type is the fixed alternative: a ramp between a `min` and a `max` you set, with the value written on top.
+
+## With live data and server data
+
+The cues follow the values, so they update with a live feed and work alongside [cell flashing](../flashing/). Automatic ranges are computed over the rows in memory; with a server [data source](../server-data/), which only holds one window of rows at a time, give explicit `min` and `max`.
+
+## In the gallery
+
+A correlation matrix drawn as a heat map, with a pinned label column:
 
 <Example id="correlation" />
+
+## Reference
+
+<Props of="column" names={['dataBar', 'icons', 'colorScale', 'cellClass']} />
