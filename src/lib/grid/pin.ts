@@ -22,6 +22,10 @@ export interface PinLayout {
   /** Sum of all column widths (the horizontally-scrollable content width). */
   totalWidth: number;
   anyPinned: boolean;
+  /** Index of the first right-pinned column, or -1. Its cells take any room
+      the columns leave (margin-left: auto), so the right-pinned columns dock
+      at the right edge instead of trailing the others. */
+  firstRight: number;
 }
 
 function sideOf(c: ColumnDef): PinSide | null {
@@ -35,30 +39,42 @@ function sideOf(c: ColumnDef): PinSide | null {
  * `available`. Whole pixels, so the sum lands exactly on the target and never
  * spills into a stray horizontal scrollbar; never shrinks a column.
  */
-export function fillWidths(cols: readonly ColumnDef[], base: readonly number[], available: number): number[] {
+export function fillWidths(cols: readonly ColumnDef[], base: readonly number[], available: number, pad = 0): number[] {
+  // As CSS flex does (flex: F 1 0), in the usual case (it settles min and max
+  // violations in one pass where CSS settles one kind first, so a rare mix of
+  // both can differ): the flex columns share the room the fixed
+  // ones leave, in proportion to their weights, from zero; a share below a
+  // column's base (its floor here) or above its maxWidth is held there and
+  // the others share what is left. CSS shares what is left after each cell's
+  // own padding (`pad`, both sides), so the shares here do too. So a grid lays
+  // its flex columns out the same way whether CSS or this layout sizes them.
   const out = base.slice();
-  const cap = (i: number): number => cols[i].maxWidth ?? Infinity;
-  let extra = Math.floor(available) - out.reduce((a, b) => a + b, 0);
-  let open = cols.flatMap((c, i) => (c.flex ? [i] : []));
-  while (extra > 0 && open.length) {
+  const flex = cols.flatMap((c, i) => (c.flex ? [i] : []));
+  if (flex.length === 0) return out;
+  const room = Math.floor(available) - cols.reduce((a, c, i) => a + (c.flex ? 0 : base[i]), 0);
+  const held = new Map<number, number>();
+  for (;;) {
+    const open = flex.filter((i) => !held.has(i));
+    if (open.length === 0) break;
+    const left = room - [...held.values()].reduce((a, b) => a + b, 0);
     const weight = open.reduce((a, i) => a + (cols[i].flex as number), 0);
-    let given = 0;
-    for (const i of open) {
-      const add = Math.min(Math.floor((extra * (cols[i].flex as number)) / weight), cap(i) - out[i]);
-      out[i] += add;
-      given += add;
-    }
-    if (given === 0) {
-      // Shares rounded down to nothing: hand out the last pixels one by one.
+    const share = (i: number) => pad + ((left - pad * open.length) * (cols[i].flex as number)) / weight;
+    const low = open.filter((i) => share(i) < base[i]);
+    const high = open.filter((i) => share(i) > (cols[i].maxWidth ?? Infinity));
+    if (low.length === 0 && high.length === 0) {
+      // Whole pixels that add up to the room: floors, then the remainder.
+      let given = 0;
       for (const i of open) {
-        if (given >= extra) break;
-        out[i] += 1;
-        given += 1;
+        out[i] = Math.floor(share(i));
+        given += out[i];
       }
+      for (let k = 0; given < left && k < open.length; k++, given++) out[open[k]] += 1;
+      break;
     }
-    extra -= given;
-    open = open.filter((i) => out[i] < cap(i));
+    for (const i of low) held.set(i, base[i]);
+    for (const i of high) held.set(i, cols[i].maxWidth as number);
   }
+  for (const [i, w] of held) out[i] = w;
   return out;
 }
 
@@ -122,6 +138,8 @@ export function arrangePinned(
   cols: readonly ColumnDef[],
   available = 0,
   fitFloor?: (col: ColumnDef) => number,
+  /** A cell's horizontal padding (both sides), for flex shares like CSS's. */
+  pad = 0,
 ): PinLayout {
   const left = cols.filter((c) => sideOf(c) === 'left');
   const right = cols.filter((c) => sideOf(c) === 'right');
@@ -135,7 +153,7 @@ export function arrangePinned(
       ? base
       : fitFloor
         ? fitWidths(columns, base, columns.map(fitFloor), available)
-        : fillWidths(columns, base, available);
+        : fillWidths(columns, base, available, pad);
   const totalWidth = widths.reduce((a, b) => a + b, 0);
   const nLeft = left.length;
   const nRight = right.length;
@@ -160,5 +178,5 @@ export function arrangePinned(
     info[i].right = rightOff;
     rightOff += widths[i];
   }
-  return { columns, info, totalWidth, anyPinned };
+  return { columns, info, totalWidth, anyPinned, firstRight: nRight ? firstRight : -1 };
 }

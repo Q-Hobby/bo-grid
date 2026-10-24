@@ -31,6 +31,8 @@ export interface ColumnState {
   setWidth(key: string, width: number): void;
   /** Drops the user's width for a column. False when it had none. */
   resetWidth(key: string): boolean;
+  /** Drops every user width: the columns size as defined again. */
+  resetWidths(): void;
   setHidden(next: string[]): void;
   setPin(key: string, side: PinSide): void;
   setPins(next: Record<string, PinSide>): void;
@@ -107,6 +109,10 @@ export function createColumnState(persistKey: () => string | undefined, columns:
       widths = next;
       state.saveWidths();
       return true;
+    },
+    resetWidths() {
+      widths = {};
+      state.saveWidths();
     },
     setHidden(next) {
       hidden = next;

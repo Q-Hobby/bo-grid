@@ -69,10 +69,16 @@ describe('arrangePinned — fill', () => {
     { type: 'text', key: 'c', header: 'C', flex: 3, width: 100 },
   ];
 
-  it('grows flex columns by weight to fill the available width', () => {
+  it('shares the room by weight, from zero, as CSS flex does (flex wins over width)', () => {
     const r = arrangePinned(flexCols, 700);
-    expect(r.info.map((i) => i.width)).toEqual([100, 200, 400]);
+    expect(r.info.map((i) => i.width)).toEqual([100, 150, 450]);
     expect(r.totalWidth).toBe(700);
+  });
+
+  it('shares what is left after each cell padding, as CSS flex does', () => {
+    // 16px of padding per cell: CSS gives b 16 + 568/4 = 158, c 16 + 3 * 568/4 = 442.
+    const r = arrangePinned(flexCols, 700, undefined, 16);
+    expect(r.info.map((i) => i.width)).toEqual([100, 158, 442]);
   });
 
   it('keeps the total exactly equal to the available width (no stray overflow)', () => {
@@ -133,6 +139,9 @@ describe('arrangePinned — fill', () => {
     expect(r.info[0].width).toBe(300);
     expect(r.info[2].right).toBe(0);
     expect(r.info[1].right).toBe(60);
+    // Its cells take any room left, so the right-pinned columns dock right.
+    expect(r.firstRight).toBe(1);
+    expect(arrangePinned(flexCols, 700).firstRight).toBe(-1);
   });
 });
 

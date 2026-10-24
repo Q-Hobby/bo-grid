@@ -12,6 +12,7 @@
     version = 0,
     colStart = 1,
     focusable = true,
+    cellStyle,
   }: {
     group: GroupNode;
     columns: ColumnDef[];
@@ -24,7 +25,13 @@
     /** False for the sticky copy shown at the top while scrolling: it is
         aria-hidden, so its toggle must stay out of the tab order. */
     focusable?: boolean;
+    /** The style of the cell under column `ci`, from the grid's layout, so the
+        group row lines up with the headers (and a pinned column's cell stays
+        put). Without it, each cell is sized from its column definition. */
+    cellStyle?: (ci: number) => string;
   } = $props();
+
+  const styleOf = (ci: number): string => (cellStyle ? cellStyle(ci) : colStyle(columns[ci]));
 
   // Aggregate over the group's leaf rows. Reads row $state values, so group
   // subtotals stay live as the feed ticks (only on-screen groups are rendered).
@@ -47,7 +54,7 @@
 </script>
 
 <div class="group" role="row" aria-rowindex={rowIndex}>
-  <span class="gcell" role="gridcell" aria-colindex={colStart} style={colStyle(columns[0])}>
+  <span class="gcell" role="gridcell" aria-colindex={colStart} style={styleOf(0)}>
     <button
       class="toggle"
       type="button"
@@ -63,18 +70,21 @@
 
   {#each columns as col, ci (ci)}
     {#if ci > 0}
-      <span class="agg" role="gridcell" aria-colindex={colStart + ci} style={colStyle(col)}>{aggText(col)}</span>
+      <span class="agg" role="gridcell" aria-colindex={colStart + ci} style={styleOf(ci)}>{aggText(col)}</span>
     {/if}
   {/each}
 </div>
 
 <style>
   .group {
+    /* Named, so a pinned (sticky) cell can lay it over an opaque base. */
+    --bo-group-bg: color-mix(in srgb, var(--bo-header-bg) 85%, var(--bo-text) 4%);
     display: flex;
+    flex: 1 1 0;
     align-items: stretch;
-    width: 100%;
+    min-width: 0;
     height: 100%;
-    background: color-mix(in srgb, var(--bo-header-bg) 85%, var(--bo-text) 4%);
+    background: var(--bo-group-bg);
     border-bottom: 0.5px solid var(--bo-border);
   }
   /* The first column's cell: sized like the column, filled by the toggle. */

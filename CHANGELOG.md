@@ -5,6 +5,54 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Resizing a column changes that column only.** A drag on a header's
+  edge (or an autosize) used to fix the dragged column and let the flex
+  columns absorb the difference, so other columns moved and changed width
+  under the pointer. Now every column keeps the width it has on screen,
+  flex columns included, and the columns after the dragged one move along:
+  the grid scrolls sideways when they outgrow it, and leaves space at the
+  right when they shrink. Double-click a grip to give that column back its
+  own width. A click on a grip without a drag changes nothing. Under
+  `fitColumns`, the grid fits until the user sets a width. The held flex
+  widths are saved with the dragged one (`persistKey`, `getState()`);
+  `onColumnResize` still reports the dragged column only.
+
+### Fixed
+
+- **Group rows line up with the columns** when the layout sets the widths
+  (pinned columns, `fitColumns`, horizontal scroll, a resize): their cells
+  were sized from the column definitions, so subtotals drifted from their
+  columns, and a pinned column's group cell scrolled away. It now sticks.
+- **Header groups span flex columns**: a band over a flex column grows with
+  it in the default layout, instead of keeping the column's base width.
+- **Sparklines fill their cell** and follow the column's width; they were
+  always 104px, overflowing narrow columns and half-filling wide ones. Used on
+  its own, `Sparkline` fills its container unless it is given a `width`.
+- **Group rows with lead columns** (row selection, row numbers, detail) sat
+  left of their columns, by the lead columns' width. The sticky group header
+  at the top is opaque now, spans the whole row when scrolled sideways, and
+  collapsing a group from it keeps that group in view.
+- **Header rows stay in sync**: tabbing through header cells or filter-row
+  inputs scrolled that row on its own, off its columns.
+- **Right-pinned columns dock at the right edge** when the columns leave
+  room, instead of trailing the last column.
+- **Header-group bands stop at the pin boundary** and stick with pinned
+  columns, instead of sliding over them when scrolled.
+- **Flex widths no longer jump** when the layout switches to computed widths
+  (a column is pinned, column virtualization): both share the room as CSS
+  flex does.
+- **A drop across the pin boundary is ignored**: it rewrote the saved column
+  order without showing it.
+- The detail panel and the "No rows" message stay in view when the grid
+  scrolls sideways; a new page size keeps the first row on screen in view.
+
+### Added
+
+- **Reset widths** in the column menu gives every column back its own width
+  (the fit, under `fitColumns`). Translate it with `labels.resetWidths`.
+
 ## [2.9.0] — 2026-10-24
 
 **New docs, and a search box that works with a server.** The docs are now

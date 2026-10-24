@@ -162,7 +162,7 @@
 </div>
 
 <div class="gridwrap">
-  <Grid rows={gridRows} {columns} theme={ui.grid} height={480} {cell} />
+  <Grid rows={gridRows} {columns} fitColumns theme={ui.grid} height={480} {cell} />
 </div>
 
 <style>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyWidths, applyAutoWidths, clampWidth, contentWidth, isResizable, MIN_COL_WIDTH, fitResize } from './sizing';
+import { applyWidths, applyAutoWidths, clampWidth, contentWidth, frozenWidths, isResizable, MIN_COL_WIDTH } from './sizing';
 import type { ColumnDef } from './column';
 
 const col = (over: Partial<ColumnDef> & { key: string }): ColumnDef =>
@@ -114,23 +114,24 @@ describe('contentWidth', () => {
   });
 });
 
-describe('fitResize', () => {
-  const drag = (at: number) => ({ keys: ['a', 'b', 'c'], widths: [100, 100, 100], floors: [40, 40, 40], at });
+describe('frozenWidths', () => {
+  const cols = [col({ key: 'a', width: 100 }), col({ key: 'b', flex: 1 }), col({ key: 'c', flex: 2 })];
 
-  it('the dragged column takes the pointer and the ones after it share the rest', () => {
-    expect(fitResize(drag(0), 160)).toEqual({ a: 160, b: 70, c: 70 });
+  it('takes each column at the width it has on screen, in whole pixels that never add up to more', () => {
+    const shown = [100, 233.6, 466.4];
+    // 800 exactly: floors 100 + 233 + 466 = 799, and the spare pixel goes back.
+    expect(frozenWidths(cols, (i) => shown[i], [100, 64, 64])).toEqual({ a: 101, b: 233, c: 466 });
+    const half = [100, 233.5, 466.5];
+    const w = frozenWidths(cols, (i) => half[i], [100, 64, 64]);
+    expect(w.a + w.b + w.c).toBe(800);
   });
 
-  it('keeps the columns before the dragged one as they are', () => {
-    expect(fitResize(drag(1), 140)).toEqual({ a: 100, b: 140, c: 60 });
+  it('holds only the columns it is asked to (flex ones, by default in the grid)', () => {
+    const shown = [100, 233, 467];
+    expect(frozenWidths(cols, (i) => shown[i], [100, 64, 64], (c) => !!c.flex)).toEqual({ b: 233, c: 467 });
   });
 
-  it('the last column trades with the ones before it', () => {
-    expect(fitResize(drag(2), 160)).toEqual({ a: 70, b: 70, c: 160 });
-  });
-
-  it('never pushes a column below its floor, nor the dragged one below its own', () => {
-    expect(fitResize(drag(0), 1000)).toEqual({ a: 220, b: 40, c: 40 });
-    expect(fitResize(drag(0), 10)).toEqual({ a: 40, b: 130, c: 130 });
+  it('falls back to the layout width for a column not measured (or not laid out)', () => {
+    expect(frozenWidths(cols, (i) => (i === 1 ? 0 : undefined), [100, 64, 64])).toEqual({ a: 100, b: 64, c: 64 });
   });
 });

@@ -39,6 +39,7 @@
     pinned = false,
     pinSide = 'left',
     pinOffset = 0,
+    dock = 0,
     width,
     alt = false,
     editing = false,
@@ -80,6 +81,9 @@
     pinned?: boolean;
     pinSide?: 'left' | 'right';
     pinOffset?: number;
+    /** The first right-pinned cell's left margin: the room the columns leave,
+        so the right-pinned columns sit at the right edge. */
+    dock?: number;
     /** Fixed pixel width (pinned/horizontal-scroll mode). */
     width?: number;
     alt?: boolean;
@@ -396,6 +400,7 @@
   // when pinned) paints over the rows below it, which are later in the DOM.
   function cellStyle(): string {
     let s = width != null ? `flex:0 0 ${width}px;width:${width}px;` : (flexStyle ?? colStyle(col));
+    if (dock > 0) s += `margin-left:${dock}px;`;
     // Conditional background: heatmap type, else a colour-scale tint (both translucent).
     const bg = col.type === 'heatmap' ? heatColor(Number(value), col.min, col.max) : scaleBg;
     // Opaque cells (pinned, or a run drawn over other rows) layer any translucent

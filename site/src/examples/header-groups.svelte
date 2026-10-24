@@ -20,4 +20,4 @@
   let rows = $state(quotes());
 </script>
 
-<Grid {rows} {columns} height={300} />
+<Grid {rows} {columns} fitColumns height={300} />

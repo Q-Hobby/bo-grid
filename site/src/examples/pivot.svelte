@@ -20,4 +20,4 @@
     </select>
   </label>
 </p>
-<Grid rows={table.rows} columns={table.columns} height={180} />
+<Grid rows={table.rows} columns={table.columns} fitColumns height={180} />

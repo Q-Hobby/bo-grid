@@ -30,7 +30,7 @@ const columns: ColumnDef[] = [
 
 - Only consecutive columns join a group. The same label further along starts a new span, so if users can move columns, a group can split in two.
 - Columns without a `group` have an empty cell above them.
-- Groups work best with fixed-width columns.
+- A group keeps the width of its columns as they resize, flex columns included.
 
 ## Reference
 

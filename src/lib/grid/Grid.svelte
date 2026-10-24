@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { flushSync, untrack } from 'svelte';
   import type { ColumnDef, GridRow, SortState, SortDir } from './column';
   import { colStyle, baseWidth, MIN_FLEX_W, isNumeric, alignOf, isSortable, isEditable, sortRows, formatCell, cellValue } from './column';
   import { arrangePinned } from './pin';
@@ -17,7 +17,7 @@
   import { buildTreeRows } from './tree';
   import { FlashTracker, FlashClock, FlashLoad } from './flash';
   import { parseClipboard, copyText, pastePlan, fillExtent, fillPlan } from './clipboard';
-  import { applyWidths, applyAutoWidths, clampWidth, contentWidth, fitResize, isResizable, type FitDrag } from './sizing';
+  import { applyWidths, applyAutoWidths, clampWidth, contentWidth, frozenWidths, isResizable } from './sizing';
   import {
     passesFilters,
     isFilterActive,
@@ -362,14 +362,20 @@
   // same base width the fixed-width layout starts from, so crossing it never
   // makes columns jump.
   // `fitColumns` sizes every column in JS (fitWidths) and shrinks them to
-  // their floors before scrolling, so its threshold is the floors' sum.
+  // their floors before scrolling, so its threshold is the floors' sum. It
+  // fits until the user sets a width (a drag, an autosize): from then on the
+  // columns keep the widths they were given, as without it, until Reset widths.
+  const fitting = $derived(fitColumns && !columns.some((c) => colState.widths[c.key] != null));
   const fitFloor = (c: ColumnDef): number => c.minWidth ?? Math.min(baseWidth(c), MIN_FLEX_W);
   const overflowing = $derived(
-    viewW > 0 && pinnedSized.reduce((a, c) => a + (fitColumns ? fitFloor(c) : baseWidth(c)), leadPx) > viewW,
+    viewW > 0 && pinnedSized.reduce((a, c) => a + (fitting ? fitFloor(c) : baseWidth(c)), leadPx) > viewW,
   );
-  const fixedWidths = $derived(fitColumns || virtualizeColumns || overflowing || pinnedSized.some((c) => !!c.pinned));
+  const fixedWidths = $derived(fitting || virtualizeColumns || overflowing || pinnedSized.some((c) => !!c.pinned));
+  // A cell's horizontal padding (theme-dependent), measured from a header
+  // cell, so the layout shares flex room as CSS does (see fillWidths).
+  let cellPad = $state(16);
   const layout = $derived(
-    arrangePinned(pinnedSized, fixedWidths && viewW ? viewW - leadPx : 0, fitColumns ? fitFloor : undefined),
+    arrangePinned(pinnedSized, fixedWidths && viewW ? viewW - leadPx : 0, fitting ? fitFloor : undefined, cellPad),
   );
   const cols = $derived(layout.columns);
   const pinned = $derived(layout.anyPinned);
@@ -380,7 +386,7 @@
   // Cells take the layout's pixel widths whenever it has computed them: in
   // horizontal-scroll mode, and under `fitColumns` (which never scrolls until
   // its floors no longer fit).
-  const explicitWidths = $derived(hScroll || (fitColumns && viewW > 0));
+  const explicitWidths = $derived(hScroll || (fitting && viewW > 0));
   // Header rows scroll with the body in fixed-width mode, driven by the body's
   // scrollLeft. They need slack past their content to always reach it: Chrome
   // caps an overflow:hidden element's scroll range without subtracting its
@@ -424,17 +430,34 @@
 
   // Spanning header groups: consecutive columns sharing a `group` label merge
   // into one parent header cell (width = sum of child widths). null when unused.
-  const headerGroups = $derived.by<{ label: string; width: number }[] | null>(() => {
+  // Each band spans its columns as they lay out: the sum of their widths when
+  // the layout sets them, else their combined flex (a flex column in the band
+  // makes the band grow with it).
+  const headerGroups = $derived.by<{ label: string; style: string }[] | null>(() => {
     if (!cols.some((c) => c.group)) return null;
-    const runs: { label: string; width: number }[] = [];
+    const runs: { label: string; start: number; end: number; width: number }[] = [];
     for (let i = 0; i < cols.length; i++) {
       const label = cols[i].group ?? '';
       const w = layout.info[i].width;
       const last = runs[runs.length - 1];
-      if (last && label !== '' && last.label === label) last.width += w;
-      else runs.push({ label, width: w });
+      const sameSide = !!last && layout.info[last.start].side === layout.info[i].side;
+      if (last && label !== '' && last.label === label && sameSide) {
+        last.width += w;
+        last.end = i + 1;
+      } else runs.push({ label, start: i, end: i + 1, width: w });
     }
-    return runs;
+    return runs.map((r) => {
+      const inf = layout.info[r.start];
+      let style =
+        explicitWidths || !cols.slice(r.start, r.end).some((c) => c.flex)
+          ? `flex:0 0 ${r.width}px;width:${r.width}px;`
+          : combinedFlex(cols.slice(r.start, r.end));
+      if (inf.pinned) {
+        style += `${pinStick(inf.side === 'right' ? r.end - 1 : r.start, true)}z-index:5;background:var(--bo-header-bg);`;
+        style += dockStyle(r.start);
+      }
+      return { label: r.label, style };
+    });
   });
 
   // Theme → inline `--bo-grid-*` overrides. 'dark' uses the built-in defaults.
@@ -457,18 +480,35 @@
     if (inf.side === 'right') return `position:sticky;right:${inf.right + (header ? headPinFix : bodyPinFix)}px;`;
     return `position:sticky;left:${inf.left + leadPx}px;`;
   }
+  // The room the columns leave when they do not fill the view: the first
+  // right-pinned column's cells take it (as a left margin), so the right-pinned
+  // columns sit at the right edge in every row, header rows (with their scroll
+  // slack) included.
+  const dockGap = $derived(
+    layout.firstRight >= 0 && hScroll && viewW > 0 ? Math.max(0, viewW - leadPx - layout.totalWidth) : 0,
+  );
+  const dockStyle = (ci: number): string => (ci === layout.firstRight && dockGap > 0 ? `margin-left:${dockGap}px;` : '');
   function headStyle(ci: number): string {
     if (!explicitWidths) return colStyle(cols[ci]);
     const inf = layout.info[ci];
-    let s = `flex:0 0 ${inf.width}px;width:${inf.width}px;`;
+    let s = `flex:0 0 ${inf.width}px;width:${inf.width}px;${dockStyle(ci)}`;
     if (inf.pinned) s += `${pinStick(ci, true)}z-index:5;background:var(--bo-header-bg);`;
     return s;
   }
   function cellWidthStyle(ci: number, header = false): string {
     if (!explicitWidths) return colStyle(cols[ci]);
     const inf = layout.info[ci];
-    let s = `flex:0 0 ${inf.width}px;width:${inf.width}px;`;
+    let s = `flex:0 0 ${inf.width}px;width:${inf.width}px;${dockStyle(ci)}`;
     if (inf.pinned) s += `${pinStick(ci, header)}z-index:2;background:var(--bo-bg);`;
+    return s;
+  }
+  // A group row's cells: the same widths, and a pinned one keeps the group
+  // row's own (translucent) colour over the opaque base as it sticks.
+  function groupCellStyle(ci: number): string {
+    if (!explicitWidths) return colStyle(cols[ci]);
+    const inf = layout.info[ci];
+    let s = `flex:0 0 ${inf.width}px;width:${inf.width}px;${dockStyle(ci)}`;
+    if (inf.pinned) s += `${pinStick(ci)}z-index:2;background:linear-gradient(var(--bo-group-bg),var(--bo-group-bg)),var(--bo-bg);`;
     return s;
   }
 
@@ -542,6 +582,9 @@
   // which skip hidden columns and put pinned ones at the edges; the order
   // covers every column, so find the two columns in it by key.
   function moveColumn(from: number, to: number) {
+    // Pinned columns always sit at their edge: a drop across the pin boundary
+    // would rewrite the saved order without showing it. Pin from the menu.
+    if (layout.info[from]?.side !== layout.info[to]?.side) return;
     const at = (ci: number) => colState.order.findIndex((i) => columns[i].key === cols[ci]?.key);
     const src = at(from);
     const dst = at(to);
@@ -630,11 +673,35 @@
     startW: number;
     min?: number;
     max?: number;
-    /** fitColumns: every column's rendered width and floor at drag start, in
-        display order, and which one is being dragged. */
-    fit?: FitDrag;
+    /** Set once the pointer has moved: only then is anything frozen. */
+    moved?: boolean;
   } | null = null;
   let justResized = false;
+
+  $effect(() => {
+    void themeStyle;
+    const h = headEl?.querySelector<HTMLElement>('[role=columnheader]');
+    if (!h) return;
+    const cs = getComputedStyle(h);
+    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    if (Number.isFinite(pad) && pad !== cellPad) cellPad = pad;
+  });
+
+  // Changing one column's width never changes the others: before it changes,
+  // the columns that would take up the change (flex ones, and every one while
+  // fitColumns fits) take the width they have on screen as their own, so the
+  // columns after it move along instead of giving up or taking space. Fixed
+  // columns keep theirs anyway, autoWidth growth included. Widths the user
+  // already set stay as they are.
+  function freezeWidths(): void {
+    const shown = new Map<number, number>();
+    for (const el of headEl?.querySelectorAll<HTMLElement>('[role=columnheader][aria-colindex]') ?? []) {
+      shown.set(Number(el.getAttribute('aria-colindex')) - 1 - leadCols, el.getBoundingClientRect().width);
+    }
+    const take = (c: ColumnDef) => fitting || !!c.flex;
+    const now = frozenWidths(cols, (ci) => shown.get(ci), layout.info.map((i) => i.width), take);
+    colState.widths = { ...now, ...colState.widths };
+  }
 
   function startResize(ci: number, e: PointerEvent) {
     if (!isResizable(cols[ci], resizable)) return;
@@ -643,29 +710,27 @@
     const headCell = (e.currentTarget as HTMLElement).closest('.h') as HTMLElement | null;
     const startW = headCell ? headCell.getBoundingClientRect().width : layout.info[ci].width;
     resize = { key: cols[ci].key, startX: e.clientX, startW, min: cols[ci].minWidth, max: cols[ci].maxWidth };
-    if (fitColumns && viewW > 0) {
-      resize.fit = {
-        keys: cols.map((c) => c.key),
-        widths: layout.info.map((i) => i.width),
-        floors: cols.map(fitFloor),
-        at: ci,
-      };
-    }
     window.addEventListener('pointermove', onResizeMove);
     window.addEventListener('pointerup', onResizeUp);
   }
   function onResizeMove(e: PointerEvent) {
     if (!resize) return;
+    if (!resize.moved) {
+      if (Math.abs(e.clientX - resize.startX) < 2) return;
+      resize.moved = true;
+      freezeWidths();
+    }
     const w = clampWidth(resize.startW + (e.clientX - resize.startX), resize.min, resize.max);
-    colState.widths = resize.fit ? { ...colState.widths, ...fitResize(resize.fit, w) } : { ...colState.widths, [resize.key]: w };
+    colState.widths = { ...colState.widths, [resize.key]: w };
   }
   function onResizeUp() {
     if (!resize) return;
-    const { key } = resize;
+    const { key, moved } = resize;
     resize = null;
     justResized = true; // swallow the click that ends this drag (no sort toggle)
     window.removeEventListener('pointermove', onResizeMove);
     window.removeEventListener('pointerup', onResizeUp);
+    if (!moved) return; // a click on the grip, not a resize
     colState.saveWidths();
     onColumnResize?.(key, colState.widths[key]);
   }
@@ -1041,9 +1106,11 @@
   let internalPageSize = $state<number | null>(null);
   const effPageSize = $derived(internalPageSize ?? pageSize);
   function setPageSize(size: number): void {
+    const first = currentPage * effPageSize;
     internalPageSize = size;
     onPageSizeChange?.(size);
-    setPage(0); // a new page size invalidates the current page index
+    // Stay on the page that holds the row that was first on screen.
+    setPage(size > 0 ? Math.floor(first / size) : 0);
   }
   const paged = $derived(effPageSize > 0 && !source);
   let internalPage = $state(0);
@@ -1249,7 +1316,7 @@
 
   const total = $derived(hm.total);
   const rowWidthStyle = $derived(
-    hScroll ? `width:${layout.totalWidth + leadPx}px;min-width:100%;right:auto;` : '',
+    hScroll ? `width:${layout.totalWidth + leadPx + dockGap}px;min-width:100%;right:auto;` : '',
   );
   const visibleCount = $derived(Math.ceil(viewPx / baseH) + OVERSCAN * 2);
   // Row recycling (uniform heights): render a window of exactly `recycleSlots`
@@ -1419,7 +1486,7 @@
   function spanWidthStyle(ci: number, w: number): string {
     if (hScroll) {
       const px = spanWidthPx(ci, w);
-      return `flex:0 0 ${px}px;width:${px}px;`;
+      return `flex:0 0 ${px}px;width:${px}px;${dockStyle(ci)}`;
     }
     return w > 1 ? combinedFlex(cols.slice(ci, ci + w)) : colStyle(cols[ci]);
   }
@@ -1529,6 +1596,13 @@
     if (hScroll && groupHeadEl) groupHeadEl.scrollLeft = el.scrollLeft; // and group headers
     if (tip) tip = null; // a stale fixed-position bubble would float away on scroll
   }
+  // The header rows are scrolled from the body, but the browser scrolls one
+  // itself to show a focused cell (Tab through headers or filter inputs).
+  // Then the body follows it, and its onScroll syncs the other rows.
+  function onHeadRowScroll(e: Event) {
+    const el = e.currentTarget as HTMLElement;
+    if (hScroll && viewportEl && Math.abs(el.scrollLeft - viewportEl.scrollLeft) > 1) viewportEl.scrollLeft = el.scrollLeft;
+  }
 
   // Tooltip hover delegation (only wired when a column opts in). Matches both
   // data cells (`.c[data-bo-tip]`) and column headers (`.h[data-bo-tip]`).
@@ -1587,6 +1661,18 @@
   function toggleGroup(path: string) {
     rowState.toggleCollapsed(path);
     sel.clear();
+  }
+  // The sticky copy shows a group whose header row has scrolled above the
+  // view: toggled from there, the view moves to that header row, so the group
+  // stays in sight instead of the rows after it sliding under the pointer.
+  function toggleStickyGroup(path: string) {
+    const vr = flat.findIndex((it) => it.kind === 'group' && it.group.path === path);
+    const item = flat[vr];
+    toggleGroup(path);
+    if (vr < 0 || !viewportEl || item?.kind !== 'group') return;
+    flushSync();
+    // Below the sticky copies of its ancestor groups, which stay on top.
+    viewportEl.scrollTop = Math.max(0, Math.min(viewportEl.scrollTop, hm.offsetOf(vr) - item.group.depth * baseH));
   }
 
   function onCellDown(r: number, c: number, e: PointerEvent) {
@@ -1700,6 +1786,7 @@
       }
     }
     const w = clampWidth(Math.round(maxLen * CHAR_PX) + PAD, col.minWidth, col.maxWidth);
+    freezeWidths();
     colState.setWidth(col.key, w);
     onColumnResize?.(col.key, w);
   }
@@ -2078,6 +2165,7 @@
     if (side !== 'right') items.push({ label: L.pinRight, onSelect: () => colState.setPin(col.key, 'right') });
     if (side) items.push({ label: L.unpin, onSelect: () => colState.setPin(col.key, false) });
     if (isResizable(col, resizable)) items.push({ label: L.autosize, onSelect: () => autosizeColumn(col) });
+    if (columns.some((c) => colState.widths[c.key] != null)) items.push({ label: L.resetWidths, onSelect: () => colState.resetWidths() });
     items.push({ label: L.hideColumn, onSelect: () => hideColumn(col.key) });
     return items;
   }
@@ -2387,12 +2475,12 @@
     onkeydown={onKeydown}
   >
   {#if headerGroups}
-    <div class="head-groups" aria-hidden="true" bind:this={groupHeadEl} style={headRowStyle}>
+    <div class="head-groups" aria-hidden="true" bind:this={groupHeadEl} style={headRowStyle} onscroll={onHeadRowScroll}>
       {#if rowNumbers}<span class="numcell" style={numCellStyle(true)}></span>{/if}
       {#if expandable}<span class="expandcell" style={expandCellStyle(true)}></span>{/if}
       {#if rowSelection}<span class="selcell" style={selCellStyle(true)}></span>{/if}
       {#each headerGroups as g, gi (gi)}
-        <span class="hg" class:blank={!g.label} style="flex:0 0 {g.width}px;width:{g.width}px;">{g.label}</span>
+        <span class="hg" class:blank={!g.label} style={g.style}>{g.label}</span>
       {/each}
     </div>
   {/if}
@@ -2403,6 +2491,7 @@
     role="row"
     aria-rowindex={1}
     bind:this={headEl}
+    onscroll={onHeadRowScroll}
     style={headRowStyle}
     onpointerover={hasTooltips ? onTipOver : undefined}
     onpointerout={hasTooltips ? onTipOut : undefined}
@@ -2550,7 +2639,7 @@
   </div>
 
   {#if filterRow && !source}
-    <div class="filter-row" role="row" bind:this={filterRowEl} style={headRowStyle}>
+    <div class="filter-row" role="row" bind:this={filterRowEl} style={headRowStyle} onscroll={onHeadRowScroll}>
       {#if rowNumbers}<span class="numcell" style={numCellStyle(false)}></span>{/if}
       {#if expandable}<span class="expandcell" style={expandCellStyle(false)}></span>{/if}
       {#if rowSelection}<span class="selcell" style={selCellStyle(false)}></span>{/if}
@@ -2576,7 +2665,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="viewport"
-    style="{heightIsPx ? `height:${height}px` : 'flex:1 1 auto;min-height:0'};{hScroll ? 'overflow-x:auto;' : ''}"
+    style="{heightIsPx ? `height:${height}px` : 'flex:1 1 auto;min-height:0'};{hScroll ? 'overflow-x:auto;' : ''}--bo-view-w:{viewW}px;--bo-view-h:{viewH}px;"
     bind:this={viewportEl}
     bind:clientWidth={viewW}
     bind:clientHeight={viewH}
@@ -2614,6 +2703,7 @@
                 pinSide={layout.info[ci].side ?? 'left'}
                 pinOffset={layout.info[ci].side === 'right' ? layout.info[ci].right + bodyPinFix : layout.info[ci].left + leadPx}
                 width={explicitWidths ? layout.info[ci].width : undefined}
+                dock={ci === layout.firstRight ? dockGap : 0}
               />
             {/each}
           </div>
@@ -2621,19 +2711,24 @@
       </div>
     {/if}
     {#if rowCount === 0 && !controller?.loading}
-      <div class="empty">{emptyMessage ?? L.noRows}</div>
+      <div class="viewlayer"><div class="empty">{emptyMessage ?? L.noRows}</div></div>
     {/if}
     {#if loading}
-      <div class="loading-overlay" aria-busy="true" aria-live="polite">
-        <span class="spinner" aria-hidden="true"></span>
-        <span class="loading-label">{L.loading}</span>
+      <div class="viewlayer">
+        <div class="loading-overlay" aria-busy="true" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="loading-label">{L.loading}</span>
+        </div>
       </div>
     {/if}
     {#if stickyGroups.length > 0}
       <div class="sticky" style={pinnedPx ? `top:${pinnedPx}px` : undefined}>
         {#each stickyGroups as g (g.depth)}
-          <div class="sticky-row" aria-hidden="true" style="height:{baseH}px">
-            <GroupRow version={live.dataVersion} group={g} columns={cols} onToggle={toggleGroup} colStart={1 + leadCols} focusable={false} />
+          <div class="sticky-row" aria-hidden="true" style="height:{baseH}px;{rowWidthStyle}">
+            {#if rowNumbers}<span class="numcell" style={numCellStyle(false)}></span>{/if}
+            {#if expandable}<span class="expandcell" style={expandCellStyle(false)}></span>{/if}
+            {#if rowSelection}<span class="selcell" style={selCellStyle(false)}></span>{/if}
+            <GroupRow version={live.dataVersion} group={g} columns={cols} onToggle={toggleStickyGroup} colStart={1 + leadCols} focusable={false} cellStyle={groupCellStyle} />
           </div>
         {/each}
       </div>
@@ -2646,7 +2741,7 @@
             {#if rowNumbers}<span class="numcell" aria-hidden="true" style={numCellStyle(false)}></span>{/if}
             {#if expandable}<span class="expandcell" aria-hidden="true" style={expandCellStyle(false)}></span>{/if}
             {#if rowSelection}<span class="selcell" aria-hidden="true" style={selCellStyle(false)}></span>{/if}
-            <GroupRow version={live.dataVersion} group={item.group} columns={cols} onToggle={lazyGrouped ? toggleLazyGroup : toggleGroup} rowIndex={item.vr + 2} colStart={1 + leadCols} />
+            <GroupRow version={live.dataVersion} group={item.group} columns={cols} onToggle={lazyGrouped ? toggleLazyGroup : toggleGroup} rowIndex={item.vr + 2} colStart={1 + leadCols} cellStyle={groupCellStyle} />
           </div>
         {:else if item.kind === 'skeleton'}
           <div class="row skeleton" role="row" aria-rowindex={item.vr + 2} aria-hidden="true" style="top:{hm.offsetOf(item.vr)}px;height:{hm.heightOf(item.vr)}px;{rowWidthStyle}">
@@ -2735,6 +2830,7 @@
                   pinSide={layout.info[ci].side ?? 'left'}
                   pinOffset={layout.info[ci].side === 'right' ? layout.info[ci].right + bodyPinFix : layout.info[ci].left + leadPx}
                   width={explicitWidths ? (m?.px ?? layout.info[ci].width) : undefined}
+                  dock={ci === layout.firstRight ? dockGap : 0}
                   alt={item.vr % 2 === 1}
                   editing={editing?.r === item.vr && editing?.c === ci}
                   seed={editing?.r === item.vr && editing?.c === ci ? editSeed : null}
@@ -2773,7 +2869,11 @@
           </div>
           {#if expandable && detail && isExpanded(getRowId(item.row))}
             <div class="row-detail" style="top:{hm.offsetOf(item.vr) + baseH}px;height:{detailHeight}px;{rowWidthStyle}">
-              {@render detail({ row: item.row })}
+              <!-- As wide as the view and stuck to its left edge: the panel
+                   does not scroll away sideways with the columns. -->
+              <div class="detail-view" style={hScroll && viewW ? `width:${viewW}px;` : ''}>
+                {@render detail({ row: item.row })}
+              </div>
             </div>
           {/if}
         {/if}
@@ -3026,8 +3126,8 @@
     overflow: hidden;
     white-space: nowrap;
   }
-  /* An ungrouped column's slot. Not .empty: that is the absolutely positioned
-     "No rows" overlay, and a slot carrying it leaves the row. */
+  /* An ungrouped column's slot. Not .empty: that is the "No rows" overlay,
+     and a slot carrying it leaves the row. */
   .head-groups .hg.blank {
     border-right: 0;
     background: transparent;
@@ -3274,9 +3374,26 @@
   .viewport::-webkit-scrollbar-corner {
     background: transparent;
   }
-  .empty {
+  /* A layer over the part of the body in view: sticky at its top-left corner,
+     taking no room in the scroll content (0 x 0), its child as big as the
+     view (measured, so it holds when the content scrolls either way). */
+  .viewlayer {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 7;
+    width: 0;
+    height: 0;
+  }
+  .viewlayer > * {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: var(--bo-view-w, 100%);
+    height: var(--bo-view-h, 100%);
+  }
+  .empty {
+    pointer-events: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3284,16 +3401,10 @@
     font-size: 13px;
   }
   .loading-overlay {
-    position: sticky;
-    top: 0;
-    left: 0;
-    z-index: 7;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    height: 100%;
-    margin-bottom: -100%; /* overlay without consuming scroll height */
     color: var(--bo-text-dim);
     font-size: 13px;
     background: color-mix(in srgb, var(--bo-bg) 70%, transparent);
@@ -3370,6 +3481,13 @@
     position: relative;
     left: 0;
     right: 0;
+    display: flex;
+    align-items: stretch;
+  }
+  /* The group colour is translucent: over the rows it floats above, the
+     sticky copy lays it on the grid's opaque background. */
+  .sticky-row :global(.group) {
+    background: linear-gradient(var(--bo-group-bg), var(--bo-group-bg)), var(--bo-bg);
   }
   .sticky-row:last-child {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.28);
@@ -3380,6 +3498,10 @@
     position: absolute;
     left: 0;
     right: 0;
+  }
+  .grouprow {
+    display: flex;
+    align-items: stretch;
   }
   .row {
     display: flex;
@@ -3482,6 +3604,11 @@
   .expand-toggle:hover {
     color: var(--bo-text);
     background: var(--bo-row-hover);
+  }
+  .detail-view {
+    position: sticky;
+    left: 0;
+    height: 100%;
   }
   .row-detail {
     position: absolute;

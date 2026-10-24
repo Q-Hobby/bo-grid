@@ -19,8 +19,7 @@ export function isResizable(col: ColumnDef, gridResizable: boolean): boolean {
 
 /**
  * Apply width overrides to a column list. An overridden column becomes
- * fixed-width (its `flex` cleared) so the dragged size sticks; in fit-to-width
- * mode the remaining flex columns absorb the difference. Untouched columns pass
+ * fixed-width (its `flex` cleared) so the size sticks. Untouched columns pass
  * through by reference, so the default fit-to-width layout is unchanged when no
  * column has been resized.
  */
@@ -73,34 +72,33 @@ export function contentWidth(texts: Iterable<string>, measure: (text: string) =>
   return Math.ceil(max) + pad;
 }
 
-/** A fitColumns drag: every column's rendered width and floor at the start,
-    in display order, and which one is being dragged. */
-export interface FitDrag {
-  keys: string[];
-  widths: number[];
-  floors: number[];
-  at: number;
-}
-
-// Under fitColumns the widths always add up to the viewport, so dragging one
-// edge is a trade: the columns before it keep their widths, the dragged one
-// takes the pointer, and the ones after it share the difference in
-// proportion (never below their floors). The last column trades with the
-// ones before it instead. Every width is written back, so the layout renders
-// exactly these and the edge stays under the pointer.
-export function fitResize(f: FitDrag, want: number): WidthMap {
-  const n = f.keys.length;
-  const side = f.at < n - 1 ? 'after' : 'before';
-  const absorb = f.widths.flatMap((_, j) => ((side === 'after' ? j > f.at : j < f.at) ? [j] : []));
-  const room = f.widths.reduce((a, w, j) => a + (absorb.includes(j) || j === f.at ? w : 0), 0);
-  const minAbsorb = absorb.reduce((a, j) => a + f.floors[j], 0);
-  const R = Math.max(f.floors[f.at], Math.min(want, room - minAbsorb));
-  const share = absorb.reduce((a, j) => a + f.widths[j], 0);
+/**
+ * The widths to hold when one column's width changes (a drag, an autosize):
+ * each column `take` picks, at the width measured on screen where there is one,
+ * else the layout's. Written as width overrides, a flex column then keeps its
+ * width instead of taking up the change. Whole pixels that add up to no more
+ * than the measured widths, so the columns never start to overflow: floored,
+ * with the pixels that frees handed back one by one.
+ */
+export function frozenWidths(
+  cols: readonly ColumnDef[],
+  measured: (index: number) => number | undefined,
+  layoutWidths: readonly number[],
+  take: (col: ColumnDef) => boolean = () => true,
+): WidthMap {
   const out: WidthMap = {};
-  f.keys.forEach((k, j) => {
-    if (j === f.at) out[k] = R;
-    else if (absorb.includes(j)) out[k] = Math.max(f.floors[j], Math.round((f.widths[j] * (room - R)) / share));
-    else out[k] = f.widths[j];
+  const picked: string[] = [];
+  let exact = 0;
+  let floored = 0;
+  cols.forEach((c, i) => {
+    if (!take(c)) return;
+    const m = measured(i);
+    const w = m && m > 0 ? m : layoutWidths[i];
+    out[c.key] = Math.floor(w);
+    exact += w;
+    floored += out[c.key];
+    picked.push(c.key);
   });
+  for (let k = 0, spare = Math.floor(exact + 1e-6) - floored; spare > 0 && k < picked.length; k++, spare--) out[picked[k]] += 1;
   return out;
 }
