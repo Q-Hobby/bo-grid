@@ -43,6 +43,7 @@ run('pnpm ssr');
 run('pnpm package');
 run('pnpm smoke');
 run('pnpm smoke:wc');
+run('pnpm smoke:cli');
 run('pnpm size');
 run('pnpm size:lib');
 

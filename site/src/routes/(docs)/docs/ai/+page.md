@@ -12,6 +12,7 @@ A coding agent works differently from a person reading the docs. It may remember
 | Copy page | the button at the top of every docs page | Pasting a page into a chat |
 | API manifest | [`/api.json`](../../api.json) | Every prop, column option and API method, with types, defaults and docs |
 | Full reference | [`/llms-full.txt`](../../llms-full.txt) | The whole API in one file |
+| Project setup | `npx bo-grid init` | Writes the bo-grid section into your `AGENTS.md` and installs the bo-grid skill |
 | Docs in the package | `node_modules/bo-grid/dist/docs/` | Every page, the reference and `api.json` of the version installed, with no network |
 | Types | `node_modules/bo-grid/dist/**/*.d.ts` | The API of the exact version installed |
 
@@ -81,9 +82,35 @@ BG3003: createPositions: a fill's qty must be a number above 0, got -100. Fix: P
 
 An agent can apply the fix without reading the library's source, and a test or an error reporter can match on `error.code`. Every code is on the [Error codes](../errors/) page, which a test keeps in step with the source.
 
+## Set up a project in one command
+
+In your project, run:
+
+```sh
+npx bo-grid init
+```
+
+It writes two files that a coding agent reads without being told:
+
+- **`AGENTS.md`** gets the bo-grid section shown [below](#add-bo-grid-to-your-agents-md), between two `bo-grid` marker comments. The rest of the file stays as it is, and the file is created if there is none.
+- **`.claude/skills/bo-grid/SKILL.md`** is the bo-grid skill: the same rules, two complete examples (a first grid, a live price board) and the workflow (read the page, write, type-check). Claude Code loads skills from that folder when a task calls for one; for another agent, point `--skills-dir` at the folder it reads skills from.
+
+Run it again after you upgrade bo-grid: it brings both files up to date. In `AGENTS.md` it replaces only its own section; the skill file is bo-grid's, and is replaced whole, so keep your own notes elsewhere. When it cannot place the section safely, it leaves the file alone and says why: a bo-grid section you pasted from these docs (so the file never gets two), or markers that don't pair up.
+
+| Option | What it does |
+| --- | --- |
+| `--file <path>` | Writes the section into another file instead, such as `CLAUDE.md`. Repeat it for more than one. |
+| `--no-skill` | Skips the skill. |
+| `--skills-dir <dir>` | Installs the skill under another folder (default `.claude/skills`). |
+| `--cwd <dir>` | Runs on another folder, such as one app in a monorepo. |
+| `--dry-run` | Reports what would change, and writes nothing. |
+| `--json` | Prints the result as JSON, for scripts and agents. |
+
+It exits with 0 when it is done, 1 when it left a file alone or could not write one, and 2 on bad usage. Claude Code reads `CLAUDE.md`: if yours does not import `AGENTS.md`, init says so, and you can add the line `@AGENTS.md` to it or run init with `--file CLAUDE.md`.
+
 ## Add bo-grid to your AGENTS.md
 
-Most coding agents read a project instruction file: `AGENTS.md`, `CLAUDE.md`, or a rules file. Paste this section into yours so every session starts from the right API:
+Most coding agents read a project instruction file: `AGENTS.md`, `CLAUDE.md`, or a rules file. `npx bo-grid init` writes this section into yours; to add it by hand, paste it:
 
 ```md
 ## bo-grid (data grid)

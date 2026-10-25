@@ -52,7 +52,7 @@ Using React, Vue, Angular or plain JavaScript? See
 - **[Docs](https://bonguynvan.github.io/bo-grid/docs/):** a page per feature, with live examples.
 - **[Examples](https://bonguynvan.github.io/bo-grid/examples/):** every example running, with its source.
 - **[Props reference](https://bonguynvan.github.io/bo-grid/docs/reference/):** every prop, column option and API method.
-- **[For AI agents](https://bonguynvan.github.io/bo-grid/docs/ai/):** the docs also ship in the package, in `node_modules/bo-grid/dist/docs/`.
+- **[For AI agents](https://bonguynvan.github.io/bo-grid/docs/ai/):** the docs also ship in the package, in `node_modules/bo-grid/dist/docs/`, and `npx bo-grid init` points your agent at them.
 - **[TradeCanvas](https://github.com/bonguynvan/tradecanvas):** canvas trading charts that pair with bo-grid.
 - [Benchmarks](./BENCHMARKS.md) · [Changelog](./CHANGELOG.md) · [Contributing](./CONTRIBUTING.md)
 
