@@ -10,11 +10,12 @@ This project depends on `bo-grid` (a Svelte 5 data grid; peer `svelte@^5`).
 Before writing or editing code that uses it, follow these rules exactly — do
 not invent props or import paths that aren't listed here.
 
-**Docs for agents**: read `https://bonguynvan.github.io/bo-grid/llms.txt`
-(the facts to get right, and every docs page as Markdown) before generating
-non-trivial grid code, and look props up in
-`https://bonguynvan.github.io/bo-grid/api.json` (generated from the types).
-Don't guess a prop name; check it there.
+**Docs for agents**: read `node_modules/bo-grid/dist/docs/README.md` (the
+facts to get right, and every docs page as a Markdown file, for the installed
+version; online: `https://bonguynvan.github.io/bo-grid/llms.txt`) before
+generating non-trivial grid code, and look props up in
+`node_modules/bo-grid/dist/docs/api.json` (generated from the types). Don't
+guess a prop name; check it there.
 
 ## The one rule that matters most
 

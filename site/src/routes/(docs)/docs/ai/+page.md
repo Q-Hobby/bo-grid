@@ -1,6 +1,6 @@
 ---
 title: AI coding agents
-description: Give a coding agent what it needs to write correct bo-grid code first time, with every page as Markdown, an index in llms.txt, an API manifest generated from the types, and rules for your AGENTS.md.
+description: Give a coding agent what it needs to write correct bo-grid code first time, with every page as Markdown, the docs inside the package, an index in llms.txt, an API manifest generated from the types, and rules for your AGENTS.md.
 ---
 
 A coding agent works differently from a person reading the docs. It may remember an older version of a library, or a similar one; it cannot see what the grid looks like; and it learns by running code, failing and fixing. So what helps it most is accurate text it can fetch, types it can check against, and complete examples it can copy. bo-grid publishes all three, generated from the same sources as these pages.
@@ -12,6 +12,7 @@ A coding agent works differently from a person reading the docs. It may remember
 | Copy page | the button at the top of every docs page | Pasting a page into a chat |
 | API manifest | [`/api.json`](../../api.json) | Every prop, column option and API method, with types, defaults and docs |
 | Full reference | [`/llms-full.txt`](../../llms-full.txt) | The whole API in one file |
+| Docs in the package | `node_modules/bo-grid/dist/docs/` | Every page, the reference and `api.json` of the version installed, with no network |
 | Types | `node_modules/bo-grid/dist/**/*.d.ts` | The API of the exact version installed |
 
 ## Every page as Markdown
@@ -23,6 +24,14 @@ Each docs page has a plain Markdown twin at the same URL with `.md` in place of 
 - Gallery examples become links to their live page and source.
 
 The **Copy page** button at the top of every page copies that Markdown, ready to paste into an agent. Each page also declares it in its HTML head (`<link rel="alternate" type="text/markdown">`), so a tool that reads the page can find it.
+
+## Docs in the package
+
+The npm package carries the docs of its own version in `node_modules/bo-grid/dist/docs/`. An agent working in your project can read them without fetching anything, and they match what is installed, even after an upgrade:
+
+- `README.md` is the index: the same facts as llms.txt, then every page as a link to the file next to it.
+- Each docs page is a Markdown file with the same text as its `.md` twin. Links between pages point at the local files.
+- `reference.md` and `api.json` list every prop, column option and API method.
 
 ## llms.txt
 
@@ -80,11 +89,12 @@ Most coding agents read a project instruction file: `AGENTS.md`, `CLAUDE.md`, or
 ## bo-grid (data grid)
 
 This project uses `bo-grid`. Before writing grid code, read
-https://bonguynvan.github.io/bo-grid/llms.txt and the page for the feature
-(each docs page has a Markdown twin: add `.md` to its URL). Every prop, column
-option and API method, with types and defaults, is in
-https://bonguynvan.github.io/bo-grid/api.json. Never invent a prop: if it is
-not in api.json or the types in node_modules/bo-grid, it does not exist.
+node_modules/bo-grid/dist/docs/README.md and the page for the feature: the
+docs of the installed version, one Markdown file per page (online:
+https://bonguynvan.github.io/bo-grid/llms.txt). Every prop, column option and
+API method, with types and defaults, is in
+node_modules/bo-grid/dist/docs/api.json. Never invent a prop: if it is not in
+api.json or the types in node_modules/bo-grid, it does not exist.
 
 - Svelte 5 only: runes (`$state`, `$derived`, `$props`), snippets and
   callback props. Never `export let`, `on:click` or `<slot>`.
@@ -118,6 +128,6 @@ The code blocks in these pages, and the `@example` of every prop and API method,
 
 Point the agent at the docs first, and name the feature's page when you know it:
 
-- "Read https://bonguynvan.github.io/bo-grid/llms.txt. Then build a watchlist with bo-grid: symbol, price with `flash: 'auto'`, change % and volume, fed from the WebSocket in `src/lib/feed.ts`."
+- "Read node_modules/bo-grid/dist/docs/README.md. Then build a watchlist with bo-grid: symbol, price with `flash: 'auto'`, change % and volume, fed from the WebSocket in `src/lib/feed.ts`."
 - "Using https://bonguynvan.github.io/bo-grid/docs/grouping.md, group the orders grid by account and show the summed quantity on each group row."
 - "Check every prop in `OrdersGrid.svelte` against https://bonguynvan.github.io/bo-grid/api.json and fix any that don't exist."

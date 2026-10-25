@@ -23,6 +23,7 @@ Facts to get right before writing code against bo-grid:
 - Live data: keep rows as plain objects and write ticks with \`api.patchRows(patches)\`, fed by \`createTickStream\` from \`bo-grid/realtime\`. A column with \`flash: 'auto'\` flashes every change by itself.
 - Separate entries, each paid for only when imported: \`bo-grid/realtime\`, \`bo-grid/trading\`, \`bo-grid/ladder\`, \`bo-grid/react\`, \`bo-grid/vue\`, \`bo-grid/element\`.
 - Every prop, column option and API method, with types and defaults: ${SITE}/api.json
+- The installed package carries these docs for its own version, one Markdown file per page: \`node_modules/bo-grid/dist/docs/README.md\`, with \`api.json\` beside it.
 - An error from bo-grid starts with a stable code (\`BG2004: ...\`), states the value it got and ends with \`Fix:\` and a link. Apply the fix as written; every code is listed at ${SITE}/docs/errors/`;
 
 const sources = import.meta.glob<string>('/src/routes/**/+page.md', { query: '?raw', import: 'default', eager: true });

@@ -20,8 +20,13 @@ every build, so they match the released version:
 - **[llms-full.txt](https://bonguynvan.github.io/bo-grid/llms-full.txt)** —
   every page and the full reference in one file, to paste into a chat.
 
-The installed package's `.d.ts` files carry the same TSDoc, so an agent that
-reads `node_modules/bo-grid/dist` sees the API of the version you installed.
+The installed package carries the same docs for its version, so an agent can
+read them with no network:
+
+- **`node_modules/bo-grid/dist/docs/`**: `README.md` (the index), one
+  Markdown file per docs page, `reference.md` and `api.json`.
+- **The `.d.ts` files** in `node_modules/bo-grid/dist`: the same TSDoc, with
+  a default and an example beside each prop.
 
 ## 2. Project rule files — install once, every session gets it right
 
@@ -33,7 +38,7 @@ Two ready-to-copy files, same guidance in each tool's format:
 | Claude Code / any agent reading `CLAUDE.md`/`AGENTS.md` | [`claude-md-snippet.md`](./claude-md-snippet.md) | append into your `CLAUDE.md` (or `AGENTS.md`) |
 
 Both are short by design (they're injected into every relevant prompt) and
-point to `llms.txt` and `api.json` for anything beyond the essentials, rather
+point to the docs in the package and `api.json` for anything beyond the essentials, rather
 than duplicating the whole API surface into a rule file that goes stale.
 
 ## 3. Keeping these current

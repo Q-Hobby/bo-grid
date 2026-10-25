@@ -7,12 +7,13 @@
 ## bo-grid (Svelte 5 data grid)
 
 This project depends on `bo-grid` (peer `svelte@^5`). Before writing or
-editing bo-grid code, read `https://bonguynvan.github.io/bo-grid/llms.txt`
-(the facts to get right, and every docs page as Markdown), and look props up
-in `https://bonguynvan.github.io/bo-grid/api.json` (every prop, column option
-and API method, generated from the types) — do not guess a prop name or
+editing bo-grid code, read `node_modules/bo-grid/dist/docs/README.md` (the
+facts to get right, and every docs page as a Markdown file, for the installed
+version; online: `https://bonguynvan.github.io/bo-grid/llms.txt`), and look
+props up in `node_modules/bo-grid/dist/docs/api.json` (every prop, column
+option and API method, generated from the types). Do not guess a prop name or
 invent a plausible-sounding one. The installed types in
-`node_modules/bo-grid/dist` carry the same docs for your version.
+`node_modules/bo-grid/dist` carry the same docs.
 
 **Seven entry points** — importing one adds nothing to the others, and each
 export lives in exactly one place:

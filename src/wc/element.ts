@@ -6,7 +6,7 @@
 //   const el = document.querySelector('bo-grid');
 //   el.config = { rows, columns, theme: 'dark' };
 //
-// Works in React, Vue, Angular and vanilla — see docs/frameworks.md.
+// Works in React, Vue, Angular and vanilla — see https://bonguynvan.github.io/bo-grid/docs/frameworks/
 import BoGrid from './BoGrid.svelte';
 import type { GridProps } from '../lib';
 
