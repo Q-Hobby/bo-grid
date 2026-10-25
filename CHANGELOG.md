@@ -5,6 +5,22 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-10-25
+
+**Docs in the package, errors that give the fix, and examples that
+compile.** This release makes bo-grid easier to get right the first time,
+for people and for coding agents. Each installed version carries its own
+docs as Markdown in `node_modules/bo-grid/dist/docs/`. Every error starts
+with a stable code and says how to fix it. Every prop and column option
+states its default, with an example, in the types. Every example in the
+docs is type-checked in CI. And rows can be keyed by strings.
+
+**Upgrading from 2.x:** the major version is for one change in the types:
+`GridRow.id` is now `string | number`, which changes nothing at runtime.
+Nothing was removed or renamed. If your code uses a plain row's id as a
+number, declare `id: number` on your row type, or key the helper by
+`string | number`: see Changed.
+
 ### Added
 
 - **Error codes.** Every error bo-grid throws starts with a stable code,
@@ -43,9 +59,8 @@ All notable changes to this project are documented here. Format follows
   `getRowId` returning an `unknown` symbol; `createAlerts`, `createLinger`,
   `createViewportSubscriptions` and `createTickStream` calls that could not
   infer their row type; snippets declared outside `<Grid>` (declared inside
-  it, they get their types from the prop); string ids where `GridRow.id` is
-  a number; a placeholder `[...]`; and a socket message read without
-  `JSON.parse`.
+  it, they get their types from the prop); a placeholder `[...]`; and a
+  socket message read without `JSON.parse`.
 - **The docs ship in the package.** `node_modules/bo-grid/dist/docs/` holds
   the docs of the installed version: every docs page as a Markdown file
   (the same text as the site's `.md` pages, links between pages pointing at
@@ -72,7 +87,6 @@ All notable changes to this project are documented here. Format follows
   They repeated the docs site's pages, and were drifting from them. The
   site's pages replace them online, and the Markdown copies now come in
   the package.
-
 - `parseFraction` takes the same options as `fmtFraction`, so one options
   object serves a column's `format` and `parse` (`sub` and `separator` only
   shape the output; reading ignores them).
