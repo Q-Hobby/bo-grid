@@ -19,7 +19,7 @@ Falling stocks are dimmed by `rowClass`, and big gains are bold through `cellCla
 `rowClass(row)` returns a class for a data row, or nothing. Rows render inside the grid, so target the class with `:global(...)`:
 
 ```svelte
-<Grid {rows} {columns} rowClass={(r) => (r.change < 0 ? 'falling' : undefined)} />
+<Grid {rows} {columns} rowClass={(r) => (Number(r.change) < 0 ? 'falling' : undefined)} height={480} />
 
 <style>
   :global(.bo-grid .row.falling) {
@@ -35,7 +35,7 @@ For one column, `cellClass` is a class string, or a function of the cell's value
 ```
 
 ```css
-:global(.bo-grid .c.loss) { color: var(--bo-grid-down); }
+:global(.bo-grid .c.loss) { color: var(--bo-down); }
 ```
 
 For colour cues that scale with the value, such as bars and heat tints, see [Conditional formatting](../conditional-formatting/).
@@ -49,7 +49,7 @@ For colour cues that scale with the value, such as bars and heat tints, see [Con
 `rowMenu(row)` returns the items of a right-click menu for that row; return an empty array for no menu. Each item has a `label` and an `onSelect`, and the menu closes after an item runs, on a click outside, or on <kbd>Esc</kbd>. From the keyboard, the <kbd>ContextMenu</kbd> key or <kbd>Shift</kbd>+<kbd>F10</kbd> opens it at the focused cell.
 
 ```svelte
-<Grid {rows} {columns} rowMenu={(r) => [{ label: 'Delete', onSelect: () => remove(r.id) }]} />
+<Grid {rows} {columns} rowMenu={(r) => [{ label: 'Delete', onSelect: () => remove(r.id) }]} height={480} />
 ```
 
 ## Reference

@@ -46,9 +46,9 @@ While a cell is being edited, keys belong to the editor: <kbd>Enter</kbd> saves,
   import { Grid, type Hotkeys } from 'bo-grid';
 
   const hotkeys: Hotkeys = {
-    b: ({ row }) => row && openTicket(row, 'buy'),
-    s: ({ row }) => row && openTicket(row, 'sell'),
-    Delete: ({ row }) => row && cancel(row),
+    b: ({ row }) => { if (row) openTicket(row, 'buy'); },
+    s: ({ row }) => { if (row) openTicket(row, 'sell'); },
+    Delete: ({ row }) => { if (row) cancel(row); },
     'Shift+C': () => cancelAll(),
     'Mod+K': () => openSearch(), // Ctrl+K, or ⌘K on a Mac
   };

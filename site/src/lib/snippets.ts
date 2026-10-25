@@ -46,12 +46,14 @@ const rows = ref(${rowsTs});
 </template>`,
   js: `import { createBoGrid } from 'bo-grid/element';
 
+/** @type {import('bo-grid').ColumnDef[]} */
 ${columnsTs.replace(': ColumnDef[]', '')}
 const rows = ${rowsTs};
 
-const grid = createBoGrid({ columns, rows, height: 400 });
-document.querySelector('#board').append(grid);
-// Later: grid.config = { ...grid.config, rows: nextRows };`,
+const config = { columns, rows, height: 400 };
+const grid = createBoGrid(config);
+document.querySelector('#board')?.append(grid);
+// Later: grid.config = { ...config, rows: nextRows };`,
 };
 
 export const liveFeed = {
@@ -71,7 +73,7 @@ export const liveFeed = {
   };
 </script>
 
-<Grid {rows} {columns} getRowId={(r) => r.symbol} onReady={(a) => (api = a)} />`,
+<Grid {rows} {columns} getRowId={(r) => String(r.symbol)} onReady={(a) => (api = a)} height={400} />`,
   react: `import { useEffect, useRef } from 'react';
 import { BoGrid } from 'bo-grid/react';
 import { createTickStream } from 'bo-grid/realtime';
@@ -90,7 +92,7 @@ export function Board({ initialQuotes }: { initialQuotes: Quote[] }) {
     };
     return () => stream.stop();
   }, []);
-  return <BoGrid ref={grid} rows={initialQuotes} columns={columns} getRowId={(r) => r.symbol} />;
+  return <BoGrid ref={grid} rows={initialQuotes} columns={columns} getRowId={(r) => String(r.symbol)} height={400} />;
 }`,
   vue: `<script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
@@ -112,6 +114,6 @@ onUnmounted(() => stream.stop());
 </script>
 
 <template>
-  <BoGrid ref="grid" :rows="initialQuotes" :columns="columns" :get-row-id="(r) => r.symbol" />
+  <BoGrid ref="grid" :rows="initialQuotes" :columns="columns" :get-row-id="(r) => String(r.symbol)" :height="400" />
 </template>`,
 };

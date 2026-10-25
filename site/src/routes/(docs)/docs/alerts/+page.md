@@ -19,8 +19,9 @@ Each row below has a level above and below its price. When the last price crosse
 ```ts
 import { createAlerts } from 'bo-grid/realtime';
 
+// Quote is your row type: { id, symbol, last, alertAbove?, alertBelow?, … }
 let version = $state(0);
-const alerts = createAlerts({
+const alerts = createAlerts<Quote, string>({
   key: (q) => q.symbol,
   rules: {
     above: (q) => q.alertAbove !== undefined && q.last >= q.alertAbove,
@@ -29,8 +30,8 @@ const alerts = createAlerts({
   onChange: () => version++, // an alert fired, or was acknowledged
 });
 
-// On each update, with all the rows or only the ones that changed:
-for (const a of alerts.check(rows)) chime(a.key, a.rule);
+// On each update, with all the quotes or only the ones that changed:
+for (const a of alerts.check(quotes)) chime(a.key, a.rule);
 ```
 
 `check` returns the alerts that fired just now, each `{ key, rule, row, at }`: play a sound, or show a toast. With plain rows patched through `api.patchRows`, call it right after the patch, when the rows hold the new values.
@@ -43,12 +44,14 @@ The lit style is yours, through `rowClass` (or `cellClass` on the price column).
 <script lang="ts">
   const rowClass = $derived.by(() => {
     void version; // a new function when an alert fires or is acknowledged
-    return (q) => (alerts.isLit(q) ? 'alert-lit' : undefined);
+    return (row: GridRow) => (alerts.isLit(row as Quote) ? 'alert-lit' : undefined);
   });
 </script>
 
-<Grid {rows} {columns} {rowClass} hotkeys={{ a: ({ row }) => row && alerts.ack(row.symbol) }} height={480} />
+<Grid rows={quotes} {columns} {rowClass} hotkeys={{ a: ({ row }) => { if (row) alerts.ack(String(row.symbol)); } }} height={480} />
 ```
+
+The grid hands callbacks a `GridRow`; the cast says it is one of your quotes.
 
 `isLit(row, rule?)` asks about one rule or any; `lit(row)` lists a row's lit rules. A hotkey (see [Keyboard & hotkeys](../keyboard/)) acknowledges the focused row.
 

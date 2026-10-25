@@ -19,7 +19,7 @@ Drag a header sideways to move its column. Open a header's ⋮ menu to sort, pin
 Drag any column header to a new position. `onColumnReorder` receives the new order of column keys, and `persistKey` remembers it across reloads (in `localStorage`):
 
 ```svelte
-<Grid {rows} {columns} persistKey="watchlist" onColumnReorder={(keys) => (order = keys)} />
+<Grid {rows} {columns} persistKey="watchlist" onColumnReorder={(keys) => (columnOrder = keys)} height={480} />
 ```
 
 The `columns` array you pass keeps its own order; the user's order is layered on top. `api.getState()` and `api.applyState()` capture and restore it along with widths, pins, sorts and filters (see [Grid API](../grid-api/)).
@@ -39,7 +39,7 @@ The `columns` array you pass keeps its own order; the user's order is layered on
 `columnsPanel` adds a Columns button that opens a checklist of every column, to hide and show them. It is the place to bring back a column hidden from the menu.
 
 ```svelte
-<Grid {rows} {columns} columnMenu columnsPanel />
+<Grid {rows} {columns} columnMenu columnsPanel height={480} />
 ```
 
 ## Hiding columns from your app
@@ -51,7 +51,7 @@ The `columns` array you pass keeps its own order; the user's order is layered on
   let hidden = $state(['bonus', 'rating']);
 </script>
 
-<Grid {rows} {columns} hiddenColumns={hidden} columnMenu onColumnVisibilityChange={(keys) => (hidden = keys)} />
+<Grid {rows} {columns} hiddenColumns={hidden} columnMenu onColumnVisibilityChange={(keys) => (hidden = keys)} height={480} />
 ```
 
 Runtime hides and pins are remembered under `persistKey` too.

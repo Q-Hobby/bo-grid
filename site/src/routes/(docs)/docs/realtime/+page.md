@@ -58,7 +58,7 @@ This works well for a few hundred writes a second. Every field write goes throug
   };
 </script>
 
-<Grid {rows} {columns} getRowId={(r) => r.symbol} onReady={(a) => (api = a)} height={480} />
+<Grid {rows} {columns} getRowId={(r) => String(r.symbol)} onReady={(a) => (api = a)} height={480} />
 ```
 
 A patch is `[rowId, fields]`, where the id is the grid's `getRowId` (`row.id` by default). `patchRows` returns how many rows changed. Past about 10,000 messages a second, read the socket in a worker instead: see [Worker feeds](../worker-feed/).
@@ -82,7 +82,7 @@ Write `(value, row) => …` only when the function reads the row, and `(value) =
 Values that change in place do not re-sort or re-filter the view on every tick. For a board whose order must follow the feed (top movers, a watchlist sorted by change), set `liveSort`:
 
 ```svelte
-<Grid {rows} {columns} sort={[{ key: 'change', dir: 'desc' }]} liveSort={500} onReady={(a) => (api = a)} />
+<Grid {rows} {columns} sort={[{ key: 'change', dir: 'desc' }]} liveSort={500} onReady={(a) => (api = a)} height={480} />
 ```
 
 When a patch changes a field the grid sorts or filters by, the rows it changed are merged back into place at most every `liveSort` ms (`true` means 500). Only those rows are sorted and merged into the rest: on 100,000 rows with 500 changed, that takes about 5 ms against about 21 ms for a full re-sort. A row that changes other fields queues nothing.
@@ -99,7 +99,7 @@ When a patch changes a field the grid sorts or filters by, the rows it changed a
 - **`flashNewRows`** flashes a row once when it arrives in `rows`, such as a new order or a new fill (`true` means 600 ms; or a number of ms). A row arrives when its id is new. A copy of a row already there does not flash, nor do the rows an empty grid receives (a load), nor a wholesale replacement.
 
 ```svelte
-<Grid {rows} {columns} liveSort staleAfter={5000} flashNewRows onReady={(a) => (api = a)} />
+<Grid {rows} {columns} liveSort staleAfter={5000} flashNewRows onReady={(a) => (api = a)} height={480} />
 ```
 
 ## Busy screens

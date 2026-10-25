@@ -68,7 +68,7 @@ Number types line up on the right and the rest on the left. Set `align` to overr
 `defaultColumn` sets fields that every column starts from. A column's own fields, and a registered `cellType`, win over it:
 
 ```svelte
-<Grid {rows} {columns} defaultColumn={{ tooltip: true, minWidth: 64, resizable: false }} />
+<Grid {rows} {columns} defaultColumn={{ tooltip: true, minWidth: 64, resizable: false }} height={480} />
 ```
 
 To reuse a whole kind of column across grids, such as a money amount or an order status, register it once with `cellTypes`: see [Registered cell types](../column-types/#registered-cell-types).
@@ -78,7 +78,7 @@ To reuse a whole kind of column across grids, such as a money amount or an order
 Built-in number, price, currency and date formatting uses `en-US` by default. Set the grid's `locale` to change it for every column, or a column's own `locale` to change one:
 
 ```svelte
-<Grid {rows} {columns} locale="vi-VN" />
+<Grid {rows} {columns} locale="vi-VN" height={480} />
 ```
 
 [Localization](../localization/) covers the grid's own strings too.

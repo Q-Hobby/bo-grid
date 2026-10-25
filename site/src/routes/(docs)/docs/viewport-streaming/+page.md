@@ -18,8 +18,8 @@ The board below has 1,000 symbols, but its simulated server sends ticks only for
 
 `onViewportChange` is called with the data rows on screen, plus the small buffer rendered above and below them, whenever that set changes: a scroll, a sort, a filter, new data. A tick that only changes values never calls it. Group rows, loading rows and pinned rows are not included.
 
-```ts
-onViewportChange={(view) => console.log(view.first, view.last, view.rows.length)}
+```svelte
+<Grid {rows} {columns} height={600} onViewportChange={(view) => console.log(view.first, view.last, view.rows.length)} />
 ```
 
 `first` and `last` are the visual indexes of the first and last row reported, or -1 when no data row is on screen; `rows` are the rows themselves, in view order.
@@ -33,7 +33,7 @@ onViewportChange={(view) => console.log(view.first, view.last, view.rows.length)
   import { createViewportSubscriptions } from 'bo-grid/realtime';
 
   const subs = createViewportSubscriptions({
-    key: (row) => row.symbol,
+    key: (row: GridRow) => String(row.symbol),
     subscribe: (syms) => socket.send(JSON.stringify({ op: 'sub', syms })),
     unsubscribe: (syms) => socket.send(JSON.stringify({ op: 'unsub', syms })),
   });

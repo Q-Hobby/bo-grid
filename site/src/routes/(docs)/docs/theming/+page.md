@@ -92,6 +92,8 @@ Each token is a CSS custom property on the grid, so you can set them from a styl
 
 The variable names follow the tokens: `bg` is `--bo-grid-bg`, `headerBg` is `--bo-grid-header-bg`, `cellPad` is `--bo-grid-cell-pad`. A `theme` prop sets the same variables on the grid itself, so it wins over an ancestor's. `themeVars(theme)` turns a token map into the variable declarations, for a wrapper of your own.
 
+The `--bo-grid-*` variables are inputs: they hold a value only where you or a `theme` set one. To use a theme colour inside the grid (a custom cell, a `cellClass` style), read the colour the grid resolved, the same name without `grid-`: `var(--bo-up)`, `var(--bo-down)`, `var(--bo-text)`, `var(--bo-text-dim)`, `var(--bo-amber)`. These always hold the current theme's colour.
+
 Native controls inside the grid (checkboxes, date and number inputs, the search box, scrollbars) follow the theme through `color-scheme` and `accent-color`. A custom map is treated as dark unless it sets `scheme: 'light'`.
 
 ## Styling rows and cells

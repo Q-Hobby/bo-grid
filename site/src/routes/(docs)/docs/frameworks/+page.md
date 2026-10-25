@@ -66,14 +66,15 @@ onMounted(() => feed.subscribe((ticks) => grid.value?.api?.patchRows(ticks)));
 ```ts
 import { createBoGrid } from 'bo-grid/element';
 
-const grid = createBoGrid({ columns, rows, height: 520, onCellEdit: save });
-document.querySelector('#board').append(grid);
-grid.config = { ...grid.config, rows: nextRows };
+const config = { columns, rows, height: 520, onCellEdit: save };
+const grid = createBoGrid(config);
+document.querySelector('#board')?.append(grid);
+grid.config = { ...config, rows: nextRows }; // a new config re-renders
 ```
 
 In Angular, add `CUSTOM_ELEMENTS_SCHEMA` to the component and bind the property:
 
-```ts
+```ts nocheck
 import 'bo-grid/element';
 import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
@@ -99,6 +100,7 @@ export class BoardComponent {
 Svelte snippets cannot be passed from JavaScript, so the `cell` and `detail` snippets are Svelte-only. For rich cells, give a column a `render({ value, row, column })` function that returns a DOM node or an HTML string; built-in [column types](../column-types/) and `format` cover most cases without one.
 
 ```js
+/** @type {import('bo-grid').ColumnDef[]} */
 const columns = [
   {
     type: 'custom',
@@ -107,7 +109,7 @@ const columns = [
     render: ({ value }) => {
       const dot = document.createElement('span');
       dot.textContent = value === 'up' ? '● Live' : '○ Idle';
-      dot.style.color = value === 'up' ? 'var(--bo-grid-up)' : 'var(--bo-grid-text-dim)';
+      dot.style.color = value === 'up' ? 'var(--bo-up)' : 'var(--bo-text-dim)';
       return dot;
     },
   },
@@ -124,9 +126,10 @@ Sorting, filtering, tooltips, copy and export still use the value and `format`; 
 import { createBoGrid } from 'bo-grid/element';
 import { createTickStream } from 'bo-grid/realtime';
 
+/** @type {import('bo-grid').GridApi | undefined} */
 let api;
-const grid = createBoGrid({ columns, rows, height: 520, getRowId: (r) => r.symbol, onReady: (a) => (api = a) });
-document.querySelector('#board').append(grid);
+const grid = createBoGrid({ columns, rows, height: 520, getRowId: (r) => String(r.symbol), onReady: (a) => (api = a) });
+document.querySelector('#board')?.append(grid);
 
 const stream = createTickStream({ apply: (batch) => api?.patchRows(batch) });
 stream.start();

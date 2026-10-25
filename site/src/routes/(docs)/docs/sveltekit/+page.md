@@ -27,8 +27,8 @@ Svelte 5 is a peer dependency, already in a SvelteKit app. Excel export is optio
   ];
 
   const rows = [
-    { id: 'VNM', symbol: 'VNM', price: 68.5, change: 1.2 },
-    { id: 'FPT', symbol: 'FPT', price: 132, change: -0.4 },
+    { id: 1, symbol: 'VNM', price: 68.5, change: 1.2 },
+    { id: 2, symbol: 'FPT', price: 132, change: -0.4 },
   ];
 </script>
 
@@ -68,8 +68,9 @@ The import helpers are plain functions with no DOM, so they work in `load` too. 
 
 ```ts
 import { parseCSV, rowsFromObjects } from 'bo-grid';
+import type { PageLoad } from './$types';
 
-export const load = async ({ fetch }) => {
+export const load: PageLoad = async ({ fetch }) => {
   const quotes = rowsFromObjects(await (await fetch('/api/quotes')).json());
   const history = parseCSV(await (await fetch('/data/history.csv')).text(), columns);
   return { quotes, history };
@@ -94,7 +95,7 @@ The grid renders on the server, but a feed is a browser concern: open the socket
   let api: GridApi | undefined;
 
   onMount(() => {
-    const stream = createTickStream({ apply: (batch) => api?.patchRows(batch) });
+    const stream = createTickStream<number, { price: number }>({ apply: (batch) => api?.patchRows(batch) });
     stream.start();
     const ws = new WebSocket('wss://feed.example.com');
     ws.onmessage = (e) => {

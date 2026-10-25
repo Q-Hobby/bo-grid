@@ -33,7 +33,7 @@ Drag the grip on a header's right edge to resize a column. Only that column chan
 - `onColumnResize(key, width)` reports each resize; `persistKey` remembers widths across reloads.
 
 ```svelte
-<Grid {rows} {columns} persistKey="watchlist" onColumnResize={(key, width) => save(key, width)} />
+<Grid {rows} {columns} persistKey="watchlist" onColumnResize={(key, width) => save(key, width)} height={480} />
 ```
 
 ## Scaling every column: fitColumns
@@ -41,7 +41,7 @@ Drag the grip on a header's right edge to resize a column. Only that column chan
 With `fitColumns`, every column scales with the grid. Each gets a share of the width in proportion to its `width`, bounded by its `minWidth` and `maxWidth`. A column with no `minWidth` shrinks to 64 px at most (or keeps its own width, if that is smaller). The grid scrolls sideways only when those floors no longer fit.
 
 ```svelte
-<Grid {rows} {columns} fitColumns />
+<Grid {rows} {columns} fitColumns height={480} />
 ```
 
 `fitColumns` fits until the user sets a width. After a drag or an autosize, the columns keep the widths they were given, as they do without it, until **Reset widths** brings the fit back.

@@ -33,7 +33,7 @@ The current page is the grid's own by default. To drive it, for example from the
   let page = $state(0);
 </script>
 
-<Grid {rows} {columns} pageSize={25} {page} onPageChange={(p) => (page = p)} />
+<Grid {rows} {columns} pageSize={25} {page} onPageChange={(p) => (page = p)} height={480} />
 ```
 
 The page size works the same way: it changes on its own from the dropdown, unless you also drive `pageSize` and update it from `onPageSizeChange`.

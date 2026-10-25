@@ -20,7 +20,10 @@ Pass `onRowReorder`. It receives the row's old and new positions in the rows on 
 
 ```svelte
 <script lang="ts">
-  let tasks = $state([...]);
+  let tasks: GridRow[] = $state([
+    { id: 1, title: 'Write the brief' },
+    { id: 2, title: 'Review the pull request' },
+  ]);
 
   function reorder(from: number, to: number): void {
     const next = [...tasks];
@@ -30,7 +33,7 @@ Pass `onRowReorder`. It receives the row's old and new positions in the rows on 
   }
 </script>
 
-<Grid rows={tasks} {columns} onRowReorder={reorder} />
+<Grid rows={tasks} {columns} onRowReorder={reorder} height={480} />
 ```
 
 ## When it applies

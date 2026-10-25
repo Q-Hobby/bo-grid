@@ -21,7 +21,7 @@ const columns: ColumnDef[] = [
   { type: 'number', key: 'qty', header: 'Qty', decimals: 0 },
   { type: 'price', key: 'last', header: 'Last' },
   // No `value` field on the rows: derived, and still sortable and exportable.
-  { type: 'number', key: 'value', header: 'Value', decimals: 0, groupAgg: 'sum', value: (r) => r.qty * r.last },
+  { type: 'number', key: 'value', header: 'Value', decimals: 0, groupAgg: 'sum', value: (r) => Number(r.qty) * Number(r.last) },
 ];
 ```
 

@@ -33,6 +33,33 @@ All notable changes to this project are documented here. Format follows
   "Example" toggle, and the Markdown pages and llms-full.txt include them.
   Generating the manifest fails when a doc, a default or an example is
   missing.
+- **Every example compiles.** The Svelte, TypeScript and JavaScript code
+  blocks of the docs site, README.md and docs/ai, the home page's framework
+  samples, and every `@example` in the types (234 in all) are now
+  type-checked against the library in CI, in strict TypeScript. The
+  check found, and this release fixes, examples a reader would have copied
+  into an error: 19 `<Grid>` tags without the required `height`; row values
+  used as numbers without converting them (row fields are `unknown`); a
+  `getRowId` returning an `unknown` symbol; `createAlerts`, `createLinger`,
+  `createViewportSubscriptions` and `createTickStream` calls that could not
+  infer their row type; snippets declared outside `<Grid>` (declared inside
+  it, they get their types from the prop); string ids where `GridRow.id` is
+  a number; a placeholder `[...]`; and a socket message read without
+  `JSON.parse`.
+
+### Changed
+
+- `parseFraction` takes the same options as `fmtFraction`, so one options
+  object serves a column's `format` and `parse` (`sub` and `separator` only
+  shape the output; reading ignores them).
+
+### Fixed
+
+- Docs that read a theme colour as `var(--bo-grid-up)` inside a cell (the
+  custom cells and row styles pages, the framework guide): that variable is
+  an input, empty unless set, so under the default theme the colour was
+  missing. They read the resolved `var(--bo-up)`, and the theming page says
+  which to use.
 
 ## [2.10.0] — 2026-10-25
 

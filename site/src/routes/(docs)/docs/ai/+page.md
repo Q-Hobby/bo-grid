@@ -112,6 +112,8 @@ The repository's [`docs/ai`](https://github.com/bonguynvan/bo-grid/tree/main/doc
 
 Every example on this site is a whole Svelte file, and its **Code** tab shows exactly the file that runs. The small examples in these pages import from `bo-grid` just as your app does, with no site-only helpers, so an agent can copy one, run it, and change it. The [Examples](../../examples/) gallery has larger, realistic screens (a price board, an order book, a blotter), each on its own page with its source.
 
+The code blocks in these pages, and the `@example` of every prop and API method, are type-checked against the library on every change, in strict TypeScript. An excerpt is checked the way you would read it: with the imports it leaves out and the app around it (your rows, your socket) filled in with real types. So what you copy compiles, and it shows the habits strict TypeScript asks for: row values are `unknown` until you convert them (`Number(row.last)`), and a helper such as `createAlerts<Quote, string>` is told your row type.
+
 ## Prompts that work
 
 Point the agent at the docs first, and name the feature's page when you know it:
