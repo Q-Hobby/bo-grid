@@ -10,6 +10,7 @@
   // `window.__liveBlotter.bench()` times frames of that load, rendered
   // synchronously, split into applying the data, the grid's work and layout.
   interface Order extends GridRow {
+    id: number;
     sym: string;
     side: 'Buy' | 'Sell';
     px: number;

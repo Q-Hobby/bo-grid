@@ -41,7 +41,7 @@ When an order completes and leaves your list, `createLinger` keeps it on screen 
 import { createLinger } from 'bo-grid/realtime';
 
 let expired = $state(0);
-const linger = createLinger<GridRow, number>({ ms: 1500, key: (o) => o.id, onExpire: () => expired++ });
+const linger = createLinger<GridRow, string | number>({ ms: 1500, key: (o) => o.id, onExpire: () => expired++ });
 const shown = $derived.by(() => {
   void expired; // updates again when a row is due to go
   return linger.update(orders); // the orders, plus the ones that just left, in place

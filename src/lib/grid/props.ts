@@ -18,8 +18,8 @@ import type { RowSource } from './source';
 import type { GridTheme } from './theme';
 
 export interface GridPropsDef {
-  /** The data: one plain object per row, each with a unique `id` (or name
-      another key with `getRowId`).
+  /** The data: one plain object per row, each with a unique `id`, a number
+      or a string (or name another key with `getRowId`).
       @example
       let rows: GridRow[] = $state([
         { id: 1, sym: 'VNM', last: 68.5 },

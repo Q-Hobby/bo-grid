@@ -27,6 +27,7 @@
   // reuses the same `createTickStream` from `bo-grid/realtime` as the Trading
   // desk example, clamped to each symbol's own ceiling/floor.
   interface Board extends GridRow {
+    id: number;
     symbol: string;
     exchange: Exchange;
     ref: number;

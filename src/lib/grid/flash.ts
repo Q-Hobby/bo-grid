@@ -245,7 +245,8 @@ export class FlashTracker {
     /** Asked once per real change: should this flash hold? */
     decide?: (at: number) => boolean,
   ): FlashState {
-    const id = `${rowKey}${SEP}${colKey}`;
+    // A string key gets a prefix no number prints with, so rows 1 and '1' differ.
+    const id = typeof rowKey === 'number' ? `${rowKey}${SEP}${colKey}` : `s${rowKey}${SEP}${colKey}`;
     const prev = this.cells.get(id);
 
     // First sight — record the baseline, never flash. This is what keeps a cell

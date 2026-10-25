@@ -14,6 +14,7 @@
   // `window.__priceBoard.bench()` measures the cost of one frame, split into
   // applying the data, Svelte updating the DOM, and style + layout.
   interface Quote extends GridRow {
+    id: number;
     symbol: string;
     ref: number;
     ceil: number;
