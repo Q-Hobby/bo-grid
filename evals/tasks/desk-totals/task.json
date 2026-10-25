@@ -1,0 +1,24 @@
+{
+  "title": "Trades grouped by desk with totals",
+  "prompt": "In src/App.svelte, show the trades from src/trades.ts grouped by desk, with each desk's total notional, and the total notional of all trades at the bottom.",
+  "checks": [
+    {
+      "name": "uses Grid from bo-grid",
+      "match": "from ['\"]bo-grid['\"]"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "groups with groupBy",
+      "match": "groupBy"
+    },
+    {
+      "name": "totals with groupAgg",
+      "match": "groupAgg"
+    },
+    {
+      "name": "no totals computed by hand",
+      "absent": "reduce\\("
+    }
+  ]
+}

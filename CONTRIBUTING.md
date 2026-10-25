@@ -74,6 +74,16 @@ needs numbers, not intuition:
   direction flips.
 - [BENCHMARKS.md](./BENCHMARKS.md) shows the method and the current numbers.
 
+## How agents use it is measured too
+
+[`evals/`](./evals/README.md) has tasks a coding agent does in a small app with
+bo-grid installed, with and without `npx bo-grid init`, and graders that score
+the result. Run them after a change to the docs, the skill or the AGENTS.md
+section, or to an API that agents get wrong. Each run costs what the agent
+spends, so CI doesn't run them. When you add a task, add a working answer
+in `evals/solutions/` too: `--solutions` must pass and `--untouched` must
+fail.
+
 ## Releasing
 
 A release is a pull request that bumps `version` in `package.json` and renames

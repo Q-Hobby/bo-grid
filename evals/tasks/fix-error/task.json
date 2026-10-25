@@ -1,0 +1,11 @@
+{
+  "title": "Fix an app that throws a bo-grid error",
+  "prompt": "The app crashes on start with this error:\n\nBG2004: TradeTape: capacity must be a number of 1 or more, got 0. Fix: Pass how many trades to keep, e.g. new TradeTape(500). See https://bonguynvan.github.io/bo-grid/docs/errors/#bg2004\n\nFix it. Opened without a ?keep= parameter, the app should keep the last 500 trades.",
+  "checks": [
+    {
+      "name": "keeps 500 trades by default",
+      "match": "(\\?\\?|\\|\\||=|\\(|:)\\s*['\"]?500\\b"
+    }
+  ],
+  "idioms": []
+}

@@ -1,0 +1,20 @@
+{
+  "title": "An editable quantity with validation",
+  "prompt": "Make the Qty column in src/App.svelte editable. Accept only whole numbers above zero. When an edit is accepted, show the new quantity and call saveQty(symbol, qty) from src/api.ts.",
+  "checks": [
+    {
+      "name": "marks the column editable",
+      "match": "editable:\\s*true"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "validates in the column (validate)",
+      "match": "validate"
+    },
+    {
+      "name": "saves in onCellEdit",
+      "match": "onCellEdit"
+    }
+  ]
+}
