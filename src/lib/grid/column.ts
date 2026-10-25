@@ -505,7 +505,10 @@ export interface SortState {
 
 /** Minimal row contract the grid relies on. Concrete rows add their own fields. */
 export interface GridRow {
-  id: number;
+  /** Unique key of the row: a number, or a string such as a symbol or UUID.
+      The grid keys selection, focus, edits and patches by it, unless
+      `getRowId` names another key. */
+  id: string | number;
   /** Legacy row-driven flash counter — only needed for `flash: true` columns.
       Derived flash (`flash: 'auto' | 'change'`) requires neither field. */
   flashSeq?: number;

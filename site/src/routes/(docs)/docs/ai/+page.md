@@ -103,7 +103,7 @@ api.json or the types in node_modules/bo-grid, it does not exist.
   React `BoGrid` from `bo-grid/react`; Vue `BoGrid` from `bo-grid/vue`;
   the custom element from `bo-grid/element`.
 - Minimal grid: `<Grid {rows} {columns} height={400} />`. Every row needs a
-  unique `id`, or pass `getRowId`.
+  unique `id` (a number or a string), or pass `getRowId`.
 - Live prices: a column with `flash: 'auto'` flashes changes by itself. Write
   ticks with `api.patchRows(patches)` (the API comes from `onReady`), fed by
   `createTickStream`. Don't write `flashSeq` or `flashDir` bookkeeping.

@@ -39,7 +39,7 @@ Sort a column from its header, hover a cut-off value for its tooltip, or drag a 
 - **`key`** is the row field the column reads. It is also the column's identity: sorting, filtering, hiding and saved layouts refer to columns by key, so keep keys unique.
 - **`header`** is the title in the header row.
 - **`type`** picks the cell's format and behaviour. `ColumnDef` is a union on `type`, so TypeScript checks each type's own options (`decimals` on `number`, `min` and `max` on `heatmap`, `currency` on `currency`). See [Column types](../column-types/) for the full list.
-- Rows are plain objects with a unique `id`. If your data has another identity field, pass `getRowId` instead of copying it into `id`.
+- Rows are plain objects with a unique `id`: a number, or a string such as a symbol or UUID. If your data has another identity field, pass `getRowId` instead of copying it into `id`.
 
 ## Widths
 

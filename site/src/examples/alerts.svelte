@@ -9,7 +9,7 @@
 
   // A rule fires when it turns true; the row stays lit until acknowledged.
   let version = $state(0);
-  const alerts = createAlerts<Row, number>({
+  const alerts = createAlerts<Row, string | number>({
     key: (r) => r.id,
     rules: { above: (r) => r.price >= r.above, below: (r) => r.price <= r.below },
     onChange: () => version++,

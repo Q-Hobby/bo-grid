@@ -39,6 +39,13 @@ describe('FlashTracker', () => {
     expect(s.at).toBe(10);
   });
 
+  it('keeps rows 1 and "1" apart', () => {
+    const t = new FlashTracker();
+    t.observe(1, 'last', 100, 'up-down', 0);
+    expect(t.observe('1', 'last', 101, 'up-down', 10).changed).toBe(false);
+    expect(t.observe(1, 'last', 100, 'up-down', 20).changed).toBe(false);
+  });
+
   it('flashes down when a numeric value falls', () => {
     const t = new FlashTracker();
     t.observe(1, 'last', 100, 'up-down', 0);

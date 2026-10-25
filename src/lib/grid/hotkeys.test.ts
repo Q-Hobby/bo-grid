@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileHotkeys, hotkeyFor } from './hotkeys';
 import { findRow } from './follow';
+import type { GridRow } from './column';
 import type { VisualRow } from './grouping';
 
 const key = (k: string, mods: Partial<Record<'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey', boolean>> = {}) => ({
@@ -79,7 +80,7 @@ describe('hotkeys', () => {
 
 describe('findRow', () => {
   const rows = (ids: number[]): VisualRow[] => ids.map((id) => ({ kind: 'data', row: { id } }));
-  const id = (r: { id: number }) => r.id;
+  const id = (r: GridRow) => r.id;
 
   it('finds a row near where it was, and anywhere else', () => {
     const items = rows([5, 1, 2, 3, 4]);

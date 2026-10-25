@@ -57,6 +57,15 @@ All notable changes to this project are documented here. Format follows
 
 ### Changed
 
+- **Breaking, in the types only: `GridRow.id` is `string | number`.** Rows
+  keyed by a symbol or a UUID now type-check; `getRowId`, selection and
+  `patchRows` already took either. Nothing changes at runtime. Code that
+  uses the `id` of a plain `GridRow`, such as the row a grid callback gets,
+  as a number no longer compiles. Declare the id on your own row type
+  (`interface Quote extends GridRow { id: number; … }`), or key a helper such
+  as `createAlerts` or `createLinger` by `string | number`. The order book's
+  `BookRow` and `BookPairRow` and the ladder's `LadderRow` declare
+  `id: number`, so their ids stay numbers.
 - The README is short: install, a first grid, and links to the
   [live demo and docs](https://bonguynvan.github.io/bo-grid/).
 - `docs/guide.md`, `docs/frameworks.md` and `docs/sveltekit.md` are gone.
@@ -75,6 +84,7 @@ All notable changes to this project are documented here. Format follows
   an input, empty unless set, so under the default theme the colour was
   missing. They read the resolved `var(--bo-up)`, and the theming page says
   which to use.
+- Rows with ids `1` and `'1'` in one grid no longer share flash state.
 
 ## [2.10.0] — 2026-10-25
 

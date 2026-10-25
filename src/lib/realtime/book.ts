@@ -70,6 +70,9 @@ export interface BookTop {
 
 /** A row of a stacked book: asks above, farthest first, then bids. */
 export interface BookRow extends GridRow {
+  /** Stays the same for a price while it is on screen, so flashes and
+      selection follow the level. */
+  id: number;
   side: 'bid' | 'ask';
   price: number;
   size: number;
@@ -85,6 +88,8 @@ export interface BookRow extends GridRow {
 
 /** A row of a side-by-side book: the nth bid beside the nth ask. */
 export interface BookPairRow extends GridRow {
+  /** The depth: 0 for the best bid and ask. */
+  id: number;
   bidPrice?: number;
   bidSize?: number;
   bidTotal?: number;

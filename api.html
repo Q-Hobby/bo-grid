@@ -246,7 +246,7 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
           <tr><td>rowNumbers</td><td><span class="type">boolean</span></td><td>A leading row-number column, as in a spreadsheet: data rows numbered 1, 2, 3… in view order (group headers get none), sticky when the grid scrolls sideways. Its cells are row headers, so screen readers announce the number with each row; the header is the <code>rowNumber</code> label. Default <code>false</code>.</td></tr>
           <tr><td>rowSelection</td><td><span class="type">boolean</span></td><td>Show a leading checkbox column for whole-row selection (keyed by <code>getRowId</code>); <kbd>Space</kbd> toggles the focused row. Default <code>false</code>.</td></tr>
           <tr><td>getRowId</td><td><span class="type">(row) =&gt; string | number</span></td><td>Identity key for selection. Defaults to <code>row.id</code>; override for string/composite keys.</td></tr>
-          <tr><td>onRowSelectionChange</td><td><span class="type">(ids: number[]) =&gt; void</span></td><td>Called with the selected row ids whenever the selection changes.</td></tr>
+          <tr><td>onRowSelectionChange</td><td><span class="type">(ids: (string | number)[]) =&gt; void</span></td><td>Called with the selected row ids whenever the selection changes.</td></tr>
           <tr><td>cellSelection</td><td><span class="type">boolean</span></td><td>Highlight cells/ranges on click-drag (fill + focus ring). Set <code>false</code> for a read-only/display grid — clicks pass through to <code>onRowClick</code>/<code>onCellClick</code>. Default <code>true</code>.</td></tr>
           <tr><td>selectedRowId</td><td><span class="type">string | number | null</span></td><td>Controlled active-row highlight (keyed by <code>getRowId</code>) for list-detail. Independent of <code>rowSelection</code> and the range selection.</td></tr>
           <tr><td>hiddenColumns</td><td><span class="type">string[]</span></td><td>Column keys to hide (controlled). Drive your own column-picker UI. Default <code>[]</code>.</td></tr>
@@ -274,7 +274,7 @@ npm i xlsx             <span class="tok-com"># optional, only for exportXLSX()</
       <h3>GridRow <span class="tag">interface</span></h3>
       <p>The minimal contract every row must satisfy; add your own data fields alongside.</p>
       <pre><code><span class="tok-key">interface</span> GridRow {
-  id: number;            <span class="tok-com">// stable identity (used as the render key)</span>
+  id: string | number;   <span class="tok-com">// stable identity (used as the render key)</span>
   flashSeq?: number;     <span class="tok-com">// legacy row-driven flash only (flash: true)</span>
   flashDir?: <span class="tok-str">'up'</span> | <span class="tok-str">'down'</span>;
   [field: string]: unknown;

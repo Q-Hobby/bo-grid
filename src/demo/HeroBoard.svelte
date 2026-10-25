@@ -8,6 +8,7 @@
   // plain rows, a coalescing tick stream, api.patchRows. It pauses when it is
   // scrolled away or the tab is hidden.
   interface Q extends GridRow {
+    id: number;
     sym: string;
     ref: number;
     ceil: number;
