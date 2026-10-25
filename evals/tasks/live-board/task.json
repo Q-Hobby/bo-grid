@@ -1,0 +1,28 @@
+{
+  "title": "A live price board fed by a fast feed",
+  "prompt": "src/feed.ts has subscribe(onQuote), which calls onQuote with { symbol, last, volume } many times a second. In src/App.svelte, show a live board with a row for each symbol in SYMBOLS (from src/feed.ts) and the columns Symbol, Last and Volume. The last price should flash when it changes. The board must stay smooth at thousands of updates a second.",
+  "checks": [
+    {
+      "name": "uses Grid from bo-grid",
+      "match": "from ['\"]bo-grid['\"]"
+    },
+    {
+      "name": "flashes the Last column with the grid's own flash",
+      "match": "\\{[^{}]*key:\\s*['\"]last['\"][^{}]*flash:\\s*['\\\"](auto|up-down|change)['\\\"]|\\{[^{}]*flash:\\s*['\\\"](auto|up-down|change)['\\\"][^{}]*key:\\s*['\"]last['\"]"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "no hand-rolled flash bookkeeping",
+      "absent": "flashSeq|flashDir"
+    },
+    {
+      "name": "writes ticks with api.patchRows",
+      "match": "patchRows"
+    },
+    {
+      "name": "batches ticks with createTickStream",
+      "match": "createTickStream"
+    }
+  ]
+}

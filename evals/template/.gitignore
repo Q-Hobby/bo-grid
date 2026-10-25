@@ -1,0 +1,5 @@
+node_modules
+.agent-output.json
+.vitest.json
+vitest.eval.config.ts
+src/__eval__/
