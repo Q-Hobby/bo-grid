@@ -46,8 +46,23 @@ All notable changes to this project are documented here. Format follows
   it, they get their types from the prop); string ids where `GridRow.id` is
   a number; a placeholder `[...]`; and a socket message read without
   `JSON.parse`.
+- **The docs ship in the package.** `node_modules/bo-grid/dist/docs/` holds
+  the docs of the installed version: every docs page as a Markdown file
+  (the same text as the site's `.md` pages, links between pages pointing at
+  the local files), the props reference, `api.json`, and a `README.md`
+  index that opens with the facts llms.txt leads with. A coding agent in
+  your project can read them with no network, and they match the version
+  you have. The CLAUDE.md snippet, the Cursor rule and the AGENTS.md section
+  on the AI page now point there first.
 
 ### Changed
+
+- The README is short: install, a first grid, and links to the
+  [live demo and docs](https://bonguynvan.github.io/bo-grid/).
+- `docs/guide.md`, `docs/frameworks.md` and `docs/sveltekit.md` are gone.
+  They repeated the docs site's pages, and were drifting from them. The
+  site's pages replace them online, and the Markdown copies now come in
+  the package.
 
 - `parseFraction` takes the same options as `fmtFraction`, so one options
   object serves a column's `format` and `parse` (`sub` and `separator` only
@@ -56,7 +71,7 @@ All notable changes to this project are documented here. Format follows
 ### Fixed
 
 - Docs that read a theme colour as `var(--bo-grid-up)` inside a cell (the
-  custom cells and row styles pages, the framework guide): that variable is
+  custom cells and row styles pages, the frameworks page): that variable is
   an input, empty unless set, so under the default theme the colour was
   missing. They read the resolved `var(--bo-up)`, and the theming page says
   which to use.

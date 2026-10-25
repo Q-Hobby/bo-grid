@@ -39,8 +39,13 @@ pnpm bench:browser    # frame cost in headless Chrome (needs Chrome installed)
 - **Add a CHANGELOG entry** under `## [Unreleased]`, in the section it belongs
   to (Added, Changed, Performance or Fixed). Say what changed and why it
   matters to a user.
-- **Update the docs** a change touches: the [guide](./docs/guide.md), the API
-  page (`api.html`) and `public/llms-full.txt`.
+- **Update the docs** a change touches:
+  - The feature's docs page, `site/src/routes/(docs)/docs/<topic>/+page.md`
+    (`pnpm site:dev` serves the site). Its code blocks are type-checked.
+  - The doc comment of a new prop, column option or API method, with
+    `@default` and `@example`. The props reference, `api.json`, llms.txt and
+    the docs in the npm package are generated from these sources.
+  - The API page (`api.html`).
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org/)
   (`feat:`, `fix:`, `perf:`, `docs:`, `test:`, `chore:`).
 
@@ -82,6 +87,19 @@ publishes nothing.
 
 The workflow needs the `NPM_TOKEN` repository secret. `pnpm release` still
 publishes by hand from a clean `main`.
+
+### Preview packages
+
+Every pull request and every commit on `main` is published as a preview
+package by [pkg.pr.new](https://pkg.pr.new/~/bonguynvan/bo-grid). A bot
+comment on the pull request gives the install command, for example:
+
+```sh
+npm i https://pkg.pr.new/bo-grid@123        # pull request #123
+npm i https://pkg.pr.new/bo-grid@a1b2c3d    # a commit
+```
+
+Previews are for testing only. Use the npm release in production.
 
 ## Accessibility
 

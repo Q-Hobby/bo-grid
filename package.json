@@ -114,7 +114,7 @@
     "site:dev": "node scripts/api-manifest.mjs && cd site && vite dev",
     "site:build": "node scripts/api-manifest.mjs && cd site && vite build",
     "site:check": "node scripts/api-manifest.mjs && node scripts/docs-code.mjs && cd site && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "package": "svelte-package -i src/lib -o dist && node scripts/clean-dist.mjs && pnpm run build:wc && node scripts/emit-element-dts.mjs",
+    "package": "svelte-package -i src/lib -o dist && node scripts/clean-dist.mjs && pnpm run build:wc && node scripts/emit-element-dts.mjs && node scripts/api-manifest.mjs && node scripts/package-docs.mjs",
     "build:wc": "vite build --config vite.wc.config.ts && vite build --config vite.wrappers.config.ts",
     "prepublishOnly": "pnpm run package",
     "check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",

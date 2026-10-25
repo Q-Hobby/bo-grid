@@ -30,9 +30,6 @@ const OUT = 'site/src/lib/generated/code';
 const SITE_DOCS = 'site/src/routes/(docs)';
 /** Markdown in the repository that readers copy from (GitHub, npm). */
 const REPO_DOCS = ['README.md', 'docs'];
-/** The one-file guides that predate the docs site, not checked yet: they
-    repeat the site's pages and are due to be replaced by them. */
-const UNCHECKED_DOCS = new Set(['docs/guide.md', 'docs/frameworks.md', 'docs/sveltekit.md']);
 const CHECKED = new Set(['svelte', 'ts', 'js']);
 const NOT_CHECKED = new Set(['tsx', 'vue', 'html', 'css', 'sh', 'bash', 'json', 'md', 'text']);
 
@@ -303,11 +300,10 @@ for (const page of markdown(SITE_DOCS).filter((p) => p.endsWith('+page.md')).sor
 }
 // README.md and docs/**/*.md.
 for (const file of REPO_DOCS.flatMap((p) => (statSync(p).isDirectory() ? markdown(p) : [p])).sort()) {
-  if (UNCHECKED_DOCS.has(file.replace(/\\/g, '/'))) continue;
   checkMarkdown(file, `md-${file.replace(/\.md$/, '').replace(/[^\w]+/g, '-').toLowerCase()}`);
 }
 
-// The per-framework samples (FrameworkTabs on the home page and the guides):
+// The per-framework samples (FrameworkTabs on the home page and the docs pages):
 // their Svelte and plain JavaScript versions.
 const snippetsSrc = ts.transpileModule(readFileSync('site/src/lib/snippets.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const snippets = await import(`data:text/javascript;base64,${Buffer.from(snippetsSrc).toString('base64')}`);
@@ -351,6 +347,5 @@ mkdirSync(OUT, { recursive: true });
 for (const [name, text] of files) writeFileSync(join(OUT, name), text);
 console.log(
   `docs-code: ${blocks} code blocks${skipped ? ` (${skipped} marked nocheck)` : ''}, ${samples} framework samples and ${tags} @examples → ${OUT}\n` +
-    `  (an error in ${OUT}/ is in an example: the file's first line names the page and line, or the prop, it came from)\n` +
-    `  not checked yet: ${[...UNCHECKED_DOCS].join(', ')}`,
+    `  (an error in ${OUT}/ is in an example: the file's first line names the page and line, or the prop, it came from)`,
 );

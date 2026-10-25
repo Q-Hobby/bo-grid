@@ -167,7 +167,7 @@ Completes the conditional-formatting trio (data bars + icon sets + colour scales
 
 - [x] **`bo-grid/element`**: a `<bo-grid>` Web Component (Svelte compiled to a
   custom element, styles auto-injected, whole API via a `config` property) usable
-  from **React, Vue, Angular and vanilla** — see [docs/frameworks.md](./docs/frameworks.md).
+  from **React, Vue, Angular and vanilla** — see [React, Vue & more](https://bonguynvan.github.io/bo-grid/docs/frameworks/).
   `wc-smoke` gate verifies it registers + renders + reacts.
 
 ## 0.22 · CSV import — done

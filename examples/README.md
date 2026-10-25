@@ -14,7 +14,7 @@ npx serve examples        # then open vanilla.html / react.html / vue.html
 | [`react.html`](./react.html) | React 18 (JSX-free via `htm`) |
 | [`vue.html`](./vue.html) | Vue 3 |
 
-Angular: see the snippet in [../docs/frameworks.md](../docs/frameworks.md)
+Angular: see [React, Vue & more](https://bonguynvan.github.io/bo-grid/docs/frameworks/#angular-and-plain-javascript)
 (`CUSTOM_ELEMENTS_SCHEMA` + `[config]` binding).
 
 ## The pattern

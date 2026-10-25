@@ -35,6 +35,7 @@
   });
 
   const REPO = 'https://github.com/bonguynvan/bo-grid';
+  const DOCS = 'https://bonguynvan.github.io/bo-grid/docs';
   const NPM = 'https://www.npmjs.com/package/bo-grid';
   const TRADECANVAS = 'https://bonguynvan.github.io/tradecanvas/';
 
@@ -108,7 +109,7 @@
     <a href="#examples">Examples</a>
     <a href="./api.html">API</a>
     <a href="{REPO}/blob/main/BENCHMARKS.md">Benchmarks</a>
-    <a href="{REPO}/blob/main/docs/frameworks.md">Frameworks</a>
+    <a href="{DOCS}/frameworks/">Frameworks</a>
   </nav>
   <div class="lp-bar-end">
     <span class="lp-session" title="Ho Chi Minh Stock Exchange session, Vietnam time"><i aria-hidden="true"></i>HOSE · {session}</span>
@@ -229,8 +230,8 @@
       <p class="lp-label">Docs</p>
       <a href="./api.html">API reference</a>
       <a href="{REPO}/blob/main/BENCHMARKS.md">Benchmarks</a>
-      <a href="{REPO}/blob/main/docs/frameworks.md">Frameworks</a>
-      <a href="{REPO}/blob/main/docs/sveltekit.md">SvelteKit guide</a>
+      <a href="{DOCS}/frameworks/">Frameworks</a>
+      <a href="{DOCS}/sveltekit/">SvelteKit guide</a>
     </nav>
     <nav aria-label="Elsewhere">
       <p class="lp-label">Elsewhere</p>
