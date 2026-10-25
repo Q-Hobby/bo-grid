@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-10-25
+
+**One command sets a project up for coding agents.** `npx bo-grid init`
+points your agent at the docs that ship with the installed version, through
+your `AGENTS.md` and a bo-grid skill. A minor release: nothing changes in
+the library.
+
 ### Added
 
 - **`npx bo-grid init`** sets a project up for coding agents. It writes the
@@ -15,8 +22,7 @@ All notable changes to this project are documented here. Format follows
   `node_modules/bo-grid/dist/docs/`. Run it again after an upgrade to bring
   them up to date. It leaves a file alone, and says why, when it cannot
   place the section safely: next to one you pasted, or between markers that
-  don't pair up.
-  Options: `--file` (such as `CLAUDE.md`), `--no-skill`, `--skills-dir`,
+  don't pair up. Options: `--file` (such as `CLAUDE.md`), `--no-skill`, `--skills-dir`,
   `--cwd`, `--dry-run` and `--json`; it exits 0 when done, 1 when it left a
   file alone, 2 on bad usage. The skill also ships in the package, in
   `dist/skills/bo-grid/SKILL.md`, and its examples are type-checked in CI
