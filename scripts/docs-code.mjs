@@ -1,8 +1,9 @@
 // Writes every code example in the docs as a file svelte-check can type-check
 // (run by `pnpm site:check`, so CI fails on an example that does not compile):
-// the ```svelte, ```ts and ```js blocks of the docs site's pages, README.md
-// and docs/**/*.md; the per-framework samples in site/src/lib/snippets.ts;
-// and the `@example` of every prop, column option and API method (api.json).
+// the ```svelte, ```ts and ```js blocks of the docs site's pages, README.md,
+// docs/**/*.md and the Markdown `npx bo-grid init` writes; the per-framework
+// samples in site/src/lib/snippets.ts; and the `@example` of every prop,
+// column option and API method (api.json).
 //
 // A block is checked as written, read the way a reader reads an excerpt:
 // - names bo-grid exports are imported for it when it uses them without an
@@ -28,8 +29,9 @@ import ts from 'typescript';
 
 const OUT = 'site/src/lib/generated/code';
 const SITE_DOCS = 'site/src/routes/(docs)';
-/** Markdown in the repository that readers copy from (GitHub, npm). */
-const REPO_DOCS = ['README.md', 'docs'];
+/** Markdown in the repository that readers copy from (GitHub, npm), and what
+    `npx bo-grid init` writes into a project (the AGENTS.md section, the skill). */
+const REPO_DOCS = ['README.md', 'docs', 'src/lib/cli', 'src/lib/skills'];
 const CHECKED = new Set(['svelte', 'ts', 'js']);
 const NOT_CHECKED = new Set(['tsx', 'vue', 'html', 'css', 'sh', 'bash', 'json', 'md', 'text']);
 

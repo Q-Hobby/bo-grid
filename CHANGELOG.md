@@ -5,6 +5,23 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`npx bo-grid init`** sets a project up for coding agents. It writes the
+  bo-grid section into `AGENTS.md`, between markers (the rest of the file
+  stays as it is), and installs the bo-grid skill in
+  `.claude/skills/bo-grid/SKILL.md`: the rules, a first grid, a live price
+  board and the workflow. Both point at the docs in
+  `node_modules/bo-grid/dist/docs/`. Run it again after an upgrade to bring
+  them up to date. It leaves a file alone, and says why, when it cannot
+  place the section safely: next to one you pasted, or between markers that
+  don't pair up.
+  Options: `--file` (such as `CLAUDE.md`), `--no-skill`, `--skills-dir`,
+  `--cwd`, `--dry-run` and `--json`; it exits 0 when done, 1 when it left a
+  file alone, 2 on bad usage. The skill also ships in the package, in
+  `dist/skills/bo-grid/SKILL.md`, and its examples are type-checked in CI
+  with the rest of the docs.
+
 ## [3.0.0] — 2026-10-25
 
 **Docs in the package, errors that give the fix, and examples that

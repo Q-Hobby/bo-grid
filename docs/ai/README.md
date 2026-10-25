@@ -30,7 +30,20 @@ read them with no network:
 
 ## 2. Project rule files — install once, every session gets it right
 
-Two ready-to-copy files, same guidance in each tool's format:
+The quickest way is one command in your project:
+
+```sh
+npx bo-grid init
+```
+
+It writes the bo-grid section into `AGENTS.md` (between markers, leaving the
+rest of the file alone) and installs the bo-grid skill in
+`.claude/skills/bo-grid/SKILL.md`. Run it again after an upgrade. The
+[AI page](https://bonguynvan.github.io/bo-grid/docs/ai/#set-up-a-project-in-one-command)
+lists its options.
+
+To copy the guidance by hand instead, there are two files, the same guidance
+in each tool's format:
 
 | Tool | File | Where it goes in *your* project |
 | --- | --- | --- |

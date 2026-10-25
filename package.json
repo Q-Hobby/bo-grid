@@ -85,6 +85,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "bo-grid": "./dist/cli/bin.js"
+  },
   "sideEffects": [
     "./dist/bo-grid.element*.js"
   ],
@@ -122,6 +125,7 @@
     "size:lib": "vite build --config vite.lib.config.ts && node scripts/size-lib.mjs",
     "smoke": "vite build --base=./ --outDir demo-dist && node scripts/smoke.mjs",
     "smoke:wc": "node scripts/wc-smoke.mjs && tsc -p scripts/wrapper-types/tsconfig.json",
+    "smoke:cli": "node scripts/smoke-cli.mjs",
     "check:examples": "node scripts/check-examples.mjs",
     "ssr": "node scripts/ssr.mjs",
     "bench": "node scripts/bench.mjs",
