@@ -1,0 +1,20 @@
+{
+  "title": "An order book from a sequenced depth feed",
+  "prompt": "src/depth.ts streams an order book: connectDepth() sends a snapshot, then updates with the price levels that changed (a size of \"0\" removes a level), numbered with from and seq. In src/App.svelte, show the book in one grid: the 10 best asks above the 10 best bids, with the columns Price, Size and Total, where Total adds up the sizes from the best price outward on each side. If an update skips a sequence number, reconnect to get a fresh snapshot.",
+  "checks": [
+    {
+      "name": "uses Grid from bo-grid",
+      "match": "from ['\"]bo-grid['\"]"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "keeps the book with createOrderBook",
+      "match": "createOrderBook"
+    },
+    {
+      "name": "redraws only when the book changed (version)",
+      "match": "\\.version\\b"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 node_modules
-.agent-output.json
+.agent-trace.jsonl
 .vitest.json
 vitest.eval.config.ts
 src/__eval__/

@@ -52,14 +52,30 @@ export function header(target: Element, ...names: string[]): HTMLElement | undef
   return [...target.querySelectorAll<HTMLElement>('[role=columnheader]')].find((h) => names.some((n) => text(h).toLowerCase().startsWith(n.toLowerCase())));
 }
 
+/** The grid's own passing state on an element: a flash, the selection, the
+    focused cell. */
+const TRANSIENT = new Set(['flash', 'held', 'alt', 'up', 'down', 'keep', 'sel', 'focus', 'fillpreview']);
+
+/** How an element and everything in it is styled (classes and inline
+    styles, without the grid's passing state), not what it says. */
+export function styling(el: Element): string {
+  return [el, ...el.querySelectorAll('*')]
+    .map((e) => {
+      const cls = (e.getAttribute('class') ?? '').split(/\s+/).filter((c) => c && !TRANSIENT.has(c));
+      return `${cls.join(' ')}|${e.getAttribute('style') ?? ''}`;
+    })
+    .join('/');
+}
+
 /** Matches a number however the grid formats it: separators, decimals, a
     minus sign or a typographic minus. */
 export function num(n: number): RegExp {
   const [int, frac] = Math.abs(n).toString().split('.');
   const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '[,.\\s\\u202f]?');
-  const sign = n < 0 ? '[-\\u2212(]' : '(?<![-\\u2212\\d])';
+  const sign = n < 0 ? '[-\\u2212(]' : '(?<![-\\u2212\\d.,])';
   const decimals = frac ? `[.,]${frac}0*` : '([.,]0+)?';
-  return new RegExp(`${sign}\\$?${grouped}${decimals}(?!\\d)`);
+  // Not followed by more digits: 100 does not match 100.5 or 1005.
+  return new RegExp(`${sign}\\$?${grouped}${decimals}(?![.,]?\\d)`);
 }
 
 /** Like `num`, but also matches a compact amount: 2.5M, 750K. */

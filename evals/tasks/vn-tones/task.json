@@ -1,0 +1,20 @@
+{
+  "title": "Vietnamese price-limit colours",
+  "prompt": "src/board.ts has today's Vietnamese stocks with their exchange (HOSE, HNX or UPCOM), reference price and last price. In src/App.svelte, show them in a grid with the columns Symbol, Ref, Ceiling, Floor and Price, using each exchange's daily price limit for the ceiling and floor. Colour the symbol and the price the way Vietnamese boards do: purple at the ceiling, cyan at the floor, yellow at the reference, green above it and red below it.",
+  "checks": [
+    {
+      "name": "uses Grid from bo-grid",
+      "match": "from ['\"]bo-grid['\"]"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "takes the bands from vnBands",
+      "match": "vnBands"
+    },
+    {
+      "name": "takes the tone from resolveTone",
+      "match": "resolveTone"
+    }
+  ]
+}

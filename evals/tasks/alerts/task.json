@@ -1,0 +1,20 @@
+{
+  "title": "Price alerts that stay lit until acknowledged",
+  "prompt": "In src/App.svelte, show a live board of the quotes from src/feed.ts (subscribe() calls onQuote with { symbol, last, volume }), with a row for each symbol in SYMBOLS and the columns Symbol and Last. src/levels.ts has an alert level above and below each symbol's price. When a symbol's last price reaches its above level or falls to its below level, highlight its row, and keep it highlighted even if the price comes back, until someone acknowledges it: by pressing A on the row, or with an \"Acknowledge all\" button.",
+  "checks": [
+    {
+      "name": "uses Grid from bo-grid",
+      "match": "from ['\"]bo-grid['\"]"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "keeps alert state with createAlerts",
+      "match": "createAlerts"
+    },
+    {
+      "name": "acknowledges with a hotkey",
+      "match": "hotkeys"
+    }
+  ]
+}

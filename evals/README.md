@@ -22,6 +22,7 @@ say enough.
 node evals/run.mjs                      # every task, both conditions, once
 node evals/run.mjs --tasks live-board --conditions init --repeat 3
 node evals/run.mjs --model sonnet       # pin the agent's model
+node evals/run.mjs --jobs 4             # run four at a time
 node evals/run.mjs --solutions          # grade evals/solutions/: all pass
 node evals/run.mjs --untouched          # grade the starting apps: all fail
 ```
@@ -78,8 +79,10 @@ repository, so the repository's own settings don't reach the agent. There it:
 
 Each result is appended to `results/<time>.jsonl` as its run finishes, so a
 stopped run loses nothing. `results/<time>.json` has them all at the end. A run's
-folder keeps the agent's output (`.agent-output.json`), and its git history
-shows the change (`git diff HEAD`). The results hold local paths and error
+folder keeps the agent's event stream (`.agent-trace.jsonl`: every tool call,
+then what the run cost), and its git history shows the change
+(`git diff HEAD`). The summary also counts what the agents read: the docs in
+the package, the skill, `AGENTS.md`, the type definitions, the docs online. The results hold local paths and error
 text: don't paste them anywhere public. Nothing cleans `runs/` and `results/`
 up; delete them when you're done (see Safety).
 
