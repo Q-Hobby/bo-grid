@@ -303,7 +303,8 @@ function gradeRun(dir, task, spec) {
     tests.failures.push(vitest.timedOut ? `the tests timed out after ${GRADE_TIMEOUT / 60_000} minutes` : 'the tests did not run');
   }
   const pass = typecheck.ok && checks.every((c) => c.pass) && tests.total > 0 && tests.passed === tests.total;
-  return { pass, typecheck: typecheck.ok, typeErrors: typecheck.ok ? undefined : typecheck.out.slice(-1500), checks, idioms, tests };
+  const usedBoGrid = /from\s*['"]bo-grid(\/[\w-]+)?['"]/.test(source);
+  return { pass, usedBoGrid, typecheck: typecheck.ok, typeErrors: typecheck.ok ? undefined : typecheck.out.slice(-1500), checks, idioms, tests };
 }
 
 function sources(dir) {
@@ -322,25 +323,30 @@ function line(r) {
 }
 
 /** Per condition: passes out of the runs that completed (an errored run is
-    the agent's or the harness's failure, not a result), then what they cost. */
+    the agent's or the harness's failure, not a result), how many used bo-grid
+    at all and how many of those passed (finding the library and using it well
+    are different results), then what they cost. */
 function summary(rs) {
   const agentRan = rs.some((r) => r.agent.cost != null);
-  log(agentRan ? '\n                 pass   cost/run  tokens/run        turns   idioms   errored' : '\n                 pass   idioms');
+  log(agentRan ? '\n                 pass   used   pass/used  cost/run  tokens/run        turns   idioms   errored' : '\n                 pass   used   pass/used  idioms');
   for (const [condition, list] of Object.entries(Object.groupBy(rs, (r) => r.condition))) {
     const done = list.filter((r) => !r.errored);
     const withAgent = done.filter((r) => r.agent.cost != null);
     const avg = (f) => withAgent.reduce((s, r) => s + f(r), 0) / withAgent.length;
     const tokens = (r) => r.agent.tokens.input + r.agent.tokens.cacheRead + r.agent.tokens.cacheWrite + r.agent.tokens.output;
     const idioms = done.flatMap((r) => r.idioms);
+    const used = done.filter((r) => r.usedBoGrid);
     const passed = `${done.filter((r) => r.pass).length}/${done.length}`.padEnd(6);
+    const usage = `${`${used.length}/${done.length}`.padEnd(6)} ${`${used.filter((r) => r.pass).length}/${used.length}`.padEnd(10)}`;
     const idiomsPassed = `${idioms.filter((i) => i.pass).length}/${idioms.length}`.padEnd(8);
-    if (!agentRan) log(`  ${condition.padEnd(14)} ${passed} ${idiomsPassed}`);
+    if (!agentRan) log(`  ${condition.padEnd(14)} ${passed} ${usage} ${idiomsPassed}`);
     else
       log(
-        `  ${condition.padEnd(14)} ${passed} ${(withAgent.length ? `$${avg((r) => r.agent.cost).toFixed(2)}` : '-').padEnd(9)} ` +
+        `  ${condition.padEnd(14)} ${passed} ${usage} ${(withAgent.length ? `$${avg((r) => r.agent.cost).toFixed(2)}` : '-').padEnd(9)} ` +
           `${(withAgent.length ? String(Math.round(avg(tokens))) : '-').padEnd(17)} ${(withAgent.length ? avg((r) => r.agent.turns).toFixed(1) : '-').padEnd(7)} ${idiomsPassed} ${list.length - done.length}`,
       );
   }
+  log('  used: the code imports bo-grid · pass/used: of those runs, the ones that passed');
   if (agentRan) {
     log('\n  what the agents read (runs):');
     for (const [condition, list] of Object.entries(Object.groupBy(rs.filter((r) => r.agent.read), (r) => r.condition))) {

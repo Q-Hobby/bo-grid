@@ -106,6 +106,12 @@ A run **passes** when:
 code is written the way the docs recommend: `flash: 'auto'` rather than
 hand-written flash state, `patchRows` for a fast feed, `groupAgg` for totals.
 
+The summary also counts the runs whose code imports bo-grid (**used**), and
+how many of those passed (**pass/used**). Some prompts don't name a grid, as a
+real request might not, so an agent can miss that the app has bo-grid and
+write a plain table: that run fails, but for a different reason than one that
+uses bo-grid wrongly.
+
 ## Add a task
 
 Create `tasks/<id>/` with:
