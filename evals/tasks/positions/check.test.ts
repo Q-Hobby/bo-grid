@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
-import { header, mountApp, num, rowWith, rows, settle, type MountedApp } from './setup';
+import { header, mountApp, num, rowWith, rows, settle, styling, type MountedApp } from './setup';
 
 let app: MountedApp | undefined;
 afterEach(() => app?.destroy());
@@ -24,9 +24,7 @@ it('colours a positive P&L differently from a negative one', () => {
   const up = pnlCell('AAPL', 930);
   const down = pnlCell('MSFT', -245);
   expect(up && down, 'the P&L cells').toBeTruthy();
-  // Classes and inline styles of the cell and everything in it.
-  const look = (cell: HTMLElement) => [cell, ...cell.querySelectorAll('*')].map((e) => `${e.getAttribute('class') ?? ''}|${e.getAttribute('style') ?? ''}`).join('/');
-  expect(look(up!)).not.toBe(look(down!));
+  expect(styling(up!)).not.toBe(styling(down!));
 });
 
 it('sorts by Qty from its header', async () => {

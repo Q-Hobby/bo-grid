@@ -22,6 +22,7 @@ say enough.
 node evals/run.mjs                      # every task, both conditions, once
 node evals/run.mjs --tasks live-board --conditions init --repeat 3
 node evals/run.mjs --model sonnet       # pin the agent's model
+node evals/run.mjs --jobs 4             # run four at a time
 node evals/run.mjs --solutions          # grade evals/solutions/: all pass
 node evals/run.mjs --untouched          # grade the starting apps: all fail
 ```
@@ -78,8 +79,10 @@ repository, so the repository's own settings don't reach the agent. There it:
 
 Each result is appended to `results/<time>.jsonl` as its run finishes, so a
 stopped run loses nothing. `results/<time>.json` has them all at the end. A run's
-folder keeps the agent's output (`.agent-output.json`), and its git history
-shows the change (`git diff HEAD`). The results hold local paths and error
+folder keeps the agent's event stream (`.agent-trace.jsonl`: every tool call,
+then what the run cost), and its git history shows the change
+(`git diff HEAD`). The summary also counts what the agents read: the docs in
+the package, the skill, `AGENTS.md`, the type definitions, the docs online. The results hold local paths and error
 text: don't paste them anywhere public. Nothing cleans `runs/` and `results/`
 up; delete them when you're done (see Safety).
 
@@ -102,6 +105,12 @@ A run **passes** when:
 **Idioms** are reported apart and don't decide a pass. They check that the
 code is written the way the docs recommend: `flash: 'auto'` rather than
 hand-written flash state, `patchRows` for a fast feed, `groupAgg` for totals.
+
+The summary also counts the runs whose code imports bo-grid (**used**), and
+how many of those passed (**pass/used**). Some prompts don't name a grid, as a
+real request might not, so an agent can miss that the app has bo-grid and
+write a plain table: that run fails, but for a different reason than one that
+uses bo-grid wrongly.
 
 ## Add a task
 

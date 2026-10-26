@@ -4,6 +4,7 @@
 //   node evals/run.mjs                      every task, with and without init
 //   node evals/run.mjs --tasks live-board --conditions init --repeat 3
 //   node evals/run.mjs --model sonnet       pin the agent's model
+//   node evals/run.mjs --jobs 4             run four at a time
 //   node evals/run.mjs --solutions          grade evals/solutions/ instead of
 //                                           running the agent: every run passes
 //   node evals/run.mjs --untouched          grade the starting app as it is:
@@ -14,7 +15,7 @@
 // users for (`@AGENTS.md`). The agent is Claude Code, headless (`claude -p`),
 // on your account: each run costs what the agent spends. See README.md, and
 // its "Safety" section, before running it.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -53,27 +54,44 @@ jsonl = join(WORK, 'results', `${stamp}.jsonl`);
 
 const base = prepareBase();
 const results = [];
-for (const task of tasks) {
+const jobs = tasks.flatMap((task) => {
   const spec = JSON.parse(readFileSync(join(EVALS, 'tasks', task, 'task.json'), 'utf8'));
-  for (const condition of args.conditions)
-    for (let i = 1; i <= args.repeat; i++) {
-      const dir = join(runs, `${task}-${condition}-${i}`);
-      log(`\n▶ ${task} · ${condition} · ${i}/${args.repeat}`);
-      setupRun(dir, task, condition);
-      const agent = mode === 'solutions' ? applySolution(dir, task) : mode === 'untouched' ? {} : runAgent(dir, spec.prompt);
-      if (mode === 'agent' && agent.error && results.length === 0)
-        fail(`The agent did not run: ${agent.error}\nCheck that \`claude -p "hello"\` works in a terminal, then run the evals again.`);
-      if (fingerprint(base.dir) !== base.fingerprint) {
-        agent.error = 'it changed the shared node_modules; reinstalled for the next run';
-        reinstallBase();
-      }
-      restoreStartingFiles(dir, task);
-      const grade = gradeRun(dir, task, spec);
-      const result = { task, condition, repeat: i, dir, ...grade, errored: agent.error, pass: grade.pass && !agent.error, agent };
-      results.push(result);
-      appendFileSync(jsonl, `${JSON.stringify(result)}\n`);
-      log(line(result));
-    }
+  return args.conditions.flatMap((condition) => Array.from({ length: args.repeat }, (_, k) => ({ task, spec, condition, repeat: k + 1 })));
+});
+/** Why no more runs start: the first agent run errored, or a run changed the shared install. */
+let stop = '';
+let next = 0;
+// `--jobs` runs work in parallel; each takes the next run until none are left.
+await Promise.all(
+  Array.from({ length: Math.min(args.jobs, jobs.length) }, async () => {
+    while (!stop && next < jobs.length) await runJob(jobs[next++]);
+  }),
+);
+if (stop) {
+  if (base.fingerprint !== fingerprint(base.dir)) reinstallBase();
+  fail(stop);
+}
+
+async function runJob({ task, spec, condition, repeat }) {
+  const name = `${task} · ${condition} · ${repeat}/${args.repeat}`;
+  const dir = join(runs, `${task}-${condition}-${repeat}`);
+  log(`▶ ${name}`);
+  setupRun(dir, task, condition);
+  const agent = mode === 'solutions' ? applySolution(dir, task) : mode === 'untouched' ? {} : await runAgent(dir, spec.prompt);
+  if (mode === 'agent' && agent.error && !results.some((r) => !r.errored)) {
+    stop ||= `The agent did not run: ${agent.error}\nCheck that \`claude -p "hello"\` works in a terminal, then run the evals again.`;
+  }
+  if (fingerprint(base.dir) !== base.fingerprint) {
+    agent.error = 'it changed the shared node_modules';
+    if (args.jobs === 1) reinstallBase();
+    else stop ||= `${name} changed the shared node_modules; the runs still going finished, and it has been reinstalled. Run again with the tasks left.`;
+  }
+  restoreStartingFiles(dir, task);
+  const grade = gradeRun(dir, task, spec);
+  const result = { task, condition, repeat, dir, ...grade, errored: agent.error, pass: grade.pass && !agent.error, agent };
+  results.push(result);
+  appendFileSync(jsonl, `${JSON.stringify(result)}\n`);
+  log(`${line(result)}  ← ${name}`);
 }
 
 const out = join(WORK, 'results', `${stamp}.json`);
@@ -84,20 +102,22 @@ log(`\nResults: ${out}`);
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const o = { tasks: undefined, conditions: ['bare', 'init'], repeat: 1, model: undefined, solutions: false, untouched: false, build: true };
+  const o = { tasks: undefined, conditions: ['bare', 'init'], repeat: 1, jobs: 1, model: undefined, solutions: false, untouched: false, build: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--tasks') o.tasks = argv[++i]?.split(',');
     else if (a === '--conditions') o.conditions = argv[++i]?.split(',') ?? [];
     else if (a === '--repeat') o.repeat = Number(argv[++i]);
     else if (a === '--model') o.model = argv[++i];
+    else if (a === '--jobs') o.jobs = Number(argv[++i]);
     else if (a === '--solutions') o.solutions = true;
     else if (a === '--untouched') o.untouched = true;
     else if (a === '--no-build') o.build = false;
-    else fail(`Unknown option ${a}. Options: --tasks a,b  --conditions bare,init  --repeat N  --model <name>  --solutions  --untouched  --no-build`);
+    else fail(`Unknown option ${a}. Options: --tasks a,b  --conditions bare,init  --repeat N  --jobs N  --model <name>  --solutions  --untouched  --no-build`);
   }
   if (!o.conditions.length || o.conditions.some((c) => c !== 'bare' && c !== 'init')) fail('--conditions takes bare, init or both.');
   if (!Number.isInteger(o.repeat) || o.repeat < 1) fail('--repeat takes a whole number of 1 or more.');
+  if (!Number.isInteger(o.jobs) || o.jobs < 1) fail('--jobs takes a whole number of 1 or more.');
   if (o.solutions && o.untouched) fail('Pick one of --solutions and --untouched.');
   return o;
 }
@@ -193,9 +213,11 @@ function restoreStartingFiles(dir, task) {
   writeStartingFiles(dir, task, (path) => path !== 'src/App.svelte');
 }
 
-function runAgent(dir, prompt) {
+/** Runs the agent, keeping its event stream (`.agent-trace.jsonl`): every tool
+    call it made, then the result with what it cost. */
+async function runAgent(dir, prompt) {
   const argv = [
-    '-p', '--output-format', 'json',
+    '-p', '--output-format', 'stream-json', '--verbose',
     '--setting-sources', 'project,local', '--strict-mcp-config', '--no-session-persistence',
     '--permission-mode', 'acceptEdits', '--permission-prompts', 'none',
     ...(args.model ? ['--model', args.model] : []),
@@ -204,15 +226,20 @@ function runAgent(dir, prompt) {
   ];
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => /^(ANTHROPIC_|CLAUDE_)/.test(k) || !SECRET_ENV.test(k)));
   const started = Date.now();
-  const r = spawnSync('claude', argv, { cwd: dir, env, input: prompt, encoding: 'utf8', timeout: AGENT_TIMEOUT, maxBuffer: 64 * 1024 * 1024 });
-  writeFileSync(join(dir, '.agent-output.json'), r.stdout ?? '');
+  const r = await spawnAsync('claude', argv, { cwd: dir, env, input: prompt, timeout: AGENT_TIMEOUT });
+  writeFileSync(join(dir, '.agent-trace.jsonl'), r.stdout ?? '');
   if (r.error) return { error: r.error.code === 'ETIMEDOUT' ? `timed out after ${AGENT_TIMEOUT / 60_000} minutes` : r.error.message, ms: Date.now() - started };
-  let json;
-  try {
-    json = JSON.parse(r.stdout);
-  } catch {
-    return { error: (r.stderr || r.stdout || 'no output').trim().slice(0, 500), ms: Date.now() - started };
-  }
+  const events = (r.stdout ?? '').split('\n').flatMap((l) => {
+    try {
+      return l.trim() ? [JSON.parse(l)] : [];
+    } catch {
+      return [];
+    }
+  });
+  const json = events.findLast((e) => e.type === 'result');
+  if (!json) return { error: (r.stderr || r.stdout || 'no output').trim().slice(0, 500), ms: Date.now() - started };
+  const init = events.find((e) => e.type === 'system' && e.subtype === 'init') ?? {};
+  const uses = events.flatMap((e) => (e.type === 'assistant' ? (e.message?.content ?? []).filter((c) => c.type === 'tool_use') : []));
   const u = json.usage ?? {};
   return {
     error: json.is_error ? String(json.result ?? json.subtype).slice(0, 500) : undefined,
@@ -222,6 +249,21 @@ function runAgent(dir, prompt) {
     tokens: { input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0 },
     models: Object.keys(json.modelUsage ?? {}),
     denied: (json.permission_denials ?? []).map((d) => `${d.tool_name}: ${JSON.stringify(d.tool_input).slice(0, 200)}`),
+    tools: Object.fromEntries(Object.entries(Object.groupBy(uses, (c) => c.name)).map(([name, list]) => [name, list.length])),
+    read: readsOf(uses),
+    context: { skills: init.skills, agents: init.agents, plugins: (init.plugins ?? []).map((p) => p.name) },
+  };
+}
+
+/** Which bo-grid sources the agent's tool calls touched. */
+function readsOf(uses) {
+  const touched = (re) => uses.some((c) => re.test(JSON.stringify(c.input ?? {})));
+  return {
+    docs: touched(/bo-grid[\\/]+dist[\\/]+docs/),
+    skill: uses.some((c) => c.name === 'Skill' && /bo-grid/.test(JSON.stringify(c.input))) || touched(/SKILL\.md/),
+    agentsMd: touched(/AGENTS\.md/),
+    types: touched(/bo-grid[\\/]+dist[\\/]+\S*\.d\.ts/),
+    online: uses.some((c) => c.name === 'WebFetch' || c.name === 'WebSearch'),
   };
 }
 
@@ -261,7 +303,8 @@ function gradeRun(dir, task, spec) {
     tests.failures.push(vitest.timedOut ? `the tests timed out after ${GRADE_TIMEOUT / 60_000} minutes` : 'the tests did not run');
   }
   const pass = typecheck.ok && checks.every((c) => c.pass) && tests.total > 0 && tests.passed === tests.total;
-  return { pass, typecheck: typecheck.ok, typeErrors: typecheck.ok ? undefined : typecheck.out.slice(-1500), checks, idioms, tests };
+  const usedBoGrid = /from\s*['"]bo-grid(\/[\w-]+)?['"]/.test(source);
+  return { pass, usedBoGrid, typecheck: typecheck.ok, typeErrors: typecheck.ok ? undefined : typecheck.out.slice(-1500), checks, idioms, tests };
 }
 
 function sources(dir) {
@@ -280,24 +323,36 @@ function line(r) {
 }
 
 /** Per condition: passes out of the runs that completed (an errored run is
-    the agent's or the harness's failure, not a result), then what they cost. */
+    the agent's or the harness's failure, not a result), how many used bo-grid
+    at all and how many of those passed (finding the library and using it well
+    are different results), then what they cost. */
 function summary(rs) {
   const agentRan = rs.some((r) => r.agent.cost != null);
-  log(agentRan ? '\n                 pass   cost/run  tokens/run        turns   idioms   errored' : '\n                 pass   idioms');
+  log(agentRan ? '\n                 pass   used   pass/used  cost/run  tokens/run        turns   idioms   errored' : '\n                 pass   used   pass/used  idioms');
   for (const [condition, list] of Object.entries(Object.groupBy(rs, (r) => r.condition))) {
     const done = list.filter((r) => !r.errored);
     const withAgent = done.filter((r) => r.agent.cost != null);
     const avg = (f) => withAgent.reduce((s, r) => s + f(r), 0) / withAgent.length;
     const tokens = (r) => r.agent.tokens.input + r.agent.tokens.cacheRead + r.agent.tokens.cacheWrite + r.agent.tokens.output;
     const idioms = done.flatMap((r) => r.idioms);
+    const used = done.filter((r) => r.usedBoGrid);
     const passed = `${done.filter((r) => r.pass).length}/${done.length}`.padEnd(6);
+    const usage = `${`${used.length}/${done.length}`.padEnd(6)} ${`${used.filter((r) => r.pass).length}/${used.length}`.padEnd(10)}`;
     const idiomsPassed = `${idioms.filter((i) => i.pass).length}/${idioms.length}`.padEnd(8);
-    if (!agentRan) log(`  ${condition.padEnd(14)} ${passed} ${idiomsPassed}`);
+    if (!agentRan) log(`  ${condition.padEnd(14)} ${passed} ${usage} ${idiomsPassed}`);
     else
       log(
-        `  ${condition.padEnd(14)} ${passed} ${(withAgent.length ? `$${avg((r) => r.agent.cost).toFixed(2)}` : '-').padEnd(9)} ` +
+        `  ${condition.padEnd(14)} ${passed} ${usage} ${(withAgent.length ? `$${avg((r) => r.agent.cost).toFixed(2)}` : '-').padEnd(9)} ` +
           `${(withAgent.length ? String(Math.round(avg(tokens))) : '-').padEnd(17)} ${(withAgent.length ? avg((r) => r.agent.turns).toFixed(1) : '-').padEnd(7)} ${idiomsPassed} ${list.length - done.length}`,
       );
+  }
+  log('  used: the code imports bo-grid · pass/used: of those runs, the ones that passed');
+  if (agentRan) {
+    log('\n  what the agents read (runs):');
+    for (const [condition, list] of Object.entries(Object.groupBy(rs.filter((r) => r.agent.read), (r) => r.condition))) {
+      const n = (key) => `${list.filter((r) => r.agent.read[key]).length}/${list.length}`;
+      log(`  ${condition.padEnd(14)} docs ${n('docs')} · skill ${n('skill')} · AGENTS.md ${n('agentsMd')} · types ${n('types')} · online ${n('online')}`);
+    }
   }
   const total = rs.reduce((s, r) => s + (r.agent.cost ?? 0), 0);
   if (total) log(`  total cost $${total.toFixed(2)} over ${rs.length} runs`);
@@ -313,6 +368,35 @@ function sh(cmd, argv, opts) {
   const quote = (a) => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
   const r = viaShell ? spawnSync([cmd, ...argv].map(quote).join(' '), { stdio: 'inherit', shell: true, ...opts }) : spawnSync(cmd, argv, { stdio: 'inherit', ...opts });
   if (r.status !== 0) fail(`${cmd} ${argv.join(' ')} failed (exit ${r.status}).`);
+}
+/** Like spawnSync, but the other runs go on meanwhile. */
+function spawnAsync(cmd, argv, { input, timeout, ...opts }) {
+  return new Promise((done) => {
+    const out = [];
+    const err = [];
+    let error;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      done({ error, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8') });
+    };
+    const child = spawn(cmd, argv, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] });
+    const timer = setTimeout(() => {
+      error = Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' });
+      child.kill();
+    }, timeout);
+    child.stdout.on('data', (d) => out.push(d));
+    child.stderr.on('data', (d) => err.push(d));
+    child.stdin.on('error', () => {}); // the process may be gone before it reads
+    child.on('error', (e) => {
+      error = e;
+      finish();
+    });
+    child.on('close', finish);
+    child.stdin.end(input);
+  });
 }
 function run(cmd, argv, cwd) {
   const r = spawnSync(cmd, argv, { cwd, encoding: 'utf8', timeout: GRADE_TIMEOUT, maxBuffer: 64 * 1024 * 1024 });

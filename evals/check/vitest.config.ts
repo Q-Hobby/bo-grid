@@ -10,6 +10,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/__eval__/**/*.test.ts'],
+    // Live tasks wait out the price flashes between steps.
+    testTimeout: 20_000,
     server: { deps: { inline: ['bo-grid'] } },
   },
 });

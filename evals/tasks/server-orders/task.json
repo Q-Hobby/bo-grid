@@ -1,0 +1,20 @@
+{
+  "title": "100,000 orders from a paging API",
+  "prompt": "src/api.ts can serve 100,000 orders: fetchOrders(start, end, sort) returns the orders from start to end (end exclusive), sorted by one column if asked, with the total count. In src/App.svelte, show all the orders in a grid with the columns Order #, Symbol, Qty and Price, sortable by any column, without loading all 100,000 into the browser.",
+  "checks": [
+    {
+      "name": "uses Grid from bo-grid",
+      "match": "from ['\"]bo-grid['\"]"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "backs the grid with a row source",
+      "match": "RowSource|\\bsource[=:{]|\\{source\\}"
+    },
+    {
+      "name": "never fetches every order",
+      "absent": "fetchOrders\\(\\s*0\\s*,\\s*(TOTAL|100_?000)"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "title": "Pinned rows and a layout that survives a reload",
+  "prompt": "In src/App.svelte, let users pin symbols to the top of the watchlist from the row's right-click menu. When they reload the page, keep their pinned symbols, and the column widths and order they set.",
+  "checks": [
+    {
+      "name": "saves the layout across reloads",
+      "match": "persistKey|getState\\(|localStorage"
+    }
+  ],
+  "idioms": [
+    {
+      "name": "uses the grid's row pinning",
+      "match": "rowPinning"
+    },
+    {
+      "name": "saves with persistKey",
+      "match": "persistKey"
+    }
+  ]
+}
